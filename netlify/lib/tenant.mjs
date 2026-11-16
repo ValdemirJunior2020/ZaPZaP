@@ -32,7 +32,7 @@ async function verifyHostedAI(){
  if(!aiReady())return false;
  try{
   const r=await fetch("https://api.openai.com/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+process.env.OPENAI_API_KEY},
-   body:JSON.stringify({model:process.env.NEXUS_CHAT_MODEL||"gpt-4.1-mini",messages:[{role:"user",content:"Reply with OK"}],max_tokens:8}),
+   body:JSON.stringify({model:process.env.NEXUS_CHAT_MODEL||"gpt-6-luna",messages:[{role:"user",content:"Reply with OK"}],max_completion_tokens:30,reasoning_effort:"none"}),
    signal:AbortSignal.timeout(13000)});
   if(!r.ok){console.error("Hosted AI verification failed, status:",r.status);return false}
   const j=await r.json();
