@@ -30,7 +30,7 @@ async function authenticate(event,c){
 async function db(c,path,{method="GET",body,prefer}={}){
  const response=await fetch(c.supabaseUrl+"/rest/v1/"+path,{method,headers:{apikey:c.supabaseKey,Authorization:"Bearer "+c.supabaseKey,"Content-Type":"application/json",...(prefer?{Prefer:prefer}:{})},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(10000)});
  const raw=await response.text();let data;try{data=raw?JSON.parse(raw):null}catch{data=null}
- if(!response.ok)throw new Error("Database operation failed ("+response.status+")");
+ if(!response.ok){const error=new Error("Database operation failed ("+response.status+")");error.status=response.status===409?409:503;throw error}
  return data;
 }
 async function entitlement(c,id){
