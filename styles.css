@@ -19,3 +19,19 @@
 .contact-option input{accent-color:#05af80;width:18px;height:18px;flex-shrink:0;margin-top:1px}
 .contact-option+.muted-note{margin:12px 0 18px}
 @media(max-width:750px){.virtual-number{font-size:22px;white-space:normal}}
+
+/* Transparent, simulation-only role preview; never used as authentication. */
+.demo-switch,.demo-logout{border:1px solid #2a4946;background:#173936;color:#d7eae4;border-radius:9px;width:100%;margin-top:9px;padding:11px;text-align:left;font-size:12px;font-weight:700}
+.demo-logout{background:transparent;color:#97b8b0}
+.demo-switch:hover,.demo-logout:hover{background:#23534a}
+.demo-gate{position:fixed;inset:0;z-index:10000;background:linear-gradient(145deg,#092723,#123e35);display:grid;place-items:center;padding:22px;overflow:auto}
+.demo-gate-card{width:min(100%,510px);background:white;border-radius:23px;padding:clamp(24px,5vw,40px);box-shadow:0 22px 65px #0004}
+.demo-gate-mark{display:grid;place-items:center;width:55px;height:55px;border-radius:16px;background:#08c88b;color:#074634;font-size:32px;margin-bottom:20px}
+.demo-gate-card h1{font-size:clamp(24px,4vw,33px);line-height:1.13;letter-spacing:-1px;margin:9px 0}
+.demo-gate-card p{color:#71867d;font-size:13px;line-height:1.6;margin:0 0 22px}
+.demo-login-choice{width:100%;background:#fff;display:flex;align-items:center;gap:13px;border:1px solid #e1eae6;border-radius:13px;padding:17px 14px;text-align:left;color:#173d30;margin-bottom:11px;transition:.15s}
+.demo-login-choice:hover,.demo-login-choice:focus-visible{border-color:#07bd86;background:#f0faf5;outline:none}
+.demo-login-icon{font-size:24px;background:#e8f8f0;padding:10px;border-radius:10px}
+.demo-login-choice span:nth-child(2){display:flex;flex:1;flex-direction:column;gap:5px}
+.demo-login-choice b{font-size:13px}.demo-login-choice small{font-size:11px;line-height:1.4;color:#83968d}
+.demo-gate-note{font-size:11px;color:#8b9c96;background:#f5f8f6;padding:13px;border-radius:10px;line-height:1.55;margin-top:19px}
