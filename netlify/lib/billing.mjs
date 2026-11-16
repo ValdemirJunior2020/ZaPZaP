@@ -39,10 +39,10 @@ async function entitlement(c,id){
 }
 function access(ent){
  if(!ent)return{allowed:false,reason:"NO_ACCOUNT",trialEndsAt:null,trialHoursLeft:0};
- const end=Date.parse(ent.trial_started_at)+48*60*60*1000;
+ const end=ent.trial_started_at?Date.parse(ent.trial_started_at)+48*60*60*1000:NaN;
  const paid=ent.subscription_status==="ACTIVE";
  const trial=Number.isFinite(end)&&Date.now()<end;
- return{allowed:paid||trial,reason:paid?"PAID":trial?"TRIAL":"TRIAL_EXPIRED",trialEndsAt:Number.isFinite(end)?new Date(end).toISOString():null,trialHoursLeft:trial?Math.ceil((end-Date.now())/3600000):0,subscriptionStatus:ent.subscription_status,subscriptionId:ent.paypal_subscription_id||null,subscriptionPlan:ent.paypal_plan_id||null};
+ return{allowed:paid||trial,reason:paid?"PAID":trial?"TRIAL":!ent.trial_started_at?"NOT_STARTED":"TRIAL_EXPIRED",trialEndsAt:Number.isFinite(end)?new Date(end).toISOString():null,trialHoursLeft:trial?Math.ceil((end-Date.now())/3600000):0,subscriptionStatus:ent.subscription_status,subscriptionId:ent.paypal_subscription_id||null,subscriptionPlan:ent.paypal_plan_id||null};
 }
 const pricing=Object.freeze({core:{amount:149,label:"NexusSales SmartLinks",widget:false},core_widget:{amount:228,label:"NexusSales + Website Widget",widget:true}});
 function planId(c,tier){return tier==="core_widget"?c.widgetPlan:c.plan}
