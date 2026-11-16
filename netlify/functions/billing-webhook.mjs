@@ -26,7 +26,7 @@ export async function handler(event){
   if(!/^I-[A-Z0-9]+$/i.test(id))return json(200,{received:true});
   // Always query PayPal's current status, not the untrusted order of webhook delivery.
   const sub=await paypal(c,"/v1/billing/subscriptions/"+encodeURIComponent(id));
-  if(!/^[0-9a-f-]{36}$/i.test(sub.custom_id||"")||sub.plan_id!==c.plan)return json(200,{received:true});
+  if(!/^[0-9a-f-]{36}$/i.test(sub.custom_id||"")||![c.plan,c.widgetPlan].filter(Boolean).includes(sub.plan_id))return json(200,{received:true});
   const rows=await db(c,"nx_entitlements?user_id=eq."+encodeURIComponent(sub.custom_id)+"&select=paypal_subscription_id");
   if(!rows?.length||rows[0].paypal_subscription_id!==id)return json(200,{received:true});
   const map={ACTIVE:"ACTIVE",SUSPENDED:"SUSPENDED",CANCELLED:"CANCELLED",EXPIRED:"EXPIRED"};
