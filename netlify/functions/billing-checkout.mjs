@@ -3,6 +3,7 @@ export async function handler(event){
  if(event.httpMethod!=="POST")return json(405,{error:"Method not allowed"});
  if(!sameOrigin(event))return json(403,{error:"Request origin rejected"});
  const c=env();
+ if(process.env.NEXUS_BILLING_ENABLED!=="true")return json(503,{error:"Subscriptions are not enabled yet"});
  if(!c.plan||!c.clientId||!c.secret)return json(503,{error:"PayPal subscriptions are not configured yet"});
  try{
   const user=await authenticate(event,c);
