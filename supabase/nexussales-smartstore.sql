@@ -9,8 +9,10 @@ create table if not exists public.nx_stores (
   industry text not null default 'Other',
   description text not null default '',
   headline text not null default '',
-  store_image_url text,
-  logo_url text,
+  store_image_url text check (store_image_url is null or (char_length(store_image_url)<=2048 and store_image_url ~ '^https://')),
+  store_image_prompt text,
+  logo_url text check (logo_url is null or (char_length(logo_url)<=2048 and logo_url ~ '^https://')),
+  image_source text not null default 'url' check (image_source in ('url','upload','ai')),
   color text not null default '#06aa77',
   published boolean not null default false,
   created_at timestamptz not null default now(),
@@ -24,7 +26,7 @@ create table if not exists public.nx_offerings (
   description text not null default '',
   price_label text not null default '',
   status text not null default 'Contact for availability',
-  image_url text,
+  image_url text check (image_url is null or (char_length(image_url)<=2048 and image_url ~ '^https://')),
   sort_order integer not null default 0,
   created_at timestamptz not null default now()
 );
