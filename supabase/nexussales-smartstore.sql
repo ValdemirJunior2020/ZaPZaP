@@ -3,11 +3,13 @@
 create extension if not exists pgcrypto;
 create table if not exists public.nx_stores (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null unique references auth.users(id) on delete cascade,
   slug text not null unique check (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$' and length(slug)<=50),
   name text not null check (char_length(name) between 1 and 150),
   industry text not null default 'Other',
   description text not null default '',
+  hours text not null default '',
+  agent_name text not null default 'Business Assistant',
   headline text not null default '',
   store_image_url text check (store_image_url is null or (char_length(store_image_url)<=2048 and store_image_url ~ '^https://')),
   store_image_prompt text,
@@ -46,13 +48,13 @@ alter table public.nx_offerings enable row level security;
 alter table public.nx_leads enable row level security;
 create policy "owners manage stores" on public.nx_stores for all to authenticated
  using (owner_id=(select auth.uid())) with check (owner_id=(select auth.uid()));
-create policy "public sees published stores" on public.nx_stores for select to anon
- using (published = true);
+-- Only the gated public-store server function may expose published data.
+revoke all on public.nx_stores from anon;
 create policy "owners manage offerings" on public.nx_offerings for all to authenticated
  using (exists(select 1 from public.nx_stores s where s.id=store_id and s.owner_id=(select auth.uid())))
  with check (exists(select 1 from public.nx_stores s where s.id=store_id and s.owner_id=(select auth.uid())));
-create policy "public sees published offerings" on public.nx_offerings for select to anon
- using (exists(select 1 from public.nx_stores s where s.id=store_id and s.published=true));
+-- Direct anonymous queries are disabled; eligibility is server verified.
+revoke all on public.nx_offerings from anon;
 create policy "owners manage leads" on public.nx_leads for all to authenticated
  using (exists(select 1 from public.nx_stores s where s.id=store_id and s.owner_id=(select auth.uid())))
  with check (exists(select 1 from public.nx_stores s where s.id=store_id and s.owner_id=(select auth.uid())));
