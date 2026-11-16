@@ -52,13 +52,13 @@ async function authHeader(){
  if(s.expires_at&&Date.now()/1000>s.expires_at-60){if(!await refreshAuth())return null;s=session()}
  return{"Content-Type":"application/json",Authorization:"Bearer "+s.access_token};
 }
-async function ownerApi(action,payload){
+async function ownerApi(action,payload,allowRetry=true){
  let headers=await authHeader();if(!headers)throw Error("Please sign in again");
  const method=action?"POST":"GET";
  const url="/.netlify/functions/owner-workspace";
  const r=await fetch(url,{method,headers,body:action?JSON.stringify({action,...payload}):undefined,cache:"no-store"});
  const j=await r.json().catch(()=>({}));
- if(r.status===401&&await refreshAuth())return ownerApi(action,payload);
+ if(r.status===401&&allowRetry&&await refreshAuth())return ownerApi(action,payload,false);
  if(!r.ok)throw Error(j.error||"Unable to save changes");
  return j;
 }
@@ -70,7 +70,7 @@ async function loadWorkspace(){
   text("accountLabel",workspace.email||"Account");
   text("sideName",workspace.store?.name||workspace.profile?.business_name||"Your business");
   render();
- }catch(e){toast(e.message);saveSession(null);setVisible(false)}
+ }catch(e){toast(e.message);if(/sign in|session|invalid login|unauthorized/i.test(e.message)){saveSession(null);setVisible(false)}else{setVisible(true);$("viewContent").innerHTML='<div class="alert">Business data is temporarily unavailable. Your account has not been logged out. Refresh the page to retry.</div>'}}
 }
 async function submitAuth(e){
  e.preventDefault();if(busy||!cfg)return;
