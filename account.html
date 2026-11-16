@@ -4,18 +4,18 @@
 <div class="wrap">
 <div class="tag">BUSINESS ACCOUNT & BILLING</div><h1>Try NexusSales for 48 hours.</h1><p>Every business gets a two-day trial starting at signup. After that, an active PayPal subscription is required for the paid service. No card details are requested on this page.</p>
 <div id="configAlert" class="alert">Checking account setup…</div>
-<section class="card hidden" id="authPanel"><h2 id="authTitle">Business owner sign in</h2>
-<form id="authForm"><div id="signupBusinessFields" class="hidden"><div class="field"><label>Business name</label><input id="businessName" name="business_name" maxlength="150" minlength="2" autocomplete="organization" placeholder="Your business name"></div><div class="field"><label>Business phone number</label><input id="businessPhone" name="phone" type="tel" maxlength="30" autocomplete="tel" placeholder="+1 555 555 5555"></div></div><div class="field"><label>Email</label><input id="email" type="email" required autocomplete="email"></div>
+<section class="card hidden" id="authPanel"><h2 id="authTitle">Create your business account</h2>
+<form id="authForm"><div id="signupBusinessFields"><div class="field"><label>Business name</label><input id="businessName" name="business_name" maxlength="150" minlength="2" required autocomplete="organization" placeholder="Your business name"></div><div class="field"><label>Business phone number</label><input id="businessPhone" name="phone" type="tel" maxlength="30" required autocomplete="tel" placeholder="+1 555 555 5555"></div></div><div class="field"><label>Email</label><input id="email" type="email" required autocomplete="email"></div>
 <div class="field"><label>Password</label><input id="password" type="password" minlength="8" required autocomplete="current-password"></div>
-<button class="btn" type="submit" id="authButton">Sign in</button></form>
-<button class="linkbtn" id="toggleSignup">Create a business account</button><div id="authMessage" class="notice" role="status" aria-live="polite"></div>
+<button class="btn" type="submit" id="authButton">Start 48-hour trial</button></form>
+<button class="linkbtn" id="toggleSignup">Already have an account? Sign in</button><div id="authMessage" class="notice" role="status" aria-live="polite"></div>
 </section>
 <section class="card hidden" id="billingPanel"><div class="tag">YOUR ACCOUNT</div><h2 id="accountEmail"></h2><div class="status" id="billingStatus">Checking trial…</div>
 <p id="trialDetails"></p><div class="included">Included in every plan: <strong>SmartStore, customized customer links, sharing by SMS and email, QR code, product and service catalog, and AI assistant.</strong></div><h3 style="margin:18px 0 6px">Choose your subscription</h3><div class="planpick"><button class="choice" id="tierCore" type="button" aria-pressed="true"><b>Core SmartLinks</b><strong>$149<small>/mo</small></strong><span>Everything above, without website embed</span></button><button class="choice" id="tierWidget" type="button" aria-pressed="false"><b>Core + Website Widget</b><strong>$228<small>/mo</small></strong><span><span class="addon">+$79/mo</span> for installable website chat</span></button></div><div id="paymentNote" class="alert hidden"></div><button class="btn" id="subscribe" disabled>Subscribe with PayPal</button><div class="line"></div><button class="linkbtn" id="signout">Sign out</button><p class="muted">Your 48-hour trial begins at account creation. Approval on PayPal alone does not grant paid access until verified.</p></section>
 <div class="alert" style="margin-top:22px">The catalog dashboard currently remains a separate demonstration. The live paid service must be connected to secured accounts, per-business storage, server-side usage checks and the public AI gateway before collecting subscriptions.</div>
 </div>
 <script>
-const el=id=>document.getElementById(id);let cfg=null,signup=false,accessToken=null,selectedTier="core";
+const el=id=>document.getElementById(id);let cfg=null,signup=true,accessToken=null,selectedTier="core";
 const status=t=>el("configAlert").textContent=t;const authmsg=t=>el("authMessage").textContent=t;
 function show(id,yes){el(id).classList.toggle('hidden',!yes)}
 function token(){return sessionStorage.getItem("nexus_account_access_token")||""}
