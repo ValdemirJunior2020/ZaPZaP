@@ -6,6 +6,16 @@ export async function handler(event){
  if(process.env.NEXUS_BILLING_ENABLED!=="true")return json(503,{error:"Subscriptions are not enabled yet"});
  if(!c.plan||!c.clientId||!c.secret)return json(503,{error:"PayPal subscriptions are not configured yet"});
  try{
+  // Server independently validates the configured PayPal plan before checkout.
+  const plan=await paypal(c,"/v1/billing/plans/"+encodeURIComponent(c.plan));
+  const regular=(plan.billing_cycles||[]).filter(x=>x.tenure_type==="REGULAR");
+  const price=regular[0]?.pricing_scheme?.fixed_price;
+  if(plan.status!=="ACTIVE"||regular.length!==1||regular[0].frequency?.interval_unit!=="MONTH"||
+     Number(regular[0].frequency?.interval_count)!==1||price?.currency_code!=="USD"||
+     Number(price?.value)!==149||Number(regular[0].total_cycles)!==0||
+     (plan.billing_cycles||[]).some(x=>x.tenure_type==="TRIAL")){
+    return json(503,{error:"PayPal plan must be an active $149 USD monthly subscription with no second trial"});
+  }
   const user=await authenticate(event,c);
   const record=await entitlement(c,user.id);
   if(!record)return json(503,{error:"Account billing setup is incomplete"});
