@@ -1,4 +1,4 @@
-import{json,env,configReady,db,paypal,paypalToken,api}from"./_billing-lib.mjs";
+import{json,env,configReady,db,paypal,paypalToken,api}from"../lib/billing.mjs";
 export async function handler(event){
  if(event.httpMethod!=="POST")return json(405,{error:"Method not allowed"});
  const c=env();
