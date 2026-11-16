@@ -131,7 +131,7 @@ function callbackReply(message,lang){
 }
 
 
-function cleanSlug(v){return String(v||"").toLowerCase().normalize("NFKD").replace(/[\\u0300-\\u036f]/g,"").replace(/[^a-z0-9-]/g,"-").replace(/-+/g,"-").replace(/^-|-$/g,"").slice(0,50)||"my-store"}
+function cleanSlug(v){return String(v||"").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9-]/g,"-").replace(/-+/g,"-").replace(/^-|-$/g,"").slice(0,50)||"my-store"}
 function smartLink(){return location.origin+"/store.html?s="+encodeURIComponent(cleanSlug(state.settings.slug||state.settings.business))}
 function safeImage(s){const v=String(s||"").trim();return /^https:\/\//i.test(v)||v.startsWith("data:image/jpeg;base64,")||v.startsWith("data:image/png;base64,")||v.startsWith("data:image/webp;base64,")?v:""}
 const industryExamples={
@@ -287,10 +287,9 @@ $("#demoOwnerForm").onsubmit=e=>{
  e.preventDefault();
  const business=$("#previewBusiness").value.trim(),email=$("#previewEmail").value.trim(),phone=$("#previewPhone").value.trim();
  const error=$("#previewFormError");
- if(business.length<2||!/^\\S+@\\S+\\.\\S+$/.test(email)||phone.replace(/\\D/g,"").length<7){error.textContent="Enter a valid business name, email, and phone number.";return}
+ if(business.length<2||!/^\S+@\S+\.\S+$/.test(email)||phone.replace(/\D/g,"").length<7){error.textContent="Enter a valid business name, email, and phone number.";return}
  const existing=state.previewProfile;
- if(existing&&existing.email!==email){error.textContent="This browser already has a preview profile. Log out and clear this preview to start another.";return}
- state.previewProfile=existing||{business,email,phone,startedAt:new Date().toISOString()};
+ state.previewProfile={business,email,phone,startedAt:existing?.startedAt||new Date().toISOString()};
  save("preview_profile",state.previewProfile);
  state.settings.business=business;
  state.settings.slug=cleanSlug(business);
