@@ -54,7 +54,7 @@ function toast(message){const el=$("#toast");el.textContent=uiLocale==="pt-BR"?(
 const field=(name,label,type="text")=>'<div class="field"><label for="'+name+'">'+label+'</label>'+(type==="textarea"?'<textarea id="'+name+'">'+esc(state.settings[name])+'</textarea>':'<input id="'+name+'" type="'+type+'" value="'+esc(state.settings[name])+'">')+'</div>';
 function heading(eyebrow,title,subtitle,action=""){return '<div class="page-head"><div><div class="eyebrow">'+eyebrow+'</div><h1>'+title+'</h1><p class="subtext">'+subtitle+'</p></div>'+action+'</div>'}
 function view(){
-  if(state.role==="owner"&&!state.previewProfile)state.role=null;
+  if(state.role==="owner"&&(!state.previewProfile||Date.now()>=Date.parse(state.previewProfile.startedAt)+48*60*60*1000))state.role=null;
   const gate=$("#demoGate");
   if(!state.role){$("#app").classList.add("hidden");gate.classList.remove("hidden");translateUi(gate);return;}
   $("#app").classList.remove("hidden");gate.classList.add("hidden");
@@ -282,7 +282,7 @@ function previewNotice(){
  const hours=Math.max(0,Math.ceil((ends-Date.now())/3600000));
  return '<div class="preview-trial-banner"><span><b>Business preview • '+esc(p.business)+'</b> · Browser-only test workspace</span><span class="preview-trial-time">'+(hours?hours+' hours remaining in local preview':'48-hour preview period ended')+'</span><a href="/account.html">Real account & billing →</a></div>';
 }
-function enterDemo(role){if(role!=="owner"||!state.previewProfile)return;state.role="owner";try{sessionStorage.setItem("zapzap_demo_role","owner")}catch{}state.page="store";view();}
+function enterDemo(role){if(role!=="owner"||!state.previewProfile)return;if(Date.now()>=Date.parse(state.previewProfile.startedAt)+48*60*60*1000){state.role=null;try{sessionStorage.removeItem("zapzap_demo_role")}catch{}const err=$("#previewFormError");if(err)err.textContent="Your 48-hour browser preview has ended. Create a real business account when registration is enabled.";view();return;}state.role="owner";try{sessionStorage.setItem("zapzap_demo_role","owner")}catch{}state.page="store";view();}
 $("#demoOwnerForm").onsubmit=e=>{
  e.preventDefault();
  const business=$("#previewBusiness").value.trim(),email=$("#previewEmail").value.trim(),phone=$("#previewPhone").value.trim();
