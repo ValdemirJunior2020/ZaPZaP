@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 const json=(status,obj)=>({statusCode:status,headers:{"Content-Type":"application/json","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"},body:JSON.stringify(obj)});
 const env=()=>({
  supabaseUrl:(process.env.NEXUS_SUPABASE_URL||"").replace(/\/$/,""),
- supabaseKey:process.env.NEXUS_SUPABASE_SERVICE_ROLE_KEY||"",
+ supabaseKey:process.env.NEXUS_SUPABASE_SECRET_KEY||process.env.NEXUS_SUPABASE_SERVICE_ROLE_KEY||"",
  clientId:process.env.PAYPAL_CLIENT_ID||"",secret:process.env.PAYPAL_CLIENT_SECRET||"",
  plan:process.env.PAYPAL_PLAN_ID||"",widgetPlan:process.env.PAYPAL_WIDGET_BUNDLE_PLAN_ID||"",webhookId:process.env.PAYPAL_WEBHOOK_ID||"",
  mode:process.env.PAYPAL_MODE==="live"?"live":"sandbox"
@@ -28,7 +28,7 @@ async function authenticate(event,c){
  return user;
 }
 async function db(c,path,{method="GET",body,prefer}={}){
- const response=await fetch(c.supabaseUrl+"/rest/v1/"+path,{method,headers:{apikey:c.supabaseKey,Authorization:"Bearer "+c.supabaseKey,"Content-Type":"application/json",...(prefer?{Prefer:prefer}:{})},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(10000)});
+ const response=await fetch(c.supabaseUrl+"/rest/v1/"+path,{method,headers:{apikey:c.supabaseKey,...(c.supabaseKey.startsWith("sb_secret_")?{}:{Authorization:"Bearer "+c.supabaseKey}),"Content-Type":"application/json",...(prefer?{Prefer:prefer}:{})},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(10000)});
  const raw=await response.text();let data;try{data=raw?JSON.parse(raw):null}catch{data=null}
  if(!response.ok){const error=new Error("Database operation failed ("+response.status+")");error.status=response.status===409?409:503;throw error}
  return data;
