@@ -5,7 +5,7 @@ const env=()=>({
  supabaseUrl:(process.env.NEXUS_SUPABASE_URL||"").replace(/\/$/,""),
  supabaseKey:process.env.NEXUS_SUPABASE_SERVICE_ROLE_KEY||"",
  clientId:process.env.PAYPAL_CLIENT_ID||"",secret:process.env.PAYPAL_CLIENT_SECRET||"",
- plan:process.env.PAYPAL_PLAN_ID||"",webhookId:process.env.PAYPAL_WEBHOOK_ID||"",
+ plan:process.env.PAYPAL_PLAN_ID||"",widgetPlan:process.env.PAYPAL_WIDGET_BUNDLE_PLAN_ID||"",webhookId:process.env.PAYPAL_WEBHOOK_ID||"",
  mode:process.env.PAYPAL_MODE==="live"?"live":"sandbox"
 });
 const api=cfg=>cfg.mode==="live"?"https://api-m.paypal.com":"https://api-m.sandbox.paypal.com";
@@ -42,7 +42,13 @@ function access(ent){
  const end=Date.parse(ent.trial_started_at)+48*60*60*1000;
  const paid=ent.subscription_status==="ACTIVE";
  const trial=Number.isFinite(end)&&Date.now()<end;
- return{allowed:paid||trial,reason:paid?"PAID":trial?"TRIAL":"TRIAL_EXPIRED",trialEndsAt:Number.isFinite(end)?new Date(end).toISOString():null,trialHoursLeft:trial?Math.ceil((end-Date.now())/3600000):0,subscriptionStatus:ent.subscription_status,subscriptionId:ent.paypal_subscription_id||null};
+ return{allowed:paid||trial,reason:paid?"PAID":trial?"TRIAL":"TRIAL_EXPIRED",trialEndsAt:Number.isFinite(end)?new Date(end).toISOString():null,trialHoursLeft:trial?Math.ceil((end-Date.now())/3600000):0,subscriptionStatus:ent.subscription_status,subscriptionId:ent.paypal_subscription_id||null,subscriptionPlan:ent.paypal_plan_id||null};
+}
+const pricing=Object.freeze({core:{amount:149,label:"NexusSales SmartLinks",widget:false},core_widget:{amount:228,label:"NexusSales + Website Widget",widget:true}});
+function planId(c,tier){return tier==="core_widget"?c.widgetPlan:c.plan}
+function widgetEnabled(c,ent){
+ const a=access(ent);
+ return a.allowed&&(a.reason==="TRIAL"||Boolean(c.widgetPlan&&ent?.paypal_plan_id===c.widgetPlan&&ent?.subscription_status==="ACTIVE"));
 }
 async function paypalToken(c){
  if(!c.clientId||!c.secret)throw Object.assign(new Error("PayPal not configured"),{status:503});
@@ -57,4 +63,4 @@ async function paypal(c,path,{method="GET",body}={}){
  if(!response.ok)throw new Error("PayPal request failed ("+response.status+")");
  return j;
 }
-export{json,env,configReady,sameOrigin,authenticate,db,entitlement,access,paypal,paypalToken,api};
+export{json,env,configReady,sameOrigin,authenticate,db,entitlement,access,pricing,planId,widgetEnabled,paypal,paypalToken,api};
