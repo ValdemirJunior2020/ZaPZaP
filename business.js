@@ -160,7 +160,10 @@ function renderLinks(){
  '<img class="qr" alt="Store SmartLink QR code" loading="lazy" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&amp;data='+encodeURIComponent(url)+'">'+
  '<div class="actions"><button id="publishStore" class="primary" '+(!workspace.aiConfigured||!isEditable()||!(workspace.offerings||[]).length||s.published?'disabled':'')+'>Publish store & start trial</button>'+
  (s.published?'<button id="pauseStore" class="button">Unpublish store</button>':'')+'</div></div>'+
- '<div class="card"><h2>Optional website widget • +$79/month</h2><p>Install a floating AI assistant on another website. The widget is available only on the bundled $228/month subscription after the trial. Installation will be enabled once its secure billing entitlement and bot ID provisioning are operational.</p></div>';
+ '<div class="card"><h2>Website widget • +$79/month</h2><p>Embed your AI salesperson on an existing website. The 48-hour trial includes widget access; after the trial, an active $228/month bundled subscription is required.</p>'+(
+ workspace.bot?.enabled?'<label>Install script (add before the closing body tag)<textarea id="widgetCode" rows="3" readonly>'+htmlEsc('<script src="'+location.origin+'/widget.js" data-bot-id="'+workspace.bot.bot_id+'" async></'+'script>')+'</textarea></label><div class="actions"><button class="button" id="copyWidgetCode">Copy widget code</button><button class="button danger" id="disableWidget">Disable widget</button></div>':
+ '<div class="actions"><button class="button" id="enableWidget" '+(!workspace.widgetAllowed||!s.published?'disabled':'')+'>Generate my website widget</button></div>'
+ )+(!workspace.widgetAllowed?'<p class="hint">The website widget requires an active bundled subscription after the trial.</p>':'')+'</div>';
  return body;
 }
 function renderLeads(){
@@ -191,6 +194,9 @@ function bindView(){
    if(!confirm("Publish your store and start the 48-hour trial now?"))return;
    try{await ownerApi("publish",{});await loadWorkspace();toast("Your store is now live!")}catch(e){toast(e.message)}
   };
+  const enable=$("enableWidget");if(enable)enable.onclick=async()=>{try{await ownerApi("enable_widget",{});await loadWorkspace();viewName="links";render();toast("Widget code generated")}catch(e){toast(e.message)}};
+  const disable=$("disableWidget");if(disable)disable.onclick=async()=>{if(!confirm("Disable the website widget?"))return;try{await ownerApi("disable_widget",{});await loadWorkspace();viewName="links";render()}catch(e){toast(e.message)}};
+  const copyCode=$("copyWidgetCode");if(copyCode)copyCode.onclick=()=>navigator.clipboard.writeText($("widgetCode").value).then(()=>toast("Widget script copied")).catch(()=>toast("Copy failed"));
   const pause=$("pauseStore");if(pause)pause.onclick=async()=>{
    if(!confirm("Unpublish your storefront?"))return;
    try{await ownerApi("pause",{});await loadWorkspace();toast("Store unpublished")}catch(e){toast(e.message)}
