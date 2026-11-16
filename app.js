@@ -182,8 +182,9 @@ async function reply(message){
    const j=await r.json();
    if(r.ok&&j.source==='ai'&&j.reply)return j.reply;
    if(r.ok&&j.busy)return dict.wait;
-   return lang==='pt'?'O modelo de IA não respondeu. Verifique a janela do servidor local Ollama e tente novamente.':lang==='es'?'El modelo de IA no respondió. Revisa el servidor local Ollama.':'The AI model did not respond. Please check the local Ollama server window.';
-  }catch(e){console.error('Local AI request failed',e);return lang==='pt'?'Não foi possível conectar ao Ollama local. Verifique se o servidor está aberto.':lang==='es'?'No se pudo conectar al Ollama local.':'Could not connect to your local Ollama server.'}
+   console.warn('AI response was unavailable or did not contain a visible answer',j?.code||'unknown');
+   return dict.wait;
+  }catch(e){console.error('AI backend request failed',e);return dict.wait}
  }
  const l=message.toLowerCase();
  if(/busy|wait|fila|espera|aguard|queue/i.test(l))return dict.wait;
