@@ -43,7 +43,7 @@ function toggleLocale(){
   view();translateUi();
 }
 
-const defaults={business:"Sunshine Auto",industry:"Auto dealership",agent:"Sophia",tone:"Friendly & professional",language:"Auto detect",description:"We help customers find quality pre-owned vehicles with easy financing options and friendly service.",products:"Sedan — $14,900\nSUV — $21,500\nTruck — $27,900\nTest drives — free appointment",hours:"Monday–Saturday, 9 AM–6 PM",website:"https://example.com",goals:["Answer FAQs","Capture leads","Book appointments"],aiProvider:"demo",busyMessage:"",storeHeadline:"Your next great find starts here.",storeDescription:"Browse our selection and chat with our AI assistant.",storeImage:"",slug:"sunshine-auto",virtualNumber:"",humanPhone:"",sharePhone:false,allowCallbacks:true};
+const defaults={business:"My Business",industry:"Other",agent:"Alex",tone:"Friendly & professional",language:"Auto detect",description:"Add your business description and services here.",products:"",hours:"",website:"",goals:["Answer FAQs","Capture leads","Book appointments"],aiProvider:"demo",busyMessage:"",storeHeadline:"Welcome to our business",storeDescription:"Explore our products and services, and ask our AI assistant for help.",storeImage:"",storeCategory:"Other",slug:"my-business",virtualNumber:"",humanPhone:"",sharePhone:false,allowCallbacks:true};
 const initialLeads=[{name:"Marcus Johnson",phone:"+1 (555) 012-9841",interest:"SUV test drive",status:"Hot",date:"Today, 10:42 AM"},{name:"Ana Rodriguez",phone:"+1 (555) 012-3352",interest:"Financing",status:"Warm",date:"Today, 9:17 AM"},{name:"Daniel Parker",phone:"+1 (555) 013-7731",interest:"Sedan inventory",status:"New",date:"Yesterday, 4:03 PM"}];
 const initialConvos=[{name:"Marcus Johnson",summary:"Can I book a test drive for Saturday?",messages:[{role:"user",text:"Hi! Can I book a test drive for Saturday?"},{role:"bot",text:"Absolutely! Which vehicle interests you? I can help arrange a test drive."}]},{name:"Ana Rodriguez",summary:"What financing options do you offer?",messages:[{role:"user",text:"Do you have financing?"},{role:"bot",text:"Yes! We can walk you through available options. Would you like someone from our team to contact you?"}]},{name:"Daniel Parker",summary:"Looking for an affordable sedan.",messages:[{role:"user",text:"Do you have a sedan?"},{role:"bot",text:"We list a sedan starting at $14,900. Would you like to schedule a visit?"}]}];
 const read=(key,fallback)=>{try{return JSON.parse(localStorage.getItem("zapzap_"+key))??fallback}catch{return fallback}};
@@ -62,7 +62,7 @@ function view(){
   const navNames={overview:"Overview",inbox:"Inbox",store:"My Store",leads:"Leads",studio:"AI Agent Studio",knowledge:"Knowledge Base",automations:"Automations",billing:"Plans & Billing",settings:"Settings"};
   $("#currentPage").textContent=navNames[state.page];$("#workspaceName").textContent=state.settings.business||"My Business";
   document.querySelectorAll(".nav-item").forEach(n=>n.classList.toggle("active",n.dataset.page===state.page));
-  const views={overview,inbox,store,inbox,leads,studio,knowledge,automations,billing,settings};
+  const views={overview,inbox,store,leads,studio,knowledge,automations,billing,settings};
   $("#content").innerHTML=views[state.page]();
   bind();
   translateUi();
@@ -135,14 +135,14 @@ function smartLink(){return location.origin+"/store.html?s="+encodeURIComponent(
 function safeImage(s){const v=String(s||"").trim();return /^https:\/\//i.test(v)||v.startsWith("data:image/jpeg;base64,")||v.startsWith("data:image/png;base64,")||v.startsWith("data:image/webp;base64,")?v:""}
 function store(){
  const s=state.settings,products=state.catalog;
- const cards=products.map(p=>'<article class="catalog-card">'+(safeImage(p.image)?'<img alt="" src="'+esc(p.image)+'">':'<div class="catalog-placeholder">▣</div>')+'<div class="catalog-info"><b>'+esc(p.name)+'</b><small>'+esc(p.price||"Ask for price")+' · '+esc(p.availability||"Contact for availability")+'</small><p>'+esc(p.description||"")+'</p><div class="options"><button type="button" class="btn" data-edit-product="'+esc(p.id)+'">Edit</button><button type="button" class="btn" data-remove-product="'+esc(p.id)+'">Delete</button></div></div></article>').join("");
+ const cards=products.map(p=>'<article class="catalog-card">'+(safeImage(p.image)?'<img alt="" src="'+esc(p.image)+'">':'<div class="catalog-placeholder">▣</div>')+'<div class="catalog-info"><b>'+esc(p.name)+'</b><small>'+esc(p.price||"Ask for price")+' · '+esc(p.type||"Offering")+' · '+esc(p.availability||"Contact for availability")+'</small><p>'+esc(p.description||"")+'</p><div class="options"><button type="button" class="btn" data-edit-product="'+esc(p.id)+'">Edit</button><button type="button" class="btn" data-remove-product="'+esc(p.id)+'">Delete</button></div></div></article>').join("");
  const url=smartLink();
- return heading("SMARTSTORE BUILDER","Your store, ready to sell.","Add products and services, customize the storefront, and preview your customer link.",'<button class="btn primary" id="previewStore">↗ Preview your storefront</button>')+
+ return heading("SMARTSTORE BUILDER","Your business, ready to grow.","List products, services, quotes and bookings for any industry — no programming required.",'<button class="btn primary" id="previewStore">↗ Preview your storefront</button>')+
  '<div class="two-col"><section class="panel"><h3 class="section-title">Store branding</h3>'+field("business","Business name")+field("storeHeadline","Store headline")+field("storeDescription","Store description","textarea")+field("slug","Short store link name")+
- '<div class="field"><label>Store image URL</label><input id="storeImage" value="'+esc(s.storeImage||"")+'" placeholder="https://..."></div>'+
+ '<div class="field"><label>Business type</label><select id="storeCategory">'+["Marketing & creative services","Automotive repair","Air conditioning & HVAC","Home services","Beauty & wellness","Retail & products","Professional services","Food & hospitality","Other"].map(v=>'<option value="'+esc(v)+'" '+(s.storeCategory===v?"selected":"")+'>'+esc(v)+'</option>').join("")+'</select></div><div class="field"><label>Store image URL</label><input id="storeImage" value="'+esc(s.storeImage||"")+'" placeholder="https://..."></div>'+
  '<div class="field"><label>Upload store image</label><input id="storeUpload" type="file" accept="image/jpeg,image/png,image/webp"></div>'+
  '<div class="muted-note">Store image is a local preview. AI image generation is not connected yet.</div>'+
- (safeImage(s.storeImage)?'<img class="store-hero-preview" alt="Storefront preview" src="'+esc(s.storeImage)+'">':'<img class="store-hero-preview" alt="Example dealership storefront" src="./assets/dealership-showcase.jpg">')+
+ (safeImage(s.storeImage)?'<img class="store-hero-preview" alt="Storefront preview" src="'+esc(s.storeImage)+'">':'<div class="catalog-placeholder store-placeholder">Add your own business photo or image URL</div>')+
  '<button class="btn primary" id="saveStorefront">Save storefront</button></section>'+
  '<section class="panel"><h3 class="section-title">Your customer SmartLink</h3><div class="muted-note">This demo link is only personalized on the same browser until cloud data is connected.</div>'+
  '<div class="field"><label>Store link preview</label><input id="smartLinkValue" readonly value="'+esc(url)+'"></div>'+
@@ -155,15 +155,15 @@ function store(){
  '<div class="muted-note">These products are saved in this browser only. To share your actual catalog with customers on other devices, connect a separate Supabase project.</div></section>';
 }
 function productDialog(id){
- const p=state.catalog.find(item=>item.id===id)||{id:"",name:"",price:"",description:"",availability:"Contact for availability",image:""};
+ const p=state.catalog.find(item=>item.id===id)||{id:"",name:"",price:"",description:"",availability:"Contact for availability",type:"Service",image:""};
  openModal('<h2>'+esc(id?"Edit product":"Add product")+'</h2><form id="productForm">'+
- '<div class="field"><label>Product name</label><input name="name" maxlength="130" required value="'+esc(p.name)+'"></div>'+
- '<div class="field"><label>Price (text, including currency)</label><input name="price" maxlength="70" value="'+esc(p.price)+'"></div>'+
+ '<div class="field"><label>Offering type</label><select name="type">'+["Product","Service","Package","Consultation","Custom quote"].map(v=>'<option value="'+v+'" '+(p.type===v?"selected":"")+'>'+v+'</option>').join("")+'</select></div><div class="field"><label>Product or service name</label><input name="name" maxlength="130" required value="'+esc(p.name)+'"></div>'+
+ '<div class="field"><label>Price or pricing model (e.g. $89, From $99, Hourly, Request quote)</label><input name="price" maxlength="70" value="'+esc(p.price)+'"></div>'+
  '<div class="field"><label>Description</label><textarea name="description" maxlength="2000">'+esc(p.description)+'</textarea></div>'+
- '<div class="field"><label>Availability</label><select name="availability">'+["In stock","Out of stock","Contact for availability"].map(v=>'<option value="'+v+'" '+(p.availability===v?"selected":"")+'>'+v+'</option>').join("")+'</select></div>'+
+ '<div class="field"><label>Availability</label><select name="availability">'+["Available","Booking required","Request a quote","In stock","Out of stock","Contact for availability"].map(v=>'<option value="'+v+'" '+(p.availability===v?"selected":"")+'>'+v+'</option>').join("")+'</select></div>'+
  '<div class="field"><label>Image URL</label><input type="url" name="image" value="'+esc(p.image)+'" placeholder="https://..."></div>'+
  '<button type="submit" class="btn primary">Save product</button></form>',()=>{
- $("#productForm").onsubmit=e=>{e.preventDefault();const form=new FormData(e.target);const item={id:p.id||('p-'+Date.now().toString(36)),name:String(form.get("name")||"").trim().slice(0,130),price:String(form.get("price")||"").trim().slice(0,70),description:String(form.get("description")||"").trim().slice(0,2000),availability:String(form.get("availability")),image:safeImage(form.get("image"))};if(!item.name)return;
+ $("#productForm").onsubmit=e=>{e.preventDefault();const form=new FormData(e.target);const item={id:p.id||('p-'+Date.now().toString(36)),name:String(form.get("name")||"").trim().slice(0,130),price:String(form.get("price")||"").trim().slice(0,70),description:String(form.get("description")||"").trim().slice(0,2000),availability:String(form.get("availability")),type:String(form.get("type")||"Service"),image:safeImage(form.get("image"))};if(!item.name)return;
  const i=state.catalog.findIndex(x=>x.id===item.id);if(i===-1)state.catalog.unshift(item);else state.catalog[i]=item;
  save("catalog",state.catalog);closeModal();view();toast("Product saved in demo browser")};
  });
@@ -175,7 +175,7 @@ function bindStore(){
  $("#shareSmartEmail").onclick=()=>{location.href="mailto:?subject="+encodeURIComponent("Chat with "+state.settings.business)+"&body="+encodeURIComponent("Explore our store: "+smartLink())};
  $("#shareSmartSMS").onclick=()=>{location.href="sms:?body="+encodeURIComponent("Visit our store: "+smartLink())};
  $("#copyWidget").onclick=()=>{navigator.clipboard.writeText($("#embedSnippet").value).then(()=>toast("Embed code copied"))};
- $("#saveStorefront").onclick=()=>{for(const id of ["business","storeHeadline","storeDescription","storeImage","slug"]){const el=$("#"+id);if(el)state.settings[id]=id==="slug"?cleanSlug(el.value):el.value.slice(0,id==="storeDescription"?500:5000)}save("settings",state.settings);view();toast("Storefront saved in demo browser")};
+ $("#saveStorefront").onclick=()=>{for(const id of ["business","storeHeadline","storeDescription","storeImage","slug","storeCategory"]){const el=$("#"+id);if(el)state.settings[id]=id==="slug"?cleanSlug(el.value):el.value.slice(0,id==="storeDescription"?500:5000)}save("settings",state.settings);view();toast("Storefront saved in demo browser")};
  $("#storeUpload").onchange=async e=>{const f=e.target.files?.[0];if(!f)return;if(!["image/png","image/jpeg","image/webp"].includes(f.type)||f.size>700000){toast("Choose JPG, PNG, or WEBP under 700 KB");return}const reader=new FileReader();reader.onload=()=>{state.settings.storeImage=String(reader.result);save("settings",state.settings);view();toast("Storefront saved in demo browser")};reader.readAsDataURL(f)};
  $("#addCatalogItem").onclick=()=>productDialog();
  document.querySelectorAll("[data-edit-product]").forEach(el=>el.onclick=()=>productDialog(el.dataset.editProduct));
@@ -233,7 +233,7 @@ async function reply(message){
  const human=callbackReply(message,lang);if(human!==null)return human;
  if(localAIHost()){
   try{
-   const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message,settings:s,history:state.messages.slice(-10)})});
+   const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message,settings:s,catalog:state.catalog.slice(0,100),history:state.messages.slice(-10)})});
    const j=await r.json();
    if(r.ok&&j.source==='ai'&&j.reply)return j.reply;
    if(r.ok&&j.busy)return dict.wait;
