@@ -28,4 +28,16 @@ function postOrigin(e){
 function parse(event,max=16000){if(!event.body||event.body.length>max)throw Object.assign(new Error("Invalid request"),{status:400});try{return JSON.parse(event.body)}catch{throw Object.assign(new Error("Invalid JSON"),{status:400})}}
 function safeError(e){return json(e.status||503,{error:e.status===401?"Sign in to continue":e.status===400?e.message:"Service temporarily unavailable"})}
 function aiReady(){return process.env.NEXUS_LIVE_CHAT_ENABLED==="true"&&Boolean(process.env.OPENAI_API_KEY)}
-export{env,db,authenticate,entitlement,access,json,iso,slug,str,domainUrl,only,userFrom,ownStore,offerings,ownerProfile,publishedStore,postOrigin,parse,safeError,aiReady};
+async function verifyHostedAI(){
+ if(!aiReady())return false;
+ try{
+  const r=await fetch("https://api.openai.com/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+process.env.OPENAI_API_KEY},
+   body:JSON.stringify({model:process.env.NEXUS_CHAT_MODEL||"gpt-4.1-mini",messages:[{role:"user",content:"Reply with OK"}],max_tokens:8}),
+   signal:AbortSignal.timeout(13000)});
+  if(!r.ok){console.error("Hosted AI verification failed, status:",r.status);return false}
+  const j=await r.json();
+  return Boolean(j?.choices?.[0]?.message?.content);
+ }catch(e){console.error("Hosted AI health check:",e.message);return false}
+}
+
+export{env,db,authenticate,entitlement,access,json,iso,slug,str,domainUrl,only,userFrom,ownStore,offerings,ownerProfile,publishedStore,postOrigin,parse,safeError,aiReady,verifyHostedAI};
