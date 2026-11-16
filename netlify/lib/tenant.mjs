@@ -26,7 +26,7 @@ function postOrigin(e){
  return o==="https://"+h || (process.env.CONTEXT!=="production"&&o==="http://localhost:8888");
 }
 function parse(event,max=16000){if(!event.body||event.body.length>max)throw Object.assign(new Error("Invalid request"),{status:400});try{return JSON.parse(event.body)}catch{throw Object.assign(new Error("Invalid JSON"),{status:400})}}
-function safeError(e){return json(e.status||503,{error:e.status===401?"Sign in to continue":e.status===400?e.message:"Service temporarily unavailable"})}
+function safeError(e){return json(e.status||503,{error:e.status===401?"Sign in to continue":e.status===400?e.message:e.status===409?"That store link is already taken. Choose a different name.":"Service temporarily unavailable"})}
 function aiReady(){return process.env.NEXUS_LIVE_CHAT_ENABLED==="true"&&Boolean(process.env.OPENAI_API_KEY)}
 async function verifyHostedAI(){
  if(!aiReady())return false;
