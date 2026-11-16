@@ -1,9 +1,9 @@
 -- NexusSales billing, for a DEDICATED NexusSales Supabase project only.
 -- Run after nexussales-smartstore.sql. Do NOT run against The Good Side.
--- A 48-hour free trial begins at account creation, not at the first browser visit.
+-- A 48-hour trial begins when the first live AI-enabled storefront is published. One activation per authenticated account.
 create table if not exists public.nx_entitlements (
   user_id uuid primary key references auth.users(id) on delete cascade,
-  trial_started_at timestamptz not null default now(),
+  trial_started_at timestamptz,
   subscription_status text not null default 'TRIAL'
     check (subscription_status in ('TRIAL','PENDING','ACTIVE','SUSPENDED','CANCELLED','EXPIRED')),
   paypal_subscription_id text unique,
@@ -30,7 +30,7 @@ set search_path = ''
 as $$
 begin
   insert into public.nx_entitlements(user_id,trial_started_at)
-  values (new.id,new.created_at)
+  values (new.id,null)
   on conflict (user_id) do nothing;
   return new;
 end;
@@ -42,8 +42,11 @@ for each row execute function nx_private.open_trial_on_signup();
 
 -- If setup happens after test users exist, use the ORIGINAL signup time.
 insert into public.nx_entitlements(user_id,trial_started_at)
-select id,created_at from auth.users on conflict(user_id) do nothing;
+select id,null from auth.users on conflict(user_id) do nothing;
 
 -- Important: all protected actions / public AI calls must check nx_entitlements
 -- server-side. Browser role flags and UI paywalls are never authorization.
 -- Subscription status becomes ACTIVE only after the backend checks PayPal.
+
+-- Trial start must be set only by a trusted backend after AI readiness and storefront validation.
+-- The owner cannot change this timestamp using public Auth metadata.
