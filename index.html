@@ -1,31 +1,55 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#081b1e"><meta name="description" content="ZaPZaP AI — your 24/7 WhatsApp sales team."><title>ZaPZaP AI | Command Center</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="./styles.css"></head>
-<body><div id="app">
-  <aside class="sidebar"><a class="brand" href="#" aria-label="ZaPZaP home"><span class="brand-symbol">✳</span><span><b>ZaPZaP<span class="brand-green">AI</span></b><small>BUSINESS OS</small></span></a>
-  <div class="workspace"><span class="avatar-company">S</span><span class="workspace-copy"><b id="workspaceName">Sunshine Auto</b><small>Growth workspace</small></span><span class="chevron">⌄</span></div>
-  <div class="nav-label">WORKSPACE</div><nav id="nav"><button data-page="overview" class="nav-item active"><span>◫</span> Overview</button><button data-page="inbox" class="nav-item"><span>◉</span> Inbox <em id="inboxCount">3</em></button><button data-page="store" class="nav-item"><span>▣</span> My Store</button><button data-page="leads" class="nav-item"><span>♧</span> Leads</button><button data-page="studio" class="nav-item"><span>✧</span> AI Agent Studio</button><button data-page="knowledge" class="nav-item"><span>▤</span> Knowledge Base</button><button data-page="automations" class="nav-item"><span>↗</span> Automations</button></nav>
-  <div class="nav-label">MANAGEMENT</div><nav><button data-page="billing" class="nav-item"><span>◇</span> Plans & Billing</button><button data-page="settings" class="nav-item"><span>⚙</span> Settings</button></nav>
-  <div class="sidebar-bottom"><div class="usage"><div class="usage-top"><b>AI conversations</b><span>Demo</span></div><div class="meter"><i></i></div><small>Try unlimited simulated chats</small></div><button class="help-btn" id="helpBtn">ⓘ &nbsp; Setup guide <span>↗</span></button><div class="profile"><span class="profile-circle">J</span><span><b id="demoRoleName">Demo workspace</b><small>Simulation • no real login</small></span></div><button id="demoLogout" class="demo-logout" type="button">⎋ Log out of demo</button></div></aside>
-  <div class="main-wrap"><header class="topbar"><button id="menuToggle" class="mobile-menu">☰</button><span class="breadcrumb">Workspace <span>/</span> <b id="currentPage">Overview</b></span><div class="top-actions"><button id="localeToggle" class="language-switch" type="button" aria-label="Switch language to Brazilian Portuguese" title="Português (Brasil)"><span class="flag-icon flag-br" aria-hidden="true"></span><span id="languageLabel">Português</span></button><span class="environment"><i></i> Demo environment</span><button id="notifyBtn" class="icon-btn" aria-label="Notifications">♧</button><span class="top-avatar">J</span></div></header>
-  <main id="content"></main></div>
-  <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <div class="modal-backdrop hidden" id="modal" role="dialog" aria-modal="true"><div class="modal"><button class="modal-close" id="modalClose" aria-label="Close">×</button><div id="modalContent"></div></div></div>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#073c30"><meta name="description" content="NexusSales AI: your intelligent business storefront, SmartLinks and AI sales assistant.">
+<title>NexusSales AI | Your business, selling around the clock</title><link rel="stylesheet" href="/business.css"></head>
+<body>
+<div class="shell">
+<header class="top"><a class="brand" href="/"><span class="symbol">✳</span><span>NexusSales<span class="accent"> AI</span><small>SMARTSTORE PLATFORM</small></span></a>
+<nav id="topnav"><a href="#features" id="featuresLink">Features</a><a href="#pricing" id="pricingLink">Pricing</a><button id="signInTop" class="outline-btn">Sign in</button></nav>
+<div class="account-top hidden" id="accountTop"><span id="accountLabel"></span><button class="outline-btn" id="logoutTop">Sign out</button></div></header>
+<main>
+<section class="hero" id="marketing">
+<div class="eyebrow">SMARTLINKS • PRODUCTS • SERVICES • REAL AI</div>
+<h1>Your business deserves a salesperson who never sleeps.</h1>
+<p>Build your store, teach the AI what you offer, and give every customer one simple link. Try the full platform for 48 hours once it's activated.</p>
+<div class="hero-pills"><span>✓ Personal SmartLinks</span><span>✓ Real business knowledge</span><span>✓ Email and text sharing</span><span>✓ Website widget available</span></div>
+</section>
+<section class="signup-area" id="signupArea">
+<div class="signup-card">
+<div class="tag">BUSINESS ACCOUNT</div><h2 id="authHeading">Create your business account</h2><p id="authSub">Enter your business information. No payment card required to register.</p>
+<div class="setup-alert" id="configMessage" role="status">Checking secure account service…</div>
+<form id="authForm" autocomplete="on">
+<div id="businessInputs"><label>Business name<input name="business" id="authBusiness" placeholder="e.g. Sunshine Marketing Studio" maxlength="150" required autocomplete="organization"></label>
+<label>Business phone number<input name="phone" id="authPhone" placeholder="e.g. +1 561 555 1234" type="tel" maxlength="30" required autocomplete="tel"></label></div>
+<label>Email address<input name="email" id="authEmail" placeholder="you@business.com" type="email" required autocomplete="email"></label>
+<label>Password<input name="password" id="authPassword" type="password" minlength="8" required autocomplete="new-password" placeholder="At least 8 characters"></label>
+<button id="authSubmit" class="primary" type="submit">Create account</button>
+</form>
+<p class="auth-msg" id="authMsg" role="alert" aria-live="polite"></p><button id="switchAuth" class="text-btn">Already registered? Sign in</button>
 </div>
-<div id="demoGate" class="demo-gate hidden" role="dialog" aria-modal="true" aria-labelledby="demoGateTitle">
-  <div class="demo-gate-card">
-    <span class="demo-gate-mark">✳</span>
-    <div class="eyebrow">NEXUSSALES AI • BUSINESS OWNER PREVIEW</div>
-    <h1 id="demoGateTitle">Let's set up your business</h1>
-    <p>Enter your business details and explore your own SmartStore, customer links, and AI setup. This is a browser-only preview until secure account registration is connected.</p>
-    <form id="demoOwnerForm">
-      <div class="field"><label for="previewBusiness">Business name</label><input id="previewBusiness" name="business" maxlength="150" required placeholder="Example: Mary's Marketing Studio" autocomplete="organization"></div>
-      <div class="field"><label for="previewEmail">Your email address</label><input id="previewEmail" name="email" type="email" maxlength="200" required placeholder="you@business.com" autocomplete="email"></div>
-      <div class="field"><label for="previewPhone">Business phone number</label><input id="previewPhone" name="phone" type="tel" maxlength="30" required placeholder="+1 555 555 5555" autocomplete="tel"></div>
-      <button type="submit" class="demo-login-choice"><span class="demo-login-icon">🏪</span><span><b>Start my business preview</b><small>Explore the workspace with your business information</small></span><span>→</span></button>
-    </form>
-    <p id="previewFormError" class="demo-form-error" role="alert"></p>
-    <div class="demo-gate-note"><strong>Preview only:</strong> Your details stay in this browser and are not submitted as a real account. Clearing browser data resets the preview. Real 48-hour trials require an authenticated account and server-side billing.</div>
-    <a href="/account.html" class="demo-real-account-link">Create a secure business account when registration becomes available</a>
-  </div>
+</section>
+<section id="features" class="features"><div class="tag">ONE PLATFORM, EVERY INDUSTRY</div><h2>Sell products, services, packages and expertise</h2>
+<div class="feature-grid"><article><div>🔗</div><h3>SmartLinks</h3><p>One permanent link for email, text, social media and QR codes.</p></article>
+<article><div>✦</div><h3>AI sales assistant</h3><p>Answers grounded in your actual offerings, prices, business details and hours.</p></article>
+<article><div>▤</div><h3>SmartStore</h3><p>Add and update products, services, images, rates and availability.</p></article>
+<article><div>◎</div><h3>Customer inquiries</h3><p>Customers request quotes and you see those leads in your private dashboard.</p></article></div></section>
+<section id="pricing" class="pricing"><div class="tag">SIMPLE PRICING</div><h2>Two days to see the value.</h2>
+<div class="price-grid"><article><span class="tag">CORE</span><h3>SmartStore + AI</h3><strong>$149<small>/month</small></strong><p>SmartLink, store, public AI assistant, inquiries, email/text sharing and QR code.</p></article>
+<article><span class="tag">OPTIONAL</span><h3>Website widget</h3><strong>+$79<small>/month</small></strong><p>Install a floating AI assistant on an existing website. $228/month bundled.</p></article></div>
+<p class="fine">The 48-hour trial starts when your live store and AI service are activated. Subscription checkout is enabled after payment setup and verification.</p></section>
+</main>
+<section id="workspace" class="workspace hidden">
+<aside class="side"><div class="side-title">BUSINESS WORKSPACE</div><div class="side-name" id="sideName">Your business</div>
+<nav id="sideNav"><button data-view="overview" class="active">◫ Overview</button><button data-view="store">▣ My Store</button><button data-view="offerings">◈ Products & Services</button><button data-view="links">🔗 SmartLinks</button><button data-view="leads">♧ Customer Leads</button><button data-view="billing">◇ Billing & Trial</button></nav>
+<div class="side-bottom"><a href="/account.html">Manage subscription</a><button id="logoutSide">Sign out</button></div></aside>
+<div class="workspace-content"><div class="workspace-title"><div><div class="tag" id="workspaceEyebrow">BUSINESS OVERVIEW</div><h1 id="workspaceHeading">Your store</h1><p id="workspaceSubtitle"></p></div><span id="trialBadge" class="status-badge">Checking account…</span></div>
+<div id="viewContent" aria-live="polite"></div></div></section>
+<footer class="footer">© NexusSales AI · Built for real businesses · <a href="/account.html">Account and billing</a></footer>
 </div>
-<script type="module" src="./app.js"></script></body></html>
+<div id="dialogBackdrop" class="dialog-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="dialogTitle"><div class="dialog"><button id="dialogClose" class="dialog-close" aria-label="Close">×</button><h2 id="dialogTitle">Product or service</h2><form id="offeringForm">
+<input type="hidden" id="offeringId"><label>Type<select id="offeringType"><option>Product</option><option>Service</option><option>Package</option><option>Consultation</option><option>Custom quote</option></select></label>
+<label>Name<input id="offeringName" required maxlength="130"></label><label>Price or pricing model<input id="offeringPrice" maxlength="70" placeholder="From $99 • $149/month • Request a quote"></label>
+<label>Details<textarea id="offeringDescription" maxlength="2000" rows="4"></textarea></label><label>Availability<select id="offeringStatus"><option>Available</option><option>Booking required</option><option>Request a quote</option><option>In stock</option><option>Out of stock</option><option>Contact for availability</option></select></label>
+<label>Image URL (HTTPS)<input id="offeringImage" type="url" placeholder="https://…"></label><button class="primary" type="submit">Save offering</button><p class="form-message" id="offeringMessage"></p></form></div></div>
+<div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+<script type="module" src="/business.js"></script></body></html>
