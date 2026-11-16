@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#073c30"><meta name="description" content="NexusSales AI: your intelligent business storefront, SmartLinks and AI sales assistant.">
+<title>NexusSales AI | Your business, selling around the clock</title><link rel="stylesheet" href="/business.css"></head>
+<body>
+<div class="shell">
+<header class="top"><a class="brand" href="/"><span class="symbol">✳</span><span>NexusSales<span class="accent"> AI</span><small>SMARTSTORE PLATFORM</small></span></a>
+<nav id="topnav"><a href="#features" id="featuresLink">Features</a><a href="#pricing" id="pricingLink">Pricing</a><button id="signInTop" class="outline-btn">Sign in</button></nav>
+<div class="account-top hidden" id="accountTop"><span id="accountLabel"></span><button class="outline-btn" id="logoutTop">Sign out</button></div></header>
+<main>
+<section class="hero" id="marketing">
+<div class="eyebrow">SMARTLINKS • PRODUCTS • SERVICES • REAL AI</div>
+<h1>Your business deserves a salesperson who never sleeps.</h1>
+<p>Build your store, teach the AI what you offer, and give every customer one simple link. Try the full platform for 48 hours once it's activated.</p>
+<div class="hero-pills"><span>✓ Personal SmartLinks</span><span>✓ Real business knowledge</span><span>✓ Email and text sharing</span><span>✓ Website widget available</span></div>
+</section>
+<section class="signup-area" id="signupArea">
+<div class="signup-card">
+<div class="tag">BUSINESS ACCOUNT</div><h2 id="authHeading">Create your business account</h2><p id="authSub">Enter your business information. No payment card required to register.</p>
+<div class="setup-alert" id="configMessage" role="status">Checking secure account service…</div>
+<form id="authForm" autocomplete="on">
+<div id="businessInputs"><label>Business name<input name="business" id="authBusiness" placeholder="e.g. Sunshine Marketing Studio" maxlength="150" required autocomplete="organization"></label>
+<label>Business phone number<input name="phone" id="authPhone" placeholder="e.g. +1 561 555 1234" type="tel" maxlength="30" required autocomplete="tel"></label></div>
+<label>Email address<input name="email" id="authEmail" placeholder="you@business.com" type="email" required autocomplete="email"></label>
+<label>Password<input name="password" id="authPassword" type="password" minlength="8" required autocomplete="new-password" placeholder="At least 8 characters"></label>
+<button id="authSubmit" class="primary" type="submit">Create account</button>
+</form>
+<p class="auth-msg" id="authMsg" role="alert" aria-live="polite"></p><button id="switchAuth" class="text-btn">Already registered? Sign in</button>
+</div>
+</section>
+<section id="features" class="features"><div class="tag">ONE PLATFORM, EVERY INDUSTRY</div><h2>Sell products, services, packages and expertise</h2>
+<div class="feature-grid"><article><div>🔗</div><h3>SmartLinks</h3><p>One permanent link for email, text, social media and QR codes.</p></article>
+<article><div>✦</div><h3>AI sales assistant</h3><p>Answers grounded in your actual offerings, prices, business details and hours.</p></article>
+<article><div>▤</div><h3>SmartStore</h3><p>Add and update products, services, images, rates and availability.</p></article>
+<article><div>◎</div><h3>Customer inquiries</h3><p>Customers request quotes and you see those leads in your private dashboard.</p></article></div></section>
+<section id="pricing" class="pricing"><div class="tag">SIMPLE PRICING</div><h2>Two days to see the value.</h2>
+<div class="price-grid"><article><span class="tag">CORE</span><h3>SmartStore + AI</h3><strong>$149<small>/month</small></strong><p>SmartLink, store, public AI assistant, inquiries, email/text sharing and QR code.</p></article>
+<article><span class="tag">OPTIONAL</span><h3>Website widget</h3><strong>+$79<small>/month</small></strong><p>Install a floating AI assistant on an existing website. $228/month bundled.</p></article></div>
+<p class="fine">The 48-hour trial starts when your live store and AI service are activated. Subscription checkout is enabled after payment setup and verification.</p></section>
+</main>
+<section id="workspace" class="workspace hidden">
+<aside class="side"><div class="side-title">BUSINESS WORKSPACE</div><div class="side-name" id="sideName">Your business</div>
+<nav id="sideNav"><button data-view="overview" class="active">◫ Overview</button><button data-view="store">▣ My Store</button><button data-view="offerings">◈ Products & Services</button><button data-view="links">🔗 SmartLinks</button><button data-view="leads">♧ Customer Leads</button><button data-view="billing">◇ Billing & Trial</button></nav>
+<div class="side-bottom"><a href="/account.html">Manage subscription</a><button id="logoutSide">Sign out</button></div></aside>
+<div class="workspace-content"><div class="workspace-title"><div><div class="tag" id="workspaceEyebrow">BUSINESS OVERVIEW</div><h1 id="workspaceHeading">Your store</h1><p id="workspaceSubtitle"></p></div><span id="trialBadge" class="status-badge">Checking account…</span></div>
+<div id="viewContent" aria-live="polite"></div></div></section>
+<footer class="footer">© NexusSales AI · Built for real businesses · <a href="/account.html">Account and billing</a></footer>
+</div>
+<div id="dialogBackdrop" class="dialog-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="dialogTitle"><div class="dialog"><button id="dialogClose" class="dialog-close" aria-label="Close">×</button><h2 id="dialogTitle">Product or service</h2><form id="offeringForm">
+<input type="hidden" id="offeringId"><label>Type<select id="offeringType"><option>Product</option><option>Service</option><option>Package</option><option>Consultation</option><option>Custom quote</option></select></label>
+<label>Name<input id="offeringName" required maxlength="130"></label><label>Price or pricing model<input id="offeringPrice" maxlength="70" placeholder="From $99 • $149/month • Request a quote"></label>
+<label>Details<textarea id="offeringDescription" maxlength="2000" rows="4"></textarea></label><label>Availability<select id="offeringStatus"><option>Available</option><option>Booking required</option><option>Request a quote</option><option>In stock</option><option>Out of stock</option><option>Contact for availability</option></select></label>
+<label>Image URL (HTTPS)<input id="offeringImage" type="url" placeholder="https://…"></label><button class="primary" type="submit">Save offering</button><p class="form-message" id="offeringMessage"></p></form></div></div>
+<div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+<script type="module" src="/business.js"></script></body></html>
