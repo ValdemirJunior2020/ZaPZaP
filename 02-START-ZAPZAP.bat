@@ -8,12 +8,26 @@ if errorlevel 1 (
  pause
  exit /b 1
 )
-powershell -NoProfile -Command "try { $null=Invoke-RestMethod -Uri 'http://127.0.0.1:11434/api/tags' -TimeoutSec 3; exit 0 } catch { exit 1 }"
+powershell -NoProfile -Command "try { $null=Invoke-RestMethod -Uri 'http://127.0.0.1:11434/api/tags' -TimeoutSec 2; exit 0 } catch { exit 1 }"
 if errorlevel 1 (
- echo Ollama is not running. Open Ollama, then retry.
- pause
- exit /b 1
+ echo [INFO] Starting Ollama automatically...
+ powershell -NoProfile -Command "Start-Process -FilePath 'ollama' -ArgumentList 'serve' -WindowStyle Minimized" 2>nul
+ set "OLLAMA_READY="
+ for /L %%I in (1,1,15) do (
+  if not defined OLLAMA_READY (
+   powershell -NoProfile -Command "try { $null=Invoke-RestMethod -Uri 'http://127.0.0.1:11434/api/tags' -TimeoutSec 2; exit 0 } catch { exit 1 }"
+   if not errorlevel 1 set "OLLAMA_READY=1"
+   if not defined OLLAMA_READY timeout /t 1 /nobreak >nul
+  )
+ )
+ if not defined OLLAMA_READY (
+  echo [ERROR] Could not start Ollama. Try opening it manually from the Start menu.
+  echo You can also run: ollama serve
+  pause
+  exit /b 1
+ )
 )
+echo [OK] Local Ollama API responding
 set "PORT=8788"
 set "HOST=127.0.0.1"
 set "AI_PROVIDER=ollama"
