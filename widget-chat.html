@@ -1,13 +1,48 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AI Assistant Demo</title><style>*{box-sizing:border-box}body{margin:0;font:13px system-ui,Arial,sans-serif;background:#f5faf7;color:#17392c}.head{background:#069a73;color:#fff;padding:17px 18px;font-weight:800;font-size:16px}.head small{display:block;font-size:10px;font-weight:500;opacity:.85;margin-top:4px}.messages{height:355px;overflow:auto;padding:15px;display:flex;flex-direction:column;gap:11px}.bubble{max-width:88%;padding:12px;border-radius:13px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}.bot{align-self:flex-start;background:white;border:1px solid #e1ece5}.user{align-self:flex-end;background:#d5f8e7}.form{display:flex;gap:6px;padding:10px;border-top:1px solid #e4ece7;background:white}.form input{flex:1;min-width:0;border:1px solid #d7e5dc;border-radius:8px;padding:11px;font:inherit}.form button{border:0;background:#06a77b;color:white;border-radius:8px;padding:0 13px;cursor:pointer}.notice{font-size:10px;color:#728b7f;text-align:center;padding:8px;background:white}</style></head><body><header class="head">✦ Sophia — AI Assistant<small>Demo for <span id="business"></span> · Simulated conversation</small></header><main class="messages" id="messages"><div class="bubble bot">Hi! 👋 Welcome! I'm Sophia, your demo AI sales assistant. What are you looking for today?</div></main><form class="form" id="form"><input id="input" maxlength="400" placeholder="Ask about vehicles, hours, callbacks..." required autocomplete="off"><button>Send</button></form><div class="notice">Demo only • No real messages, calls or appointments</div><script>
-const params=new URLSearchParams(location.search),biz=params.get('business')||'Sunshine Auto';document.getElementById('business').textContent=biz.replace(/[-_]/g,' ').slice(0,50);
-let stage='',name='';const msgs=document.getElementById('messages');function add(role,text){const d=document.createElement('div');d.className='bubble '+role;d.textContent=text;msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight}
-document.getElementById('form').onsubmit=e=>{e.preventDefault();const input=document.getElementById('input'),text=input.value.trim();if(!text)return;add('user',text);input.value='';const t=text.toLowerCase();let answer;
-if(stage==='name'){name=text.slice(0,60);stage='phone';answer='Thanks, '+name+'! What phone number should our team call?'}
-else if(stage==='phone'){if(!/^\+?[\d\s().-]{7,25}$/.test(text)){answer='Please enter a valid contact number.'}else{stage='';answer='Thanks! Your request was noted in this DEMO only. No real callback was scheduled.'}}
-else if(/callback|call me|call back|lig(a|ue) pra mim|me liga|retorno/i.test(t)){stage='name';answer='Sure! What name should our team use for your callback?'}
-else if(/phone|human|person|representative|telefone|atendente|humano|n[uú]mero/i.test(t)){answer='I can help you request a callback. Please type "callback" to try the demo flow. There is no live phone connection.'}
-else if(/suv|car|price|vehicle|vehicle|carro|pre[cç]o|ve[ií]culo/i.test(t)){answer='We have a sample SUV listing at $21,500 in this demonstration. Would you like to request more details or a callback?'}
-else if(/hour|open|hor[aá]rio|abr(e|ir)/i.test(t)){answer='Example business hours: Monday–Saturday, 9 AM–6 PM. This is demo information.'}
-else{answer='Thanks for reaching out! I can answer sample questions about vehicles, business hours, or callback requests. This is a demo, not connected to a live AI.'}
-setTimeout(()=>add('bot',answer),220)};
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Business assistant • NexusSales AI</title>
+<style>:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#19362e;background:#f6fbf8}*{box-sizing:border-box}html,body{height:100%;margin:0}body{display:flex;flex-direction:column}.head{background:#078e69;color:#fff;min-height:72px;padding:16px 18px;font-weight:800}.head small{display:block;font-weight:500;font-size:11px;margin-top:5px;color:#ddfff2}.feed{padding:16px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:12px}.bubble{border-radius:14px;padding:12px 14px;max-width:88%;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}.bot{align-self:flex-start;background:white;border:1px solid #e1ece5}.user{align-self:flex-end;background:#d8f6e7}.inputrow{display:flex;border-top:1px solid #e3ece5;background:white;padding:10px;gap:7px}.inputrow input{flex:1;min-width:0;padding:12px;border:1px solid #d9e6dd;border-radius:9px;font:inherit;font-size:13px}.inputrow button{border:0;border-radius:9px;background:#079b6f;color:white;font-weight:750;padding:0 16px;cursor:pointer}.inputrow button:disabled{opacity:.45}.notice{text-align:center;color:#829c8f;padding:6px 12px;font-size:10px;background:white}.hidden{display:none!important}</style></head><body>
+<div class="head"><span id="brand">NexusSales AI</span><small id="subtitle">Checking this business assistant…</small></div>
+<main class="feed" id="feed" aria-live="polite"><div class="bubble bot" id="greeting">Checking availability…</div></main>
+<form class="inputrow" id="form"><input id="message" placeholder="Ask about products, services, quotes…" required maxlength="800" autocomplete="off" disabled><button id="send" disabled>Send</button></form>
+<div class="notice" id="note">Powered by NexusSales AI • No payment details in chat</div>
+<script>
+const qs=new URLSearchParams(location.search),botId=(qs.get("bot")||qs.get("business")||"").slice(0,80);
+const el=id=>document.getElementById(id),feed=el("feed");
+let ready=false,history=[],turns=0;
+const add=(role,message)=>{const div=document.createElement("div");div.className="bubble "+role;div.textContent=message;feed.append(div);feed.scrollTop=feed.scrollHeight;return div};
+const setStatus=txt=>{el("subtitle").textContent=txt};
+async function init(){
+ if(!/^[a-zA-Z0-9_-]{4,80}$/.test(botId)){el("greeting").textContent="This assistant link is invalid.";setStatus("Unavailable");return}
+ if(botId==="sunshine-auto"||botId==="example-demo"){
+  el("brand").textContent="Example business assistant";setStatus("Interactive demonstration • not live AI");
+  el("greeting").textContent="Hi! I’m a demonstration assistant. Ask about products, services, prices or getting in touch. I won’t book real appointments or send messages.";
+  ready=true;el("message").disabled=false;el("send").disabled=false;return
+ }
+ try{
+  const r=await fetch("/.netlify/functions/widget-config?botId="+encodeURIComponent(botId),{cache:"no-store"});
+  const data=await r.json();if(!r.ok||data.available!==true)throw Error("Unavailable");
+  el("brand").textContent=(data.businessName||"Business").slice(0,100);
+  setStatus("AI sales and support assistant");
+  el("greeting").textContent=(data.greeting||"Hi! How can I help?").slice(0,250);
+  ready=true;el("message").disabled=false;el("send").disabled=false;
+ }catch{el("greeting").textContent="This assistant isn't available right now. Please contact the business directly.";setStatus("Currently unavailable")}
+}
+el("form").onsubmit=async e=>{
+ e.preventDefault();if(!ready)return;
+ const input=el("message"),message=input.value.trim();if(!message)return;
+ add("user",message);input.value="";input.disabled=true;el("send").disabled=true;const pending=add("bot","One moment…");
+ try{
+  let reply;
+  if(botId==="sunshine-auto"||botId==="example-demo"){
+   const m=message.toLowerCase();reply=/price|cost|quanto|preço/.test(m)?"Prices vary by business. This example has no verified live price list.":/book|appointment|agenda|meeting/.test(m)?"You can discuss scheduling with the business. This example cannot book appointments.":"Thanks for your question! This is a demonstration of how an AI assistant appears on any website. Real AI will be connected after business activation.";
+  }else{
+   const res=await fetch("/.netlify/functions/widget-message",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({botId,message,history:history.slice(-6)})});
+   const data=await res.json().catch(()=>({}));
+   reply=res.ok&&typeof data.reply==="string"?data.reply:"This assistant is temporarily unavailable. Please contact the business directly.";
+  }
+  pending.textContent=reply;
+  history.push({role:"user",text:message},{role:"assistant",text:reply});history=history.slice(-8);
+ }catch{pending.textContent="I couldn't send that message. Please try again later."}
+ finally{input.disabled=false;el("send").disabled=false;input.focus();feed.scrollTop=feed.scrollHeight}
+};
+init();
 </script></body></html>
