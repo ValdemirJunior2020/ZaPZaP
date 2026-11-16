@@ -1,8 +1,8 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>NexusSales • Business account</title><style>
 :root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#f5f8f5;color:#19382f}*{box-sizing:border-box}body{margin:0}nav{padding:17px max(20px,calc((100vw - 1080px)/2));background:#fff;border-bottom:1px solid #e1eee6;display:flex;align-items:center;justify-content:space-between}nav b{font-size:19px}a{color:#078b64;text-decoration:none;font-weight:650}.wrap{max-width:550px;padding:30px 18px 70px;margin:auto}h1{font-size:clamp(25px,4vw,37px);letter-spacing:-1.2px;margin:14px 0 8px}p{font-size:13px;line-height:1.65;color:#728c80}.card{background:white;border-radius:17px;border:1px solid #e0ece5;box-shadow:0 12px 40px #102b1b0a;padding:28px;margin:20px 0}.tag{color:#04a773;letter-spacing:1.5px;font-weight:800;font-size:10px}.field{margin:14px 0}label{display:block;font-size:12px;font-weight:700;margin-bottom:7px}input{padding:12px;border:1px solid #d2e2d8;border-radius:9px;width:100%;font-size:14px}.btn{background:#08a978;border:none;padding:12px 18px;border-radius:9px;font-weight:750;color:#fff;cursor:pointer;display:inline-block}.btn:disabled{opacity:.5}.linkbtn{background:none;border:0;color:#078f67;font-weight:700;cursor:pointer;margin-top:12px}.muted{color:#779084;font-size:12px}.alert{padding:12px 15px;border:1px solid #f3dfb9;border-radius:9px;background:#fff7e9;color:#755620;line-height:1.5;font-size:12px}.notice{margin-top:12px;font-size:12px;line-height:1.5}.status{background:#eaf8ed;padding:13px;border-radius:10px;font-weight:700;margin:14px 0}.hidden{display:none!important}.line{border-top:1px solid #e5ece7;margin:20px 0}.pill{border-radius:50px;padding:6px 10px;font-size:11px;background:#e9f8ed;color:#078552;font-weight:700}.planpick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:15px 0}.choice{border:1px solid #d4e7da;background:#fff;border-radius:12px;padding:12px;cursor:pointer;text-align:left;font:inherit}.choice strong{display:block;font-size:22px;margin:7px 0}.choice span{display:block;font-size:11px;color:#597a6c}.choice[aria-pressed="true"]{border:2px solid #08a978;background:#f0fbf6}.included{background:#f7faf8;padding:13px;border-radius:10px;font-size:12px;line-height:1.7;color:#496d5c}.addon{color:#07895f;font-weight:750}@media(max-width:470px){.planpick{grid-template-columns:1fr}}</style></head><body>
-<nav><b>NexusSales <span style="color:#00a979">AI</span></b><a href="/">Business demo</a></nav>
+<nav><b>NexusSales <span style="color:#00a979">AI</span></b><a href="/">Business dashboard</a></nav>
 <div class="wrap">
-<div class="tag">BUSINESS ACCOUNT & BILLING</div><h1>Try NexusSales for 48 hours.</h1><p>Every business gets a two-day trial starting at signup. After that, an active PayPal subscription is required for the paid service. No card details are requested on this page.</p>
+<div class="tag">BUSINESS ACCOUNT & BILLING</div><h1>Try NexusSales for 48 hours.</h1><p>Your 48-hour trial starts only when the live AI store is published and verified. After it ends, a verified PayPal subscription is required. No card details are needed to register.</p>
 <div id="configAlert" class="alert">Checking account setup…</div>
 <section class="card hidden" id="authPanel"><h2 id="authTitle">Create your business account</h2>
 <form id="authForm"><div id="signupBusinessFields"><div class="field"><label>Business name</label><input id="businessName" name="business_name" maxlength="150" minlength="2" required autocomplete="organization" placeholder="Your business name"></div><div class="field"><label>Business phone number</label><input id="businessPhone" name="phone" type="tel" maxlength="30" required autocomplete="tel" placeholder="+1 555 555 5555"></div></div><div class="field"><label>Email</label><input id="email" type="email" required autocomplete="email"></div>
@@ -18,7 +18,7 @@
 const el=id=>document.getElementById(id);let cfg=null,signup=true,accessToken=null,selectedTier="core";
 const status=t=>el("configAlert").textContent=t;const authmsg=t=>el("authMessage").textContent=t;
 function show(id,yes){el(id).classList.toggle('hidden',!yes)}
-function token(){return sessionStorage.getItem("nexus_account_access_token")||""}
+function token(){try{return JSON.parse(sessionStorage.getItem("nexus_owner_v1")||"null")?.access_token||sessionStorage.getItem("nexus_account_access_token")||""}catch{return sessionStorage.getItem("nexus_account_access_token")||""}}
 function bearer(){return{"Authorization":"Bearer "+token(),"Content-Type":"application/json"}}
 async function refresh(){
  if(!token()){show("authPanel",!!cfg);show("billingPanel",false);return}
@@ -26,12 +26,12 @@ async function refresh(){
  const data=await r.json().catch(()=>({}));
  if(r.status===401){sessionStorage.removeItem("nexus_account_access_token");show("authPanel",true);show("billingPanel",false);authmsg("Your session expired. Sign in again.");return}
  show("authPanel",false);show("billingPanel",true);
- el("accountEmail").textContent=sessionStorage.getItem("nexus_account_email")||"Business owner";
+ el("accountEmail").textContent=sessionStorage.getItem("nexus_account_email")||(()=>{try{return JSON.parse(sessionStorage.getItem("nexus_owner_v1")||"null")?.email}catch{return null}})()||"Business owner";
  if(!r.ok){el("billingStatus").textContent="Billing setup incomplete";el("trialDetails").textContent=data.error||"Connection unavailable";el("subscribe").disabled=true;return}
- const ends=data.trialEndsAt?new Date(data.trialEndsAt).toLocaleString():"Unknown";
- const paid=data.reason==="PAID",trial=data.reason==="TRIAL";
- el("billingStatus").textContent=paid?"✓ Subscription active":trial?"48-hour trial • "+data.trialHoursLeft+" hours remaining":"Your free trial has ended";
- el("trialDetails").textContent="Trial expires: "+ends+(paid?". Paid access is active.":trial?". You may subscribe at any time.":". A subscription is required to continue using the paid service.");
+ const ends=data.trialEndsAt?new Date(data.trialEndsAt).toLocaleString():"Not started";
+ const paid=data.reason==="PAID",trial=data.reason==="TRIAL",notStarted=data.reason==="NOT_STARTED";
+ el("billingStatus").textContent=paid?"✓ Subscription active":trial?"48-hour trial • "+data.trialHoursLeft+" hours remaining":notStarted?"Trial available — not started":"Your free trial has ended";
+ el("trialDetails").textContent=notStarted?"Your 48-hour trial begins once the business's hosted AI is working and you publish the SmartStore.":paid?"Paid access is active.":trial?"Trial expires: "+ends+". You may subscribe at any time.":"Trial expired: "+ends+". A subscription is required for access.";
  el("subscribe").disabled=paid||!(selectedTier==="core_widget"?data.widgetPlanConfigured:data.planConfigured);
  el("subscribe").textContent=paid?"Active subscriber":(selectedTier==="core_widget"?data.widgetPlanConfigured:data.planConfigured)?"Subscribe • $"+(selectedTier==="core_widget"?"228":"149")+"/month":"PayPal sandbox setup pending";
  el("tierCore").disabled=paid;el("tierWidget").disabled=paid;
@@ -53,13 +53,13 @@ el("authForm").onsubmit=async e=>{e.preventDefault();if(!cfg)return;const email=
   const endpoint=signup?"/auth/v1/signup":"/auth/v1/token?grant_type=password";
   const r=await fetch(cfg.supabaseUrl+endpoint,{method:"POST",headers:{"apikey":cfg.publishableKey,"Content-Type":"application/json"},body:JSON.stringify({email,password,...(signup?{data:{business_name:businessName,phone}}:{})})});
   const j=await r.json();if(!r.ok)throw Error(j.msg||j.error_description||j.message||"Account request failed");
-  if(!j.access_token){authmsg("Account request sent. Check your email to verify your address, then sign in. Your 48-hour trial begins from signup, not the first login.");return}
-  sessionStorage.setItem("nexus_account_access_token",j.access_token);sessionStorage.setItem("nexus_account_email",email);el("password").value="";await refresh();
+  if(!j.access_token){authmsg("Account request sent. Check your email to verify your address, then sign in. Your trial begins when the live AI-powered store is activated.");return}
+  sessionStorage.setItem("nexus_account_access_token",j.access_token);sessionStorage.setItem("nexus_account_email",email);sessionStorage.setItem("nexus_owner_v1",JSON.stringify({...j,email}));el("password").value="";await refresh();
  }catch(err){authmsg(err.message)}finally{el("authButton").disabled=false}
 };
 el("tierCore").onclick=()=>chooseTier("core");el("tierWidget").onclick=()=>chooseTier("core_widget");
 function chooseTier(tier){selectedTier=tier;el("tierCore").setAttribute("aria-pressed",String(tier==="core"));el("tierWidget").setAttribute("aria-pressed",String(tier==="core_widget"));if(token())refresh();}
 el("subscribe").onclick=async()=>{el("subscribe").disabled=true;try{const r=await fetch("/.netlify/functions/billing-checkout",{method:"POST",headers:bearer(),body:JSON.stringify({tier:selectedTier})});const j=await r.json();if(!r.ok||!j.approvalUrl)throw Error(j.error||"Unable to start PayPal checkout");const u=new URL(j.approvalUrl);if(!["https:"].includes(u.protocol)||!(u.hostname==="paypal.com"||u.hostname.endsWith(".paypal.com")))throw Error("Invalid approval destination");location.assign(u.href)}catch(e){alert(e.message);el("subscribe").disabled=false}};
-el("signout").onclick=()=>{sessionStorage.removeItem("nexus_account_access_token");sessionStorage.removeItem("nexus_account_email");show("billingPanel",false);show("authPanel",true)};
+el("signout").onclick=()=>{sessionStorage.removeItem("nexus_account_access_token");sessionStorage.removeItem("nexus_account_email");sessionStorage.removeItem("nexus_owner_v1");show("billingPanel",false);show("authPanel",true)};
 init();
 </script></body></html>
