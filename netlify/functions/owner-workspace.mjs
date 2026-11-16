@@ -1,3 +1,4 @@
+import{widgetEnabled}from"../lib/billing.mjs";
 import{env,db,json,str,slug,domainUrl,userFrom,ownStore,offerings,ownerProfile,access,postOrigin,parse,safeError,aiReady,verifyHostedAI,iso}from "../lib/tenant.mjs";
 const canEdit=ent=>!ent?.trial_started_at||access(ent).allowed;
 const opts=["Product","Service","Package","Consultation","Custom quote"];
@@ -14,7 +15,9 @@ export async function handler(event){
    const profile=await ownerProfile(c,user.id);
    const items=store?await offerings(c,store.id):[];
    const leads=store?await db(c,"nx_leads?store_id=eq."+encodeURIComponent(store.id)+"&select=id,customer_name,customer_email,customer_phone,interest,status,created_at&order=created_at.desc&limit=100"):[];
-   return json(200,{email:user.email,profile,store,offerings:items,leads,access:access(ent),aiConfigured:aiReady()});
+   let bot=null;
+   if(store){try{const found=await db(c,"nx_bots?store_id=eq."+encodeURIComponent(store.id)+"&select=bot_id,enabled,greeting,primary_color");bot=found?.[0]||null}catch{}}
+   return json(200,{email:user.email,profile,store,offerings:items,leads,bot,widgetAllowed:widgetEnabled(c,ent),access:access(ent),aiConfigured:aiReady()});
   }
   const data=parse(event,30000),action=str(data.action,40);
   if(!canEdit(ent)&&action!=="pause")return json(402,{error:"Your trial has ended. Subscribe to continue.",access:access(ent)});
@@ -59,6 +62,21 @@ export async function handler(event){
    if(!/^[0-9a-f-]{36}$/i.test(data.id||""))return json(400,{error:"Invalid offering"});
    await db(c,"nx_offerings?id=eq."+encodeURIComponent(data.id)+"&store_id=eq."+encodeURIComponent(store.id),{method:"DELETE",prefer:"return=minimal"});
    return json(200,{deleted:true});
+  }
+  if(action==="enable_widget"){
+   if(!widgetEnabled(c,ent))return json(402,{error:"Website widget requires an active bundled subscription ($228/month) after the trial"});
+   if(!store.published)return json(400,{error:"Publish your business first"});
+   const existing=await db(c,"nx_bots?store_id=eq."+encodeURIComponent(store.id)+"&select=bot_id");
+   if(existing?.[0]){
+    await db(c,"nx_bots?store_id=eq."+encodeURIComponent(store.id),{method:"PATCH",body:{enabled:true,updated_at:iso()},prefer:"return=minimal"});
+    return json(200,{botId:existing[0].bot_id,enabled:true});
+   }
+   const rows=await db(c,"nx_bots",{method:"POST",body:{store_id:store.id,enabled:true,greeting:"Hi! How can I help you today?"},prefer:"return=representation"});
+   return json(200,{botId:rows[0].bot_id,enabled:true});
+  }
+  if(action==="disable_widget"){
+   await db(c,"nx_bots?store_id=eq."+encodeURIComponent(store.id),{method:"PATCH",body:{enabled:false,updated_at:iso()},prefer:"return=minimal"});
+   return json(200,{enabled:false});
   }
   if(action==="publish"){
    if(!aiReady())return json(503,{error:"Live AI must be configured before your trial and public store can launch"});
