@@ -22,7 +22,7 @@ export async function handler(event){
   const created=await paypal(c,"/v1/billing/subscriptions",{method:"POST",body:{
    plan_id:c.plan,custom_id:user.id,
    application_context:{brand_name:"NexusSales AI",user_action:"SUBSCRIBE_NOW",shipping_preference:"NO_SHIPPING",
-    return_url:origin+"/?billing=approved",cancel_url:origin+"/?billing=cancelled"}
+    return_url:origin+"/account.html?billing=approved",cancel_url:origin+"/account.html?billing=cancelled"}
   }});
   const approvalUrl=created.links?.find(x=>x.rel==="approve"&&x.href?.startsWith("https://"))?.href;
   if(!created.id||!approvalUrl)throw new Error("PayPal approval URL unavailable");
