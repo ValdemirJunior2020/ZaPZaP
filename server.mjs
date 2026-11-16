@@ -18,7 +18,25 @@ const messages=[{role:'system',content:system},...history.filter(x=>x.role==='us
 let base,headers,body;
 if(model==='openai'){if(!process.env.OPENAI_API_KEY)throw new Error('OpenAI not configured');base='https://api.openai.com/v1/chat/completions';headers={'Content-Type':'application/json',Authorization:'Bearer '+process.env.OPENAI_API_KEY};body={model:process.env.OPENAI_MODEL||'gpt-4.1-mini',messages,temperature:0.35,max_tokens:350}}
 else{base=(process.env.OLLAMA_BASE_URL||'http://127.0.0.1:11434').replace(/\/$/,'')+'/api/chat';headers={'Content-Type':'application/json'};if(process.env.OLLAMA_AUTH_TOKEN)headers.Authorization='Bearer '+process.env.OLLAMA_AUTH_TOKEN;body={model:process.env.OLLAMA_MODEL||'qwen3:8b',messages,stream:false,think:false,options:{temperature:0.3,num_predict:280}}}
-const res=await fetch(base,{method:'POST',headers,body:JSON.stringify(body),signal:AbortSignal.timeout(90000)});if(!res.ok)throw new Error('Upstream '+res.status);const data=await res.json();const text=model==='openai'?data?.choices?.[0]?.message?.content:data?.message?.content;return typeof text==='string'?text.trim().slice(0,2200):''}
+const res=await fetch(base,{method:'POST',headers,body:JSON.stringify(body),signal:AbortSignal.timeout(90000)});
+if(!res.ok)throw new Error('Model API returned HTTP '+res.status);
+const data=await res.json();
+const answer=model==='openai'?data?.choices?.[0]?.message?.content:data?.message?.content;
+if(typeof answer==='string'&&answer.trim())return answer.trim().slice(0,2200);
+if(model==='openai')throw new Error('Empty OpenAI response');
+// A Qwen chat response can be successful but contain only thinking tokens.
+console.warn('Empty Ollama chat content; retrying without thinking. Thinking length:',String(data?.message?.thinking||'').length);
+const prompt=system+'\n\n'+history.slice(-4).map(x=>(x.role==='user'?'Customer: ':'Assistant: ')+String(x.text||'').slice(0,500)).join('\n')+'\nCustomer: '+message+'\nAssistant: /no_think\n';
+const retry=await fetch((process.env.OLLAMA_BASE_URL||'http://127.0.0.1:11434').replace(/\/$/,'')+'/api/generate',{
+ method:'POST',headers,body:JSON.stringify({model:process.env.OLLAMA_MODEL||'qwen3:8b',prompt,stream:false,think:false,options:{temperature:0.3,num_predict:450}}),signal:AbortSignal.timeout(90000)
+});
+if(!retry.ok)throw new Error('Ollama retry HTTP '+retry.status);
+const retried=await retry.json();
+let answer2=typeof retried.response==='string'?retried.response.trim():'';
+if(answer2.startsWith('<think>')&&answer2.includes('</think>'))answer2=answer2.split('</think>').slice(1).join('</think>').trim();
+if(!answer2)throw new Error('Model returned no user-visible text');
+return answer2.slice(0,2200);
+}
 const server=http.createServer(async(req,res)=>{try{
 const url=new URL(req.url,'http://localhost');
 if(url.pathname==='/api/health'){
@@ -37,7 +55,7 @@ if(url.pathname==='/api/health'){
 if(url.pathname==='/api/chat'&&req.method==='POST'){const ip=req.socket.remoteAddress||'unknown';let j;try{j=JSON.parse(await payload(req))}catch{return result(res,400,{error:'Invalid JSON or oversized request'})}const message=String(j.message||'').trim().slice(0,1000);if(!message)return result(res,400,{error:'Message required'});const wait=fallback[language(message)];if(!limit(ip)||active>=Math.max(1,Math.min(4,Number(process.env.MAX_AI_CONCURRENCY||2))))return result(res,200,{reply:wait,busy:true});if(process.env.ENABLE_LOCAL_AI!=='true'&&process.env.ENABLE_PUBLIC_AI_DEMO!=='true')return result(res,503,{error:'AI demo disabled',reply:wait});const settings=safeSettings(j.settings&&typeof j.settings==='object'?j.settings:{});
 const direct=/\b(phone|telephone|number|human|representative|call someone|telefone|n[uú]mero|atendente|falar com|tel[eé]fono|hablar con)\b/i.test(message);
 if(direct&&settings.sharePhone&&/^\+?[\d\s().-]{7,35}$/.test(settings.humanPhone))return result(res,200,{reply:({en:"The business contact number is ",pt:"O telefone de contato da empresa é ",es:"El teléfono de contacto de la empresa es "})[language(message)]+settings.humanPhone});
-active++;try{const answer=await generate(message,settings,Array.isArray(j.history)?j.history:[]);return result(res,200,{reply:answer||wait,busy:!answer,source:answer?'ai':'unavailable'})}catch(e){console.warn('AI unavailable:',e.message);return result(res,503,{error:'Ollama inference failed. Check the local server console and model.',detail:e.message})}finally{active--}}
+active++;try{const answer=await generate(message,settings,Array.isArray(j.history)?j.history:[]);return result(res,200,{reply:answer,source:'ai'})}catch(e){console.warn('AI unavailable:',e.message);return result(res,503,{error:'AI temporarily unavailable',code:'AI_UNAVAILABLE'})}finally{active--}}
 if(url.pathname==='/api/whatsapp/webhook'&&req.method==='GET'){if(!process.env.WHATSAPP_VERIFY_TOKEN)return result(res,503,{error:'Not configured'});if(url.searchParams.get('hub.mode')==='subscribe'&&url.searchParams.get('hub.verify_token')===process.env.WHATSAPP_VERIFY_TOKEN){res.writeHead(200,{'Content-Type':'text/plain'});return res.end(url.searchParams.get('hub.challenge')||'')}return result(res,403,{error:'Verification failed'})}
 if(url.pathname.startsWith('/api/'))return result(res,501,{error:'Integration not configured; no production messaging or billing occurs in this demo'});
 if(req.method!=='GET'&&req.method!=='HEAD')return result(res,405,{error:'Method not allowed'});
