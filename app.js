@@ -31,7 +31,7 @@ function translateUi(root=document.body){
   if(button){
     button.setAttribute("aria-label",uiLocale==="en"?"Mudar para português brasileiro":"Switch to English");
     button.setAttribute("title",uiLocale==="en"?"Português (Brasil)":"English");
-    const flag=button.querySelector(".flag-icon");if(flag)flag.textContent=uiLocale==="en"?"🇧🇷":"🇺🇸";
+    const flag=button.querySelector(".flag-icon");if(flag)flag.className="flag-icon "+(uiLocale==="en"?"flag-br":"flag-us");
     const label=button.querySelector("#languageLabel");if(label)label.textContent=uiLocale==="en"?"Português":"English";
   }
 }
