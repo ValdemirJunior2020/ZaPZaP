@@ -13,7 +13,8 @@ export async function handler(event){
   if(event.httpMethod==="GET"){
    const profile=await ownerProfile(c,user.id);
    const items=store?await offerings(c,store.id):[];
-   return json(200,{email:user.email,profile,store,offerings:items,access:access(ent),aiConfigured:aiReady()});
+   const leads=store?await db(c,"nx_leads?store_id=eq."+encodeURIComponent(store.id)+"&select=id,customer_name,customer_email,customer_phone,interest,status,created_at&order=created_at.desc&limit=100"):[];
+   return json(200,{email:user.email,profile,store,offerings:items,leads,access:access(ent),aiConfigured:aiReady()});
   }
   const data=parse(event,30000),action=str(data.action,40);
   if(!canEdit(ent)&&action!=="pause")return json(402,{error:"Your trial has ended. Subscribe to continue.",access:access(ent)});
