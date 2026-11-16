@@ -26,14 +26,25 @@ if errorlevel 1 (
  goto :end_fail
 )
 echo [OK] Ollama available
-powershell -NoProfile -ExecutionPolicy Bypass -Command "try { $r=Invoke-RestMethod -Uri 'http://127.0.0.1:11434/api/tags' -TimeoutSec 4; exit 0 } catch { exit 1 }"
+powershell -NoProfile -Command "try { $null=Invoke-RestMethod -Uri 'http://127.0.0.1:11434/api/tags' -TimeoutSec 2; exit 0 } catch { exit 1 }"
 if errorlevel 1 (
- echo.
- echo [!] Ollama is installed but not running.
- echo     Open Ollama from the Windows Start menu.
- echo     Then run this installer again.
- goto :end_fail
+ echo [INFO] Starting Ollama automatically...
+ powershell -NoProfile -Command "Start-Process -FilePath 'ollama' -ArgumentList 'serve' -WindowStyle Minimized" 2>nul
+ set "OLLAMA_READY="
+ for /L %%I in (1,1,15) do (
+  if not defined OLLAMA_READY (
+   powershell -NoProfile -Command "try { $null=Invoke-RestMethod -Uri 'http://127.0.0.1:11434/api/tags' -TimeoutSec 2; exit 0 } catch { exit 1 }"
+   if not errorlevel 1 set "OLLAMA_READY=1"
+   if not defined OLLAMA_READY timeout /t 1 /nobreak >nul
+  )
+ )
+ if not defined OLLAMA_READY (
+  echo [ERROR] Could not start Ollama. Try opening it manually from the Start menu.
+  echo You can also run: ollama serve
+  goto :end_fail
+ )
 )
+echo [OK] Local Ollama API responding
 echo [OK] Local Ollama API responding
 ollama list | findstr /I "qwen3:8b" >nul 2>&1
 if errorlevel 1 (
