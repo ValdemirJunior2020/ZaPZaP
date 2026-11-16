@@ -1,4 +1,4 @@
-import{env,db,json,str,slug,domainUrl,userFrom,ownStore,offerings,ownerProfile,access,postOrigin,parse,safeError,aiReady,iso}from "../lib/tenant.mjs";
+import{env,db,json,str,slug,domainUrl,userFrom,ownStore,offerings,ownerProfile,access,postOrigin,parse,safeError,aiReady,verifyHostedAI,iso}from "../lib/tenant.mjs";
 const canEdit=ent=>!ent?.trial_started_at||access(ent).allowed;
 const opts=["Product","Service","Package","Consultation","Custom quote"];
 const avail=["Available","Booking required","Request a quote","In stock","Out of stock","Contact for availability"];
@@ -64,6 +64,7 @@ export async function handler(event){
    if(!aiReady())return json(503,{error:"Live AI must be configured before your trial and public store can launch"});
    const current=await offerings(c,store.id);
    if(!current.length)return json(400,{error:"Add at least one product or service first"});
+   if(!await verifyHostedAI())return json(503,{error:"The hosted AI is not responding. Your 48-hour trial has not started. Please try after AI setup is repaired."});
    const rows=await db(c,"nx_entitlements?user_id=eq."+encodeURIComponent(user.id)+"&trial_started_at=is.null",
     {method:"PATCH",body:{trial_started_at:iso(),updated_at:iso()},prefer:"return=representation"});
    const next=rows?.[0]||await (async()=>{const t=await userFrom(event,c);return t.ent})();
