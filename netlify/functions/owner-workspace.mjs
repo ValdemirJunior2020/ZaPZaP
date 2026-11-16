@@ -20,7 +20,7 @@ export async function handler(event){
    return json(200,{email:user.email,profile,store,offerings:items,leads,bot,widgetAllowed:widgetEnabled(c,ent),access:access(ent),aiConfigured:aiReady()});
   }
   const data=parse(event,30000),action=str(data.action,40);
-  if(!canEdit(ent)&&action!=="pause")return json(402,{error:"Your trial has ended. Subscribe to continue.",access:access(ent)});
+  if(!canEdit(ent)&&!["pause","disable_widget"].includes(action))return json(402,{error:"Your trial has ended. Subscribe to continue.",access:access(ent)});
   if(action==="save_store"){
    const i=data.store||{};
    const name=str(i.name,150);
