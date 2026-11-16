@@ -133,12 +133,26 @@ function callbackReply(message,lang){
 function cleanSlug(v){return String(v||"").toLowerCase().normalize("NFKD").replace(/[\\u0300-\\u036f]/g,"").replace(/[^a-z0-9-]/g,"-").replace(/-+/g,"-").replace(/^-|-$/g,"").slice(0,50)||"my-store"}
 function smartLink(){return location.origin+"/store.html?s="+encodeURIComponent(cleanSlug(state.settings.slug||state.settings.business))}
 function safeImage(s){const v=String(s||"").trim();return /^https:\/\//i.test(v)||v.startsWith("data:image/jpeg;base64,")||v.startsWith("data:image/png;base64,")||v.startsWith("data:image/webp;base64,")?v:""}
+const industryExamples={
+ marketing:{category:"Marketing & creative services",business:"Creative Growth Studio",headline:"Marketing that helps your business grow",description:"Branding, content creation, social media and marketing strategy.",offerings:[
+ {name:"Social Media Management",type:"Service",price:"From $399/month",description:"Monthly content planning and account management. Scope confirmed after consultation.",availability:"Request a quote"},
+ {name:"Brand Strategy Session",type:"Consultation",price:"$95 / session",description:"One-on-one brand positioning and marketing consultation.",availability:"Booking required"},
+ {name:"Logo & Visual Identity",type:"Package",price:"Request a quote",description:"Brand identity concept and design package; final scope confirmed by the team.",availability:"Request a quote"}]},
+ mechanic:{category:"Automotive repair",business:"Neighborhood Auto Repair",headline:"Reliable auto repair and maintenance",description:"Diagnostics, brake service and routine vehicle maintenance.",offerings:[
+ {name:"Vehicle Diagnostic",type:"Service",price:"From $89",description:"Initial diagnostic appointment; additional repairs priced separately.",availability:"Booking required"},
+ {name:"Brake Inspection",type:"Service",price:"Request a quote",description:"Brake system check and recommended next steps.",availability:"Booking required"},
+ {name:"Oil Change",type:"Service",price:"From $59",description:"Oil and filter service depending on vehicle specifications.",availability:"Booking required"}]},
+ hvac:{category:"Air conditioning & HVAC",business:"CoolComfort HVAC",headline:"Cooling and comfort for your home",description:"Air conditioning service, preventative maintenance and installation quotes.",offerings:[
+ {name:"A/C Repair Visit",type:"Service",price:"Request a quote",description:"Diagnostic visit for cooling problems. Service availability must be confirmed.",availability:"Booking required"},
+ {name:"HVAC Maintenance Plan",type:"Package",price:"From $149",description:"Routine preventative service based on system needs.",availability:"Request a quote"},
+ {name:"A/C Installation Estimate",type:"Consultation",price:"Free quote request",description:"Request a quote for a new system or replacement.",availability:"Request a quote"}]}
+};
 function store(){
  const s=state.settings,products=state.catalog;
  const cards=products.map(p=>'<article class="catalog-card">'+(safeImage(p.image)?'<img alt="" src="'+esc(p.image)+'">':'<div class="catalog-placeholder">▣</div>')+'<div class="catalog-info"><b>'+esc(p.name)+'</b><small>'+esc(p.price||"Ask for price")+' · '+esc(p.type||"Offering")+' · '+esc(p.availability||"Contact for availability")+'</small><p>'+esc(p.description||"")+'</p><div class="options"><button type="button" class="btn" data-edit-product="'+esc(p.id)+'">Edit</button><button type="button" class="btn" data-remove-product="'+esc(p.id)+'">Delete</button></div></div></article>').join("");
  const url=smartLink();
  return heading("SMARTSTORE BUILDER","Your business, ready to grow.","List products, services, quotes and bookings for any industry — no programming required.",'<button class="btn primary" id="previewStore">↗ Preview your storefront</button>')+
- '<div class="two-col"><section class="panel"><h3 class="section-title">Store branding</h3>'+field("business","Business name")+field("storeHeadline","Store headline")+field("storeDescription","Store description","textarea")+field("slug","Short store link name")+
+ '<section class="panel"><h3 class="section-title">Try an industry example</h3><p class="subtext">Optional examples for marketing services, auto mechanics, and A/C companies. All sample prices are fictional. Loading an example replaces your current demo catalog.</p><div class="options"><button class="btn" data-store-example="marketing">Marketing services</button><button class="btn" data-store-example="mechanic">Mechanic</button><button class="btn" data-store-example="hvac">A/C & HVAC</button><button class="btn" data-store-example="blank">Start with an empty catalog</button></div></section><div class="two-col" style="margin-top:20px"><section class="panel"><h3 class="section-title">Store branding</h3>'+field("business","Business name")+field("storeHeadline","Store headline")+field("storeDescription","Store description","textarea")+field("slug","Short store link name")+
  '<div class="field"><label>Business type</label><select id="storeCategory">'+["Marketing & creative services","Automotive repair","Air conditioning & HVAC","Home services","Beauty & wellness","Retail & products","Professional services","Food & hospitality","Other"].map(v=>'<option value="'+esc(v)+'" '+(s.storeCategory===v?"selected":"")+'>'+esc(v)+'</option>').join("")+'</select></div><div class="field"><label>Store image URL</label><input id="storeImage" value="'+esc(s.storeImage||"")+'" placeholder="https://..."></div>'+
  '<div class="field"><label>Upload store image</label><input id="storeUpload" type="file" accept="image/jpeg,image/png,image/webp"></div>'+
  '<div class="muted-note">Store image is a local preview. AI image generation is not connected yet.</div>'+
@@ -177,6 +191,13 @@ function bindStore(){
  $("#copyWidget").onclick=()=>{navigator.clipboard.writeText($("#embedSnippet").value).then(()=>toast("Embed code copied"))};
  $("#saveStorefront").onclick=()=>{for(const id of ["business","storeHeadline","storeDescription","storeImage","slug","storeCategory"]){const el=$("#"+id);if(el)state.settings[id]=id==="slug"?cleanSlug(el.value):el.value.slice(0,id==="storeDescription"?500:5000)}save("settings",state.settings);view();toast("Storefront saved in demo browser")};
  $("#storeUpload").onchange=async e=>{const f=e.target.files?.[0];if(!f)return;if(!["image/png","image/jpeg","image/webp"].includes(f.type)||f.size>700000){toast("Choose JPG, PNG, or WEBP under 700 KB");return}const reader=new FileReader();reader.onload=()=>{state.settings.storeImage=String(reader.result);save("settings",state.settings);view();toast("Storefront saved in demo browser")};reader.readAsDataURL(f)};
+ document.querySelectorAll("[data-store-example]").forEach(button=>button.onclick=()=>{
+  if(!confirm("This will replace your current demo business and catalog. Continue?"))return;
+  const type=button.dataset.storeExample,example=industryExamples[type];
+  if(type==="blank"){state.catalog=[];state.settings.business="My Business";state.settings.storeHeadline="Welcome to our business";state.settings.storeDescription="Explore our products and services.";state.settings.storeCategory="Other";state.settings.slug="my-business";state.settings.products="";}
+  else if(example){state.settings.business=example.business;state.settings.storeHeadline=example.headline;state.settings.storeDescription=example.description;state.settings.description=example.description;state.settings.storeCategory=example.category;state.settings.slug=cleanSlug(example.business);state.settings.products="";state.catalog=example.offerings.map((p,i)=>({...p,id:"example-"+type+"-"+i,image:""}));}
+  state.settings.storeImage="";save("catalog",state.catalog);save("settings",state.settings);view();toast("Example loaded — edit to match your real business");
+ });
  $("#addCatalogItem").onclick=()=>productDialog();
  document.querySelectorAll("[data-edit-product]").forEach(el=>el.onclick=()=>productDialog(el.dataset.editProduct));
  document.querySelectorAll("[data-remove-product]").forEach(el=>el.onclick=()=>{if(!confirm("Delete this product?"))return;state.catalog=state.catalog.filter(p=>p.id!==el.dataset.removeProduct);save("catalog",state.catalog);view()});
