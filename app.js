@@ -22,7 +22,7 @@ function translateUi(root=document.body){
     el.setAttribute("placeholder",uiLocale==="pt-BR"?(translationsPtBr[original]||original):original);
   });
   root.querySelectorAll("option").forEach(el=>{
-    const original=el.dataset.zapOriginalOption??el.textContent;
+    const original=el.dataset.zapOriginalOption??el.firstChild?.__zapOriginal??el.textContent;
     el.dataset.zapOriginalOption=original;
     if(!el.hasAttribute("value"))el.value=original;
     el.textContent=uiLocale==="pt-BR"?(translationsPtBr[original]||original):original;
