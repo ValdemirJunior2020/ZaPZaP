@@ -1,0 +1,18 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>Private Administration | NexusSales</title><style>
+:root{font-family:system-ui,sans-serif;background:#0b2825;color:#173b32}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:22px}.panel{width:min(100%,410px);padding:32px;background:#fff;border-radius:19px;box-shadow:0 18px 60px #0005}.mark{font-size:28px;color:#09b680}h1{font-size:26px;letter-spacing:-.7px;margin:17px 0 8px}p{color:#748f83;font-size:13px;line-height:1.6}label{display:block;font-weight:650;font-size:12px;margin:23px 0 9px}input{width:100%;border:1px solid #ccdfd4;border-radius:9px;padding:14px;font-size:21px;letter-spacing:5px}button{width:100%;border:0;background:#06a978;color:white;padding:13px;border-radius:9px;font-weight:750;margin-top:17px;cursor:pointer}button:disabled{opacity:.5}.msg{font-size:12px;min-height:23px;color:#af413c;margin-top:12px}.footer{margin-top:15px;text-align:center;font-size:11px;color:#91a79d}.footer a{color:#087e5e;text-decoration:none}</style></head><body>
+<main class="panel"><div class="mark">✳</div><h1>Private administration</h1><p>Administrator-only access. Enter your PIN to continue. Business owners use the public dashboard separately.</p><form id="authForm" autocomplete="off"><label for="pin">Administrator PIN</label><input type="password" inputmode="numeric" pattern="[0-9]{4,12}" minlength="4" maxlength="12" id="pin" name="pin" autocomplete="off" required autofocus><button id="submitBtn" type="submit">Unlock admin console</button><div class="msg" id="message" role="alert" aria-live="polite"></div></form><div class="footer">NexusSales AI · Private access<br><a href="/">Back to business demo</a></div></main>
+<script>
+const form=document.getElementById('authForm'),btn=document.getElementById('submitBtn'),msg=document.getElementById('message');
+form.onsubmit=async e=>{
+ e.preventDefault();btn.disabled=true;msg.textContent='Checking…';
+ const pin=document.getElementById('pin').value;
+ try{
+  const r=await fetch('/.netlify/functions/admin-auth',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'login',pin})});
+  const data=await r.json();document.getElementById('pin').value='';
+  if(!r.ok||data.authenticated!==true){msg.textContent=data.error||'Access denied';return}
+  location.replace('/?admin=1');
+ }catch{msg.textContent='Unable to connect to the administrator service.'}
+ finally{btn.disabled=false}
+};
+(async()=>{try{const r=await fetch('/.netlify/functions/admin-auth',{cache:'no-store',credentials:'same-origin'});const data=await r.json();if(data.authenticated===true)location.replace('/?admin=1')}catch{}})();
+</script></body></html>
