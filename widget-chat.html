@@ -1,48 +1,33 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Business assistant • NexusSales AI</title>
-<style>:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#19362e;background:#f6fbf8}*{box-sizing:border-box}html,body{height:100%;margin:0}body{display:flex;flex-direction:column}.head{background:#078e69;color:#fff;min-height:72px;padding:16px 18px;font-weight:800}.head small{display:block;font-weight:500;font-size:11px;margin-top:5px;color:#ddfff2}.feed{padding:16px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:12px}.bubble{border-radius:14px;padding:12px 14px;max-width:88%;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}.bot{align-self:flex-start;background:white;border:1px solid #e1ece5}.user{align-self:flex-end;background:#d8f6e7}.inputrow{display:flex;border-top:1px solid #e3ece5;background:white;padding:10px;gap:7px}.inputrow input{flex:1;min-width:0;padding:12px;border:1px solid #d9e6dd;border-radius:9px;font:inherit;font-size:13px}.inputrow button{border:0;border-radius:9px;background:#079b6f;color:white;font-weight:750;padding:0 16px;cursor:pointer}.inputrow button:disabled{opacity:.45}.notice{text-align:center;color:#829c8f;padding:6px 12px;font-size:10px;background:white}.hidden{display:none!important}</style></head><body>
-<div class="head"><span id="brand">NexusSales AI</span><small id="subtitle">Checking this business assistant…</small></div>
-<main class="feed" id="feed" aria-live="polite"><div class="bubble bot" id="greeting">Checking availability…</div></main>
-<form class="inputrow" id="form"><input id="message" placeholder="Ask about products, services, quotes…" required maxlength="800" autocomplete="off" disabled><button id="send" disabled>Send</button></form>
-<div class="notice" id="note">Powered by NexusSales AI • No payment details in chat</div>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Business assistant • NexusSales AI</title><style>
+:root{font:13px system-ui,sans-serif;color:#1b3e30;background:#f7faf7}*{box-sizing:border-box}html,body{margin:0;height:100%}body{display:flex;flex-direction:column}.head{background:#087858;color:white;padding:17px;font-weight:800;font-size:15px}.head small{display:block;font-size:11px;font-weight:500;margin-top:5px;color:#d0f5e1}.feed{flex:1;min-height:0;overflow-y:auto;padding:15px;display:flex;flex-direction:column;gap:11px}.bubble{max-width:90%;padding:12px;border-radius:12px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}.bot{align-self:flex-start;background:#fff;border:1px solid #e0ebe4}.user{align-self:flex-end;background:#dbf5e6}.form{display:flex;gap:7px;padding:11px;background:white;border-top:1px solid #e5eee8}.form input{flex:1;min-width:0;border:1px solid #d1e2d8;padding:11px;border-radius:8px;font:inherit}.form button{border:0;background:#07a777;border-radius:8px;color:white;font-weight:750;padding:0 14px}.form button:disabled{opacity:.4}.foot{font-size:10px;text-align:center;color:#8da295;padding:8px;background:white}
+</style></head><body><header class="head"><span id="business">Business assistant</span><small id="status">Connecting securely…</small></header><main class="feed" id="feed" role="log" aria-live="polite"><div class="bubble bot" id="hello">Checking this assistant…</div></main>
+<form class="form" id="form"><input id="message" required maxlength="700" placeholder="Ask about products or services…" disabled autocomplete="off"><button id="send" disabled>Send</button></form><div class="foot">Powered by NexusSales AI • Payments and bookings are not handled in chat</div>
 <script>
-const qs=new URLSearchParams(location.search),botId=(qs.get("bot")||qs.get("business")||"").slice(0,80);
-const el=id=>document.getElementById(id),feed=el("feed");
-let ready=false,history=[],turns=0;
-const add=(role,message)=>{const div=document.createElement("div");div.className="bubble "+role;div.textContent=message;feed.append(div);feed.scrollTop=feed.scrollHeight;return div};
-const setStatus=txt=>{el("subtitle").textContent=txt};
+const botId=new URLSearchParams(location.search).get("bot")||"";
+const el=id=>document.getElementById(id),feed=el("feed");let ready=false,history=[],busy=false;
+function add(role,text){const b=document.createElement("div");b.className="bubble "+role;b.textContent=String(text).slice(0,2500);feed.appendChild(b);feed.scrollTop=feed.scrollHeight;return b}
 async function init(){
- if(!/^[a-zA-Z0-9_-]{4,80}$/.test(botId)){el("greeting").textContent="This assistant link is invalid.";setStatus("Unavailable");return}
- if(botId==="sunshine-auto"||botId==="example-demo"){
-  el("brand").textContent="Example business assistant";setStatus("Interactive demonstration • not live AI");
-  el("greeting").textContent="Hi! I’m a demonstration assistant. Ask about products, services, prices or getting in touch. I won’t book real appointments or send messages.";
-  ready=true;el("message").disabled=false;el("send").disabled=false;return
- }
+ if(!/^bot_[a-z0-9]{20,50}$/.test(botId)){el("hello").textContent="Invalid assistant link.";el("status").textContent="Unavailable";return}
  try{
   const r=await fetch("/.netlify/functions/widget-config?botId="+encodeURIComponent(botId),{cache:"no-store"});
-  const data=await r.json();if(!r.ok||data.available!==true)throw Error("Unavailable");
-  el("brand").textContent=(data.businessName||"Business").slice(0,100);
-  setStatus("AI sales and support assistant");
-  el("greeting").textContent=(data.greeting||"Hi! How can I help?").slice(0,250);
+  const data=await r.json();if(!r.ok||data.available!==true)throw Error("Not active");
+  el("business").textContent=data.businessName||"Business assistant";
+  el("status").textContent="Live AI • Products and services";
+  el("hello").textContent=data.greeting||"Hi! How can I help today?";
   ready=true;el("message").disabled=false;el("send").disabled=false;
- }catch{el("greeting").textContent="This assistant isn't available right now. Please contact the business directly.";setStatus("Currently unavailable")}
+ }catch{el("status").textContent="Currently unavailable";el("hello").textContent="This assistant is temporarily unavailable. Please contact the business directly."}
 }
 el("form").onsubmit=async e=>{
- e.preventDefault();if(!ready)return;
- const input=el("message"),message=input.value.trim();if(!message)return;
- add("user",message);input.value="";input.disabled=true;el("send").disabled=true;const pending=add("bot","One moment…");
+ e.preventDefault();if(!ready||busy)return;
+ const message=el("message").value.trim();if(!message)return;
+ busy=true;el("message").value="";el("message").disabled=true;el("send").disabled=true;
+ add("user",message);const pending=add("bot","One moment…");
  try{
-  let reply;
-  if(botId==="sunshine-auto"||botId==="example-demo"){
-   const m=message.toLowerCase();reply=/price|cost|quanto|preço/.test(m)?"Prices vary by business. This example has no verified live price list.":/book|appointment|agenda|meeting/.test(m)?"You can discuss scheduling with the business. This example cannot book appointments.":"Thanks for your question! This is a demonstration of how an AI assistant appears on any website. Real AI will be connected after business activation.";
-  }else{
-   const res=await fetch("/.netlify/functions/widget-message",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({botId,message,history:history.slice(-6)})});
-   const data=await res.json().catch(()=>({}));
-   reply=res.ok&&typeof data.reply==="string"?data.reply:"This assistant is temporarily unavailable. Please contact the business directly.";
-  }
-  pending.textContent=reply;
-  history.push({role:"user",text:message},{role:"assistant",text:reply});history=history.slice(-8);
- }catch{pending.textContent="I couldn't send that message. Please try again later."}
- finally{input.disabled=false;el("send").disabled=false;input.focus();feed.scrollTop=feed.scrollHeight}
+  const r=await fetch("/.netlify/functions/store-chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({botId,message,history:history.slice(-8)})});
+  const data=await r.json().catch(()=>({}));if(!r.ok||!data.reply)throw Error("Unavailable");
+  pending.textContent=data.reply;history.push({role:"user",content:message},{role:"assistant",content:data.reply});history=history.slice(-8);
+ }catch{pending.textContent="I can't answer right now. Please contact the business directly."}
+ finally{busy=false;el("message").disabled=false;el("send").disabled=false;el("message").focus();feed.scrollTop=feed.scrollHeight}
 };
 init();
 </script></body></html>
