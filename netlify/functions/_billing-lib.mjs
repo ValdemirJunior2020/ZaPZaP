@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 // Private server-side helpers for NexusSales billing. NEVER import in browser code.
 const json=(status,obj)=>({statusCode:status,headers:{"Content-Type":"application/json","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"},body:JSON.stringify(obj)});
 const env=()=>({
