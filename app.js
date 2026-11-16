@@ -280,7 +280,7 @@ function previewNotice(){
  const p=state.previewProfile;if(!p)return "";
  const ends=Date.parse(p.startedAt)+48*60*60*1000;
  const hours=Math.max(0,Math.ceil((ends-Date.now())/3600000));
- return '<div class="preview-trial-banner"><span><b>Business preview • '+esc(p.business)+'</b> · '+esc(p.email)+' · '+esc(p.phone)+'</span><span class="preview-trial-time">'+(hours?hours+' hours remaining in local preview':'48-hour preview period ended')+'</span><a href="/account.html">Real account & billing →</a></div>';
+ return '<div class="preview-trial-banner"><span><b>Business preview • '+esc(p.business)+'</b> · Browser-only test workspace</span><span class="preview-trial-time">'+(hours?hours+' hours remaining in local preview':'48-hour preview period ended')+'</span><a href="/account.html">Real account & billing →</a></div>';
 }
 function enterDemo(role){if(role!=="owner"||!state.previewProfile)return;state.role="owner";try{sessionStorage.setItem("zapzap_demo_role","owner")}catch{}state.page="store";view();}
 $("#demoOwnerForm").onsubmit=e=>{
