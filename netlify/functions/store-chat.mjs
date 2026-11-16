@@ -40,7 +40,7 @@ export async function handler(event){
   const history=Array.isArray(req.history)?req.history.slice(-8).filter(m=>["user","assistant"].includes(m.role)).map(m=>({role:m.role,content:str(m.content,500)})):[];
   const response=await fetch("https://api.openai.com/v1/chat/completions",{
    method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+process.env.OPENAI_API_KEY},
-   body:JSON.stringify({model:process.env.NEXUS_CHAT_MODEL||"gpt-4.1-mini",messages:[{role:"system",content:system},...history,{role:"user",content:message}],max_tokens:400,temperature:0.25}),
+   body:JSON.stringify({model:process.env.NEXUS_CHAT_MODEL||"gpt-6-luna",messages:[{role:"system",content:system},...history,{role:"user",content:message}],max_completion_tokens:450,reasoning_effort:"none"}),
    signal:AbortSignal.timeout(24000)
   });
   if(!response.ok)throw new Error("AI provider HTTP "+response.status);
