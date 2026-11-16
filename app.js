@@ -204,8 +204,8 @@ function bindStore(){
 }
 
 function studio(){const s=state.settings;return heading("AI AGENT STUDIO","Build your perfect AI employee.","No prompts or programming required. Tell the AI what you sell and how to serve customers.",'<button class="btn primary" id="saveStudio">✓ &nbsp; Save AI settings</button>')+'<div class="two-col"><section class="panel"><h3 class="section-title">✧ &nbsp; Your AI personality</h3>'+field("agent","Assistant name")+'<div class="field"><label>Speaking style</label><div class="options" id="tones">'+["Friendly & professional","Persuasive & sales-focused","Short & direct","Warm & welcoming"].map(v=>'<button class="chip '+(s.tone===v?"selected":"")+'" data-tone="'+esc(v)+'">'+esc(v)+'</button>').join("")+'</div></div><div class="field"><label>What should the agent do?</label><div class="options" id="goals">'+["Answer FAQs","Capture leads","Book appointments","Recommend products","Request human assistance"].map(v=>'<button class="chip '+(s.goals.includes(v)?"selected":"")+'" data-goal="'+esc(v)+'">'+esc(v)+'</button>').join("")+'</div></div>'+(state.role==="admin"? '<div class="field"><label>AI provider</label><select id="aiProvider"><option value="demo" '+(s.aiProvider==="demo"?"selected":"")+'>Demo simulator</option><option value="ollama" '+(s.aiProvider==="ollama"?"selected":"")+'>Local Ollama (free · on this PC)</option><option value="openai" '+(s.aiProvider==="openai"?"selected":"")+'>OpenAI (server key required)</option></select></div><div class="muted-note">Your selected provider only works when the matching backend is online and configured. Otherwise the simulator explains that it is a demo.</div>' : '<div class="muted-note">Your sales assistant is managed automatically by NexusSales AI. You only need to configure its personality and business information.</div>')+'<div class="sep"></div><p class="subtext">Demo customer channel</p><div class="muted-note">Test your assistant without Meta or WhatsApp. The generated number is an example identifier, not a working phone line.</div></section>'+
-'<section class="panel"><div class="panel-head"><div><h3>Live conversation test</h3><small>See how customers experience your AI</small></div><span class="pill" id="aiConnectionStatus">Checking AI…</span></div><div id="chatWindow" class="chat-window">'+renderMessages()+'</div><form id="chatForm" class="chat-input"><input id="chatText" placeholder="Ask about prices, hours, or booking..." required maxlength="1000"><button class="btn primary" type="submit">Send ↗</button></form><p class="footer-note">Test supported languages: English, Spanish, Portuguese. No messages are sent to WhatsApp.</p><button class="btn" id="resetChat">↻ Reset chat</button></section></div>'}
-function renderMessages(){const ms=state.messages.length?state.messages:[{role:"bot",text:"Hi! 👋 I'm "+state.settings.agent+", your AI assistant at "+state.settings.business+". How can I help you today?"}];return ms.map(m=>'<div class="bubble '+m.role+'">'+esc(m.text)+'</div>').join("")}
+'<section class="panel"><div class="panel-head"><div><h3>Live conversation test</h3><small>See how customers experience your AI</small></div><span class="pill" id="aiConnectionStatus">Checking AI…</span></div><p id="aiUnavailableNotice" class="muted-note">Live AI is not connected to this hosted preview. Run the local Ollama server to test real conversations. No messages are sent to customers from this page.</p><div id="chatWindow" class="chat-window">'+renderMessages()+'</div><form id="chatForm" class="chat-input"><input id="chatText" placeholder="Ask about prices, hours, or booking..." required maxlength="1000"><button class="btn primary" type="submit">Send ↗</button></form><p class="footer-note">Test supported languages: English, Spanish, Portuguese. No messages are sent to WhatsApp.</p><button class="btn" id="resetChat">↻ Reset chat</button></section></div>'}
+function renderMessages(){const ms=state.messages.length?state.messages:[{role:"bot",text:"Live AI responses require a connected AI server. This hosted page is a preview only."}];return ms.map(m=>'<div class="bubble '+m.role+'">'+esc(cleanBotText(m.text))+'</div>').join("")}
 function knowledge(){return heading("KNOWLEDGE BASE","Teach your AI about your business.","Add your products, prices, opening hours and services. This is what the assistant uses to answer questions.",'<button class="btn primary" id="saveKnowledge">Save knowledge ✓</button>')+'<div class="two-col"><section class="panel"><h3 class="section-title">Business profile</h3>'+field("business","Business name")+'<div class="field"><label>Industry</label><select id="industry">'+["Auto dealership","Beauty salon","Restaurant","Cleaning services","Real estate","Retail store","Healthcare services","Other"].map(x=>'<option '+(state.settings.industry===x?"selected":"")+'>'+x+'</option>').join("")+'</select></div>'+field("description","Describe what your business does","textarea")+field("hours","Business hours")+'</section><section class="panel"><h3 class="section-title">Products & services</h3>'+field("products","List your offers, one per line","textarea")+field("website","Website URL","url")+'<div class="muted-note">Tip: Give actual prices and conditions, and tell your AI when a human must approve a booking or financing claim. The assistant should never invent available slots, discounts or prices.</div><div class="sep"></div><div class="list-card"><span class="circle">▤</span><span class="info"><b>Product catalog</b><small>Text-based training available now</small></span><span class="pill">Ready</span></div><div class="list-card"><span class="circle">↗</span><span class="info"><b>Google Sheets lead export</b><small>Integration planned • not connected</small></span></div></section></div>'}
 function leads(){return heading("LEAD MANAGEMENT","Every opportunity, in one place.","Monitor prospects and track who needs a callback.",'<button class="btn primary" id="addLead">+ Add a lead</button>')+'<section class="panel"><div class="panel-head"><div><h3>All leads</h3><small>'+state.leads.length+' demo records stored in this browser</small></div><button class="btn" id="exportLeads">↓ Export CSV</button></div>'+leadTable(state.leads)+'</section>'}
 function inbox(){const c=state.convos[state.activeConv]||{name:"No conversations yet",summary:"",messages:[]};return heading("CUSTOMER INBOX","Conversations that convert.","Preview a unified inbox. Live WhatsApp synchronization is not connected yet.",'<button class="btn" data-page="studio">✧ Test your agent</button>')+'<div class="inbox-layout"><section class="panel"><h3 class="section-title">Recent chats</h3><div class="conversation-list">'+state.convos.map((x,i)=>'<button data-conv="'+i+'" class="conversation-btn '+(i===state.activeConv?"active":"")+'"><strong>'+esc(x.name)+'</strong><small>'+esc(x.summary)+'</small></button>').join("")+'</div></section><section class="panel"><div class="panel-head"><div><h3>'+esc(c.name)+'</h3><small>Simulated WhatsApp conversation</small></div><span class="pill">Example</span></div><div class="chat-window">'+c.messages.map(m=>'<div class="bubble '+m.role+'">'+esc(m.text)+'</div>').join("")+'</div><p class="footer-note">These sample messages are not from real customers.</p></section></div>'}
@@ -217,7 +217,7 @@ function billing(){return heading("48-HOUR TRIAL","SmartLinks first. Website wid
 function settings(){return heading("WORKSPACE SETTINGS","Make ZaPZaP yours.","Update your preferences and start preparing for your first customers.",'<button class="btn primary" id="saveSettings">Save changes ✓</button>')+'<div class="two-col"><section class="panel"><h3 class="section-title">Workspace</h3>'+field("business","Company name")+'<div class="field"><label>Preferred response language</label><select id="language">'+["Auto detect","English","Português","Español"].map(x=>'<option '+(state.settings.language===x?"selected":"")+'>'+x+'</option>').join("")+'</select></div>'+field("website","Website","url")+'</section><section class="panel"><h3 class="section-title">Integrations</h3>'+[["WhatsApp Cloud API","Connect Meta Business after approval","Not connected"],["PayPal Subscriptions","Add private production credentials","Demo"],["Supabase","Set up a separate ZaPZaP project","Setup required"],["Ollama","Connect secure local model worker","Optional"]].map(([a,b,c])=>'<div class="list-card"><span class="circle">◇</span><span class="info"><b>'+a+'</b><small>'+b+'</small></span><span class="status new">'+c+'</span></div>').join("")+'</section></div><div class="two-col" style="margin-top:20px">'+virtualNumberPanel()+humanControls()+'</div>'}
 function bind(){
  bindStore();
- if(state.page==='studio')checkAIConnection();
+ if(state.page==='studio'){studioAIReady=false;const inp=$('#chatText');if(inp)inp.disabled=true;const b=$('#chatForm button[type=submit]');if(b)b.disabled=true;checkAIConnection();}
  document.querySelectorAll("[data-page]").forEach(el=>el.addEventListener("click",()=>navigate(el.dataset.page)));
  document.querySelectorAll("[data-tone]").forEach(el=>el.addEventListener("click",()=>{state.settings.tone=el.dataset.tone;view()}));
  document.querySelectorAll("[data-goal]").forEach(el=>el.addEventListener("click",()=>{let a=state.settings.goals;state.settings.goals=a.includes(el.dataset.goal)?a.filter(x=>x!==el.dataset.goal):[...a,el.dataset.goal];view()}));
@@ -225,7 +225,7 @@ function bind(){
  const gen=$("#generateVirtualNumber");if(gen)gen.onclick=()=>{state.settings.virtualNumber=virtualNumber();save("settings",state.settings);view();toast("Virtual demo number generated")};
  const saveContact=$("#saveHumanContact");if(saveContact)saveContact.onclick=()=>{state.settings.humanPhone=$("#humanPhone").value.trim();state.settings.sharePhone=$("#sharePhone").checked;state.settings.allowCallbacks=$("#allowCallbacks").checked;if(state.settings.sharePhone&&!/^\\+?[\\d\\s().-]{7,35}$/.test(state.settings.humanPhone)){toast("Please enter a real business phone number first.");return}save("settings",state.settings);view();toast("Human contact settings saved")};
  const providerSelect=state.role==="admin"?$("#aiProvider"):null;if(providerSelect)providerSelect.onchange=()=>{state.settings.aiProvider=providerSelect.value;save("settings",state.settings);toast(providerSelect.value==="ollama"?"Local Ollama selected — ready to test":"AI provider updated");};
- const chat=$("#chatForm");if(chat)chat.onsubmit=async e=>{e.preventDefault();const input=$("#chatText"),message=input.value.trim();if(!message)return;state.messages.push({role:"user",text:message});input.value="";$("#chatWindow").innerHTML=renderMessages()+'<div class="bubble bot">Typing…</div>';$("#chatWindow").scrollTop=99999;translateUi($("#chatWindow"));const response=await reply(message);state.messages.push({role:"bot",text:response});$("#chatWindow").innerHTML=renderMessages();$("#chatWindow").scrollTop=99999;translateUi($("#chatWindow"))};
+ const chat=$("#chatForm");if(chat)chat.onsubmit=async e=>{e.preventDefault();const input=$("#chatText"),message=input.value.trim();if(!message||!studioAIReady)return;state.messages.push({role:"user",text:message});input.value="";$("#chatWindow").innerHTML=renderMessages()+'<div class="bubble bot">Typing…</div>';$("#chatWindow").scrollTop=99999;translateUi($("#chatWindow"));const response=await reply(message);state.messages.push({role:"bot",text:response||"I’m temporarily unavailable. Please contact the business directly."});$("#chatWindow").innerHTML=renderMessages();$("#chatWindow").scrollTop=99999;translateUi($("#chatWindow"))};
  const reset=$("#resetChat");if(reset)reset.onclick=()=>{state.messages=[];state.callbackStage=null;state.callbackName="";view()};
  const add=$("#addLead");if(add)add.onclick=()=>openModal('<h2>Add a lead</h2><p class="subtext">Create a demo prospect record.</p><form id="leadForm">'+['name','phone','interest'].map(k=>'<div class="field"><label>'+k.toUpperCase()+'</label><input name="'+k+'" required maxlength="150"></div>').join("")+'<button class="btn primary" type="submit">Save lead</button></form>',()=>{$("#leadForm").onsubmit=e=>{e.preventDefault();const fd=new FormData(e.currentTarget);state.leads.unshift({name:fd.get("name"),phone:fd.get("phone"),interest:fd.get("interest"),status:"New",date:"Just now"});save("leads",state.leads);closeModal();view();toast("Demo lead saved ✓")}}); 
  const exp=$("#exportLeads");if(exp)exp.onclick=()=>{const rows=[["Name","Phone","Interest","Status","Date"],...state.leads.map(x=>[x.name,x.phone,x.interest,x.status,x.date])];const csv=rows.map(r=>r.map(c=>'"'+String(c??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="zapzap-leads-demo.csv";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
@@ -237,40 +237,40 @@ function openModal(html,after){$("#modalContent").innerHTML=html;$("#modal").cla
 function closeModal(){$("#modal").classList.add("hidden")}
 const langs={en:{wait:"Thanks for reaching out! We're assisting other customers right now. Someone will be with you shortly.",greet:"Of course! I'd be happy to help. Could you tell me your name and what you're looking for?",price:"Here are some of our listed products or services:\n",hours:"Our hours are ",booking:"I'd be glad to help arrange that. What day and time would you prefer? Our team will confirm availability."},es:{wait:"¡Gracias por escribirnos! Estamos atendiendo a otros clientes. En breve estaremos contigo.",greet:"¡Claro! Con gusto te ayudo. ¿Cómo te llamas y qué estás buscando?",price:"Estos son algunos de nuestros productos o servicios:\n",hours:"Nuestro horario es ",booking:"¡Con gusto! ¿Qué día y hora prefieres? Nuestro equipo confirmará la disponibilidad."},pt:{wait:"Obrigado por entrar em contato! Estamos atendendo outros clientes. Em breve vamos falar com você.",greet:"Claro! Será um prazer ajudar. Qual é o seu nome e o que você procura?",price:"Aqui estão alguns de nossos produtos ou serviços:\n",hours:"Nosso horário é ",booking:"Com prazer! Qual dia e horário você prefere? Nossa equipe vai confirmar a disponibilidade."}};
 function detect(text){if(/[ãõçáéíóúâêôà]/i.test(text)||/\b(olá|oi|vocês|preço|quanto custa|obrigad[oa]|agendar|carro|hoje)\b/i.test(text))return"pt";if(/[¿¡ñ]/.test(text)||/\b(hola|precio|gracias|quiero|cita|mañana|cuánto|tienen|necesito)\b/i.test(text))return"es";return"en"}
-const localAIHost=()=>['localhost','127.0.0.1'].includes(location.hostname)&&location.port==='8788';
+const localAIHost=()=>["localhost","127.0.0.1"].includes(location.hostname)&&location.port==="8788";
+let studioAIReady=false;
+function setStudioConnection(online,label){
+ studioAIReady=online;
+ const badge=document.querySelector("#aiConnectionStatus"),input=document.querySelector("#chatText"),send=document.querySelector("#chatForm button[type=submit]");
+ if(badge){badge.textContent=label;badge.style.background=online?"#e5f8ed":"#fff3df";badge.style.color=online?"#07875a":"#8b641d"}
+ if(input){input.disabled=!online;input.placeholder=online?"Ask about products, services, prices or booking…":"Live AI requires a connected server"}
+ if(send)send.disabled=!online;
+ const note=document.querySelector("#aiUnavailableNotice");if(note)note.hidden=online;
+}
 async function checkAIConnection(){
- const badge=document.querySelector('#aiConnectionStatus');if(!badge)return;
- if(!localAIHost()){badge.textContent=uiLocale==='pt-BR'?'Demo • sem IA conectada':'Demo • AI not connected';badge.style.background='#fff3df';badge.style.color='#8b641d';return;}
+ if(!localAIHost()){setStudioConnection(false,uiLocale==="pt-BR"?"IA não conectada":"AI not connected");return}
  try{
-  const res=await fetch('/api/health',{cache:'no-store',signal:AbortSignal.timeout(5000)});
-  if(!res.ok)throw Error('Local AI service offline');
-  const data=await res.json();
-  if(!document.querySelector('#aiConnectionStatus'))return;
-  const ready=data.aiReady===true;
-  badge.textContent=ready?'● '+(data.model||'Ollama')+' — '+(uiLocale==='pt-BR'?'IA ativa':'AI online'):'● '+(uiLocale==='pt-BR'?'IA indisponível':'AI offline');
-  badge.style.background=ready?'#e5f8ed':'#fff3df';badge.style.color=ready?'#07875a':'#8b641d';
-  badge.title=data.error||'';
- }catch{badge.textContent=uiLocale==='pt-BR'?'IA local não responde':'Local AI not responding';badge.style.background='#fff3df';badge.style.color='#8b641d'}
+  const r=await fetch("/api/health",{cache:"no-store",signal:AbortSignal.timeout(5000)});
+  if(!r.ok)throw Error("Local service not responding");
+  const data=await r.json();
+  setStudioConnection(data.aiReady===true,data.aiReady===true?"● "+(data.model||"Ollama")+" — "+(uiLocale==="pt-BR"?"IA ativa":"AI online"):uiLocale==="pt-BR"?"IA local indisponível":"Local AI offline");
+ }catch{setStudioConnection(false,uiLocale==="pt-BR"?"IA local indisponível":"Local AI offline")}
+}
+function cleanBotText(v){
+ return String(v??"").replace(/https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?\S*/gi,"[private address]").replace(/\\n/g,"\n").trim();
 }
 async function reply(message){
- const lang=detect(message),s=state.settings,dict=langs[lang];
- const human=callbackReply(message,lang);if(human!==null)return human;
- if(localAIHost()){
-  try{
-   const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message,settings:s,catalog:state.catalog.slice(0,100),history:state.messages.slice(-10)})});
-   const j=await r.json();
-   if(r.ok&&j.source==='ai'&&j.reply)return j.reply;
-   if(r.ok&&j.busy)return dict.wait;
-   console.warn('AI response was unavailable or did not contain a visible answer',j?.code||'unknown');
-   return dict.wait;
-  }catch(e){console.error('AI backend request failed',e);return dict.wait}
- }
- const l=message.toLowerCase();
- if(/busy|wait|fila|espera|aguard|queue/i.test(l))return dict.wait;
- if(/price|cost|much|precio|cuánto|preço|quanto|valor|product|produto|carro|vehicle|vehículo/i.test(l))return dict.price+(s.products||'Please ask our team for current pricing.')+'\\n\\n'+dict.greet;
- if(/hour|open|close|horario|horário|aberto|fecha|abren/i.test(l))return dict.hours+s.hours+'.';
- if(/book|appointment|schedule|test drive|agendar|cita|reserva|marcar/i.test(l))return dict.booking;
- return dict.greet+'\\n\\n[Web demo — real Ollama AI requires http://localhost:8788]';
+ const lang=detect(message),dict=langs[lang];
+ if(!studioAIReady||!localAIHost())return null;
+ try{
+  const human=callbackReply(message,lang);if(human!==null)return human;
+  const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message,settings:state.settings,catalog:state.catalog.slice(0,100),history:state.messages.slice(-10)})});
+  const j=await r.json();
+  if(r.ok&&j.source==="ai"&&typeof j.reply==="string"&&j.reply.trim())return cleanBotText(j.reply);
+  if(j.busy)return dict.wait;
+ }catch(e){console.error("Local AI service unavailable",e)}
+ setStudioConnection(false,uiLocale==="pt-BR"?"IA temporariamente indisponível":"AI temporarily unavailable");
+ return null;
 }
 
 document.querySelectorAll(".nav-item").forEach(el=>el.addEventListener("click",()=>navigate(el.dataset.page)));
