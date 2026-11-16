@@ -14,12 +14,18 @@
 <div id="demoGate" class="demo-gate hidden" role="dialog" aria-modal="true" aria-labelledby="demoGateTitle">
   <div class="demo-gate-card">
     <span class="demo-gate-mark">✳</span>
-    <div class="eyebrow">NEXUSSALES AI • ROLE PREVIEW</div>
-    <h1 id="demoGateTitle">Explore the business platform</h1>
-    <p>Explore the Business Owner demo. A private administrator login is available separately.</p>
-    <button id="demoOwnerLogin" class="demo-login-choice" type="button"><span class="demo-login-icon">🏪</span><span><b>Enter as Business Owner</b><small>Configure your AI, leads, brand and business settings</small></span><span>→</span></button>
-    
-    <div class="demo-gate-note">Business-owner demonstration only. Personal accounts, customer data, and billing are not yet enabled.</div>
+    <div class="eyebrow">NEXUSSALES AI • BUSINESS OWNER PREVIEW</div>
+    <h1 id="demoGateTitle">Let's set up your business</h1>
+    <p>Enter your business details and explore your own SmartStore, customer links, and AI setup. This is a browser-only preview until secure account registration is connected.</p>
+    <form id="demoOwnerForm">
+      <div class="field"><label for="previewBusiness">Business name</label><input id="previewBusiness" name="business" maxlength="150" required placeholder="Example: Mary's Marketing Studio" autocomplete="organization"></div>
+      <div class="field"><label for="previewEmail">Your email address</label><input id="previewEmail" name="email" type="email" maxlength="200" required placeholder="you@business.com" autocomplete="email"></div>
+      <div class="field"><label for="previewPhone">Business phone number</label><input id="previewPhone" name="phone" type="tel" maxlength="30" required placeholder="+1 555 555 5555" autocomplete="tel"></div>
+      <button type="submit" class="demo-login-choice"><span class="demo-login-icon">🏪</span><span><b>Start my business preview</b><small>Explore the workspace with your business information</small></span><span>→</span></button>
+    </form>
+    <p id="previewFormError" class="demo-form-error" role="alert"></p>
+    <div class="demo-gate-note"><strong>Preview only:</strong> Your details stay in this browser and are not submitted as a real account. Clearing browser data resets the preview. Real 48-hour trials require an authenticated account and server-side billing.</div>
+    <a href="/account.html" class="demo-real-account-link">Create a secure business account when registration becomes available</a>
   </div>
 </div>
 <script type="module" src="./app.js"></script></body></html>
