@@ -47,7 +47,7 @@ const defaults={business:"My Business",industry:"Other",agent:"Alex",tone:"Frien
 const initialLeads=[];
 const initialConvos=[];
 const read=(key,fallback)=>{try{return JSON.parse(localStorage.getItem("zapzap_"+key))??fallback}catch{return fallback}};
-const state={settings:{...defaults,...read("settings",{})},leads:read("leads",initialLeads),catalog:read("catalog",[]),convos:read("convos",initialConvos),messages:[],callbackStage:null,callbackName:"",page:"overview",activeConv:0,notifications:true,role:(()=>{try{return sessionStorage.getItem("zapzap_demo_role")||null}catch{return null}})()};
+const state={settings:{...defaults,...read("settings",{})},leads:read("leads",initialLeads),catalog:read("catalog",[]),convos:read("convos",initialConvos),messages:[],callbackStage:null,callbackName:"",page:"overview",activeConv:0,notifications:true,role:null};
 const save=(key,value)=>localStorage.setItem("zapzap_"+key,JSON.stringify(value));
 const esc=(s)=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function toast(message){const el=$("#toast");el.textContent=uiLocale==="pt-BR"?(translationsPtBr[message]||message):message;el.classList.add("visible");clearTimeout(window.__toast);window.__toast=setTimeout(()=>el.classList.remove("visible"),3200)}
@@ -272,14 +272,27 @@ async function reply(message){
 
 document.querySelectorAll(".nav-item").forEach(el=>el.addEventListener("click",()=>navigate(el.dataset.page)));
 $("#localeToggle").onclick=toggleLocale;
-function enterDemo(role){if(role!=="owner"&&role!=="admin")return;state.role=role;try{sessionStorage.setItem("zapzap_demo_role",role)}catch{}state.page="overview";view();}
-function demoLogout(){state.role=null;try{sessionStorage.removeItem("zapzap_demo_role")}catch{}view();}
+function enterDemo(role){if(role!=="owner")return;state.role="owner";try{sessionStorage.setItem("zapzap_demo_role","owner")}catch{}state.page="overview";view();}
+async function demoLogout(){const admin=state.role==="admin";state.role=null;try{sessionStorage.removeItem("zapzap_demo_role")}catch{}if(admin){try{await fetch("/.netlify/functions/admin-auth",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"logout"})})}catch{}location.replace("/admin");return;}view();}
 $("#demoOwnerLogin").onclick=()=>enterDemo("owner");
-$("#demoAdminLogin").onclick=()=>enterDemo("admin");
-$("#demoSwitchRole").onclick=()=>enterDemo(state.role==="admin"?"owner":"admin");
 $("#demoLogout").onclick=demoLogout;
 $("#menuToggle").onclick=()=>$(".sidebar").classList.toggle("open");
 $("#notifyBtn").onclick=()=>toast("You're all caught up — demo notifications");
 $("#helpBtn").onclick=()=>openModal('<div class="tagline">GET STARTED</div><h2>Welcome to ZaPZaP AI</h2><p class="subtext">1. Go to Knowledge Base and enter your real products and prices.<br>2. Open AI Agent Studio to choose the assistant personality and test conversations.<br>3. Generate a virtual demo number and add an optional real contact number in Settings.<br>4. Request a callback in the AI Studio chat to create a demo lead.</p><br><button class="btn primary" id="modalOk">Start exploring →</button>',()=>{$("#modalOk").onclick=()=>{closeModal();navigate("studio")}});
 $("#modalClose").onclick=closeModal;$("#modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal()});
-view();
+
+// Only the server-issued HttpOnly cookie can establish admin status.
+// Ignore any legacy sessionStorage role or URL flags unless validated.
+(async()=>{
+ const wantsAdmin=new URLSearchParams(location.search).get("admin")==="1";
+ if(wantsAdmin){
+  try{
+   const response=await fetch("/.netlify/functions/admin-auth",{cache:"no-store",credentials:"same-origin"});
+   const status=await response.json();
+   if(response.ok&&status.authenticated===true){state.role="admin";view();return;}
+  }catch{}
+  location.replace("/admin");return;
+ }
+ if(sessionStorage.getItem("zapzap_demo_role")==="owner")enterDemo("owner");
+ else view();
+})();
