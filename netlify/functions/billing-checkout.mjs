@@ -1,4 +1,4 @@
-import{json,env,sameOrigin,authenticate,entitlement,access,db,paypal}from"./_billing-lib.mjs";
+import{json,env,sameOrigin,authenticate,entitlement,access,db,paypal}from"../lib/billing.mjs";
 export async function handler(event){
  if(event.httpMethod!=="POST")return json(405,{error:"Method not allowed"});
  if(!sameOrigin(event))return json(403,{error:"Request origin rejected"});
