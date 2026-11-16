@@ -47,23 +47,24 @@ const defaults={business:"My Business",industry:"Other",agent:"Alex",tone:"Frien
 const initialLeads=[];
 const initialConvos=[];
 const read=(key,fallback)=>{try{return JSON.parse(localStorage.getItem("zapzap_"+key))??fallback}catch{return fallback}};
-const state={settings:{...defaults,...read("settings",{})},leads:read("leads",initialLeads),catalog:read("catalog",[]),convos:read("convos",initialConvos),messages:[],callbackStage:null,callbackName:"",page:"overview",activeConv:0,notifications:true,role:null};
+const state={settings:{...defaults,...read("settings",{})},leads:read("leads",initialLeads),catalog:read("catalog",[]),convos:read("convos",initialConvos),messages:[],callbackStage:null,callbackName:"",page:"overview",activeConv:0,notifications:true,role:null,previewProfile:read("preview_profile",null)};
 const save=(key,value)=>localStorage.setItem("zapzap_"+key,JSON.stringify(value));
 const esc=(s)=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function toast(message){const el=$("#toast");el.textContent=uiLocale==="pt-BR"?(translationsPtBr[message]||message):message;el.classList.add("visible");clearTimeout(window.__toast);window.__toast=setTimeout(()=>el.classList.remove("visible"),3200)}
 const field=(name,label,type="text")=>'<div class="field"><label for="'+name+'">'+label+'</label>'+(type==="textarea"?'<textarea id="'+name+'">'+esc(state.settings[name])+'</textarea>':'<input id="'+name+'" type="'+type+'" value="'+esc(state.settings[name])+'">')+'</div>';
 function heading(eyebrow,title,subtitle,action=""){return '<div class="page-head"><div><div class="eyebrow">'+eyebrow+'</div><h1>'+title+'</h1><p class="subtext">'+subtitle+'</p></div>'+action+'</div>'}
 function view(){
+  if(state.role==="owner"&&!state.previewProfile)state.role=null;
   const gate=$("#demoGate");
   if(!state.role){$("#app").classList.add("hidden");gate.classList.remove("hidden");translateUi(gate);return;}
   $("#app").classList.remove("hidden");gate.classList.add("hidden");
   $("#demoRoleName").textContent=state.role==="admin"?"Super Admin • Demo":"Business Owner • Demo";
-  const roleBtn=$("#demoSwitchRole");if(roleBtn)roleBtn.textContent=state.role==="admin"?"⇄ Preview Business Owner":"⇄ Preview Super Admin";
+
   const navNames={overview:"Overview",inbox:"Inbox",store:"My Store",leads:"Leads",studio:"AI Agent Studio",knowledge:"Knowledge Base",automations:"Automations",billing:"Plans & Billing",settings:"Settings"};
   $("#currentPage").textContent=navNames[state.page];$("#workspaceName").textContent=state.settings.business||"My Business";
   document.querySelectorAll(".nav-item").forEach(n=>n.classList.toggle("active",n.dataset.page===state.page));
   const views={overview,inbox,store,leads,studio,knowledge,automations,billing,settings};
-  $("#content").innerHTML=views[state.page]();
+  $("#content").innerHTML=(state.role==="owner"?previewNotice():"")+views[state.page]();
   bind();
   translateUi();
 }
@@ -275,9 +276,35 @@ async function reply(message){
 
 document.querySelectorAll(".nav-item").forEach(el=>el.addEventListener("click",()=>navigate(el.dataset.page)));
 $("#localeToggle").onclick=toggleLocale;
-function enterDemo(role){if(role!=="owner")return;state.role="owner";try{sessionStorage.setItem("zapzap_demo_role","owner")}catch{}state.page="overview";view();}
+function previewNotice(){
+ const p=state.previewProfile;if(!p)return "";
+ const ends=Date.parse(p.startedAt)+48*60*60*1000;
+ const hours=Math.max(0,Math.ceil((ends-Date.now())/3600000));
+ return '<div class="preview-trial-banner"><span><b>Business preview • '+esc(p.business)+'</b> · '+esc(p.email)+' · '+esc(p.phone)+'</span><span class="preview-trial-time">'+(hours?hours+' hours remaining in local preview':'48-hour preview period ended')+'</span><a href="/account.html">Real account & billing →</a></div>';
+}
+function enterDemo(role){if(role!=="owner"||!state.previewProfile)return;state.role="owner";try{sessionStorage.setItem("zapzap_demo_role","owner")}catch{}state.page="store";view();}
+$("#demoOwnerForm").onsubmit=e=>{
+ e.preventDefault();
+ const business=$("#previewBusiness").value.trim(),email=$("#previewEmail").value.trim(),phone=$("#previewPhone").value.trim();
+ const error=$("#previewFormError");
+ if(business.length<2||!/^\\S+@\\S+\\.\\S+$/.test(email)||phone.replace(/\\D/g,"").length<7){error.textContent="Enter a valid business name, email, and phone number.";return}
+ const existing=state.previewProfile;
+ if(existing&&existing.email!==email){error.textContent="This browser already has a preview profile. Log out and clear this preview to start another.";return}
+ state.previewProfile=existing||{business,email,phone,startedAt:new Date().toISOString()};
+ save("preview_profile",state.previewProfile);
+ state.settings.business=business;
+ state.settings.slug=cleanSlug(business);
+ state.settings.storeHeadline="Welcome to "+business;
+ state.settings.storeDescription="Explore our products and services and ask how we can help.";
+ state.settings.description="Add a description of "+business+" in Knowledge Base.";
+ state.settings.humanPhone=phone;
+ state.settings.sharePhone=false;
+ save("settings",state.settings);
+ error.textContent="";
+ enterDemo("owner");
+};
 async function demoLogout(){const admin=state.role==="admin";state.role=null;try{sessionStorage.removeItem("zapzap_demo_role")}catch{}if(admin){try{await fetch("/.netlify/functions/admin-auth",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"logout"})})}catch{}location.replace("/admin");return;}view();}
-$("#demoOwnerLogin").onclick=()=>enterDemo("owner");
+
 $("#demoLogout").onclick=demoLogout;
 $("#menuToggle").onclick=()=>$(".sidebar").classList.toggle("open");
 $("#notifyBtn").onclick=()=>toast("You're all caught up — demo notifications");
@@ -296,6 +323,6 @@ $("#modalClose").onclick=closeModal;$("#modal").addEventListener("click",e=>{if(
   }catch{}
   location.replace("/admin");return;
  }
- if(sessionStorage.getItem("zapzap_demo_role")==="owner")enterDemo("owner");
+ if(sessionStorage.getItem("zapzap_demo_role")==="owner"&&state.previewProfile)enterDemo("owner");
  else view();
 })();
