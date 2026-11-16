@@ -11,3 +11,11 @@
 .flag-icon{width:26px;height:26px;flex-shrink:0;display:inline-block;background-color:transparent;background-position:center;background-repeat:no-repeat;background-size:cover;border-radius:50%;font-size:0}
 .flag-icon.flag-br{background-image:url("./assets/flag-br.svg")}
 .flag-icon.flag-us{background-image:url("./assets/flag-us.svg")}
+
+/* Virtual demo channel and optional human handoff controls */
+.virtual-number{font:800 clamp(23px,3vw,34px) Manrope,sans-serif;letter-spacing:-1px;color:#087f60;padding:20px 18px;margin-bottom:12px;background:#eafaf2;border:1px solid #c9efe0;border-radius:12px;text-align:center;white-space:nowrap}
+.virtual-number+p{margin-bottom:18px}
+.contact-option{display:flex;gap:12px;align-items:flex-start;padding:12px 0;color:#26473c;font-weight:650;font-size:12px;line-height:1.5;cursor:pointer}
+.contact-option input{accent-color:#05af80;width:18px;height:18px;flex-shrink:0;margin-top:1px}
+.contact-option+.muted-note{margin:12px 0 18px}
+@media(max-width:750px){.virtual-number{font-size:22px;white-space:normal}}
