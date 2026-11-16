@@ -1,4 +1,5 @@
-import{env,json,str,parse,postOrigin,publishedStore,aiReady,db}from "../lib/tenant.mjs";
+import{env,json,str,parse,postOrigin,publishedStore,aiReady,db,entitlement,access}from "../lib/tenant.mjs";
+import{widgetEnabled}from"../lib/billing.mjs";
 const hits=new Map();
 function throttle(ip){
  const now=Date.now(),a=(hits.get(ip)||[]).filter(t=>now-t<60000);a.push(now);hits.set(ip,a);
@@ -11,11 +12,24 @@ export async function handler(event){
  if(!postOrigin(event))return json(403,{error:"Origin rejected"});
  if(!aiReady())return json(503,{error:"Live AI is not yet available"});
  try{
-  const req=parse(event,12500),slug=str(req.slug,50),message=str(req.message,700);
-  if(!message||!slug)return json(400,{error:"A business and question are required"});
+  const req=parse(event,12500),message=str(req.message,700);
+  if(!message)return json(400,{error:"Question is required"});
   const ip=event.headers["x-nf-client-connection-ip"]||"unknown";
   if(!throttle(ip))return json(429,{error:"Too many requests. Try again later"});
-  const c=env(),published=await publishedStore(c,slug);
+  const c=env();let slug=str(req.slug,50);
+  if(req.botId){
+   const botId=str(req.botId,80);
+   if(!/^bot_[a-z0-9]{20,50}$/.test(botId))return json(404,{error:"Assistant unavailable"});
+   const rows=await db(c,"nx_bots?bot_id=eq."+encodeURIComponent(botId)+"&enabled=eq.true&select=store_id");
+   const bot=rows?.[0];if(!bot)return json(404,{error:"Assistant unavailable"});
+   const linked=await db(c,"nx_stores?id=eq."+encodeURIComponent(bot.store_id)+"&published=eq.true&select=slug,owner_id");
+   const st=linked?.[0];if(!st)return json(404,{error:"Assistant unavailable"});
+   const sub=await entitlement(c,st.owner_id);
+   if(!access(sub).allowed||!widgetEnabled(c,sub))return json(403,{error:"Website assistant requires an active subscription"});
+   slug=st.slug;
+  }
+  if(!slug)return json(400,{error:"Business link required"});
+  const published=await publishedStore(c,slug);
   if(!published)return json(404,{error:"Store not available"});
   const {store,items,ent}=published;
   const dailyLimit=ent.subscription_status==="ACTIVE"?1000:100;
