@@ -17,15 +17,27 @@ const system='You are '+settings.agent+', a business-specific sales and support 
 const messages=[{role:'system',content:system},...history.filter(x=>x.role==='user'||x.role==='bot').slice(-8).map(x=>({role:x.role==='bot'?'assistant':'user',content:String(x.text||'').slice(0,1000)})),{role:'user',content:message}];
 let base,headers,body;
 if(model==='openai'){if(!process.env.OPENAI_API_KEY)throw new Error('OpenAI not configured');base='https://api.openai.com/v1/chat/completions';headers={'Content-Type':'application/json',Authorization:'Bearer '+process.env.OPENAI_API_KEY};body={model:process.env.OPENAI_MODEL||'gpt-4.1-mini',messages,temperature:0.35,max_tokens:350}}
-else{base=(process.env.OLLAMA_BASE_URL||'http://127.0.0.1:11434').replace(/\/$/,'')+'/api/chat';headers={'Content-Type':'application/json'};if(process.env.OLLAMA_AUTH_TOKEN)headers.Authorization='Bearer '+process.env.OLLAMA_AUTH_TOKEN;body={model:process.env.OLLAMA_MODEL||'qwen3:8b',messages,stream:false,options:{temperature:0.3,num_predict:350}}}
-const res=await fetch(base,{method:'POST',headers,body:JSON.stringify(body),signal:AbortSignal.timeout(17000)});if(!res.ok)throw new Error('Upstream '+res.status);const data=await res.json();const text=model==='openai'?data?.choices?.[0]?.message?.content:data?.message?.content;return typeof text==='string'?text.trim().slice(0,2200):''}
+else{base=(process.env.OLLAMA_BASE_URL||'http://127.0.0.1:11434').replace(/\/$/,'')+'/api/chat';headers={'Content-Type':'application/json'};if(process.env.OLLAMA_AUTH_TOKEN)headers.Authorization='Bearer '+process.env.OLLAMA_AUTH_TOKEN;body={model:process.env.OLLAMA_MODEL||'qwen3:8b',messages,stream:false,think:false,options:{temperature:0.3,num_predict:280}}}
+const res=await fetch(base,{method:'POST',headers,body:JSON.stringify(body),signal:AbortSignal.timeout(90000)});if(!res.ok)throw new Error('Upstream '+res.status);const data=await res.json();const text=model==='openai'?data?.choices?.[0]?.message?.content:data?.message?.content;return typeof text==='string'?text.trim().slice(0,2200):''}
 const server=http.createServer(async(req,res)=>{try{
 const url=new URL(req.url,'http://localhost');
-if(url.pathname==='/api/health')return result(res,200,{ok:true,mode:'demo',aiProvider:process.env.AI_PROVIDER||'ollama',publicAI:process.env.ENABLE_PUBLIC_AI_DEMO==='true'});
+if(url.pathname==='/api/health'){
+ const enabled=process.env.ENABLE_LOCAL_AI==='true'||process.env.ENABLE_PUBLIC_AI_DEMO==='true';
+ const provider=process.env.AI_PROVIDER||'ollama';
+ let aiReady=false, error=null;
+ if(provider==='openai'){aiReady=Boolean(process.env.OPENAI_API_KEY);if(!aiReady)error='OpenAI API key not configured';}
+ else{try{
+ const api=(process.env.OLLAMA_BASE_URL||'http://127.0.0.1:11434')+'/api/tags';
+ const response=await fetch(api,{signal:AbortSignal.timeout(2500)});
+ if(response.ok){const data=await response.json();const selected=process.env.OLLAMA_MODEL||'qwen3:8b';aiReady=(data.models||[]).some(m=>m.name===selected||m.name.startsWith(selected+':'));if(!aiReady)error='Model '+selected+' is not installed';}
+ else error='Ollama API returned '+response.status;
+ }catch{error='Ollama is not responding on this computer';}}
+ return result(res,200,{ok:true,mode:'local',aiProvider:provider,enabled,aiReady:aiReady&&enabled,model:process.env.OLLAMA_MODEL||'qwen3:8b',error});
+}
 if(url.pathname==='/api/chat'&&req.method==='POST'){const ip=req.socket.remoteAddress||'unknown';let j;try{j=JSON.parse(await payload(req))}catch{return result(res,400,{error:'Invalid JSON or oversized request'})}const message=String(j.message||'').trim().slice(0,1000);if(!message)return result(res,400,{error:'Message required'});const wait=fallback[language(message)];if(!limit(ip)||active>=Math.max(1,Math.min(4,Number(process.env.MAX_AI_CONCURRENCY||2))))return result(res,200,{reply:wait,busy:true});if(process.env.ENABLE_LOCAL_AI!=='true'&&process.env.ENABLE_PUBLIC_AI_DEMO!=='true')return result(res,503,{error:'AI demo disabled',reply:wait});const settings=safeSettings(j.settings&&typeof j.settings==='object'?j.settings:{});
 const direct=/\b(phone|telephone|number|human|representative|call someone|telefone|n[uú]mero|atendente|falar com|tel[eé]fono|hablar con)\b/i.test(message);
 if(direct&&settings.sharePhone&&/^\+?[\d\s().-]{7,35}$/.test(settings.humanPhone))return result(res,200,{reply:({en:"The business contact number is ",pt:"O telefone de contato da empresa é ",es:"El teléfono de contacto de la empresa es "})[language(message)]+settings.humanPhone});
-active++;try{const answer=await generate(message,settings,Array.isArray(j.history)?j.history:[]);return result(res,200,{reply:answer||wait,busy:!answer})}catch(e){console.warn('AI unavailable:',e.message);return result(res,200,{reply:wait,busy:true})}finally{active--}}
+active++;try{const answer=await generate(message,settings,Array.isArray(j.history)?j.history:[]);return result(res,200,{reply:answer||wait,busy:!answer,source:answer?'ai':'unavailable'})}catch(e){console.warn('AI unavailable:',e.message);return result(res,503,{error:'Ollama inference failed. Check the local server console and model.',detail:e.message})}finally{active--}}
 if(url.pathname==='/api/whatsapp/webhook'&&req.method==='GET'){if(!process.env.WHATSAPP_VERIFY_TOKEN)return result(res,503,{error:'Not configured'});if(url.searchParams.get('hub.mode')==='subscribe'&&url.searchParams.get('hub.verify_token')===process.env.WHATSAPP_VERIFY_TOKEN){res.writeHead(200,{'Content-Type':'text/plain'});return res.end(url.searchParams.get('hub.challenge')||'')}return result(res,403,{error:'Verification failed'})}
 if(url.pathname.startsWith('/api/'))return result(res,501,{error:'Integration not configured; no production messaging or billing occurs in this demo'});
 if(req.method!=='GET'&&req.method!=='HEAD')return result(res,405,{error:'Method not allowed'});
