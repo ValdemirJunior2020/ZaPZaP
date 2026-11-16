@@ -1,160 +1,23 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SmartStore • NexusSales AI</title>
-<style>
-:root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#17362f;background:#f5f8f6}*{box-sizing:border-box}body{margin:0}.top{height:68px;padding:0 max(22px,calc((100vw - 1080px)/2));display:flex;justify-content:space-between;align-items:center;background:white;border-bottom:1px solid #dfeae5}.top b{font-size:21px}.top span{font-size:12px;color:#709185}.top a{color:#07885f;font-size:12px;font-weight:700;text-decoration:none}main{max-width:1080px;margin:auto;padding:23px}.notice{padding:13px 17px;border-radius:12px;border:1px solid #f2ddae;background:#fff7e9;color:#895e1f;font-size:12px;line-height:1.5;margin-bottom:22px}.hero{min-height:260px;padding:35px;border-radius:19px;background:linear-gradient(120deg,#0b533c,#08a579);display:flex;flex-direction:column;justify-content:flex-end;color:#fff;overflow:hidden;background-position:center;background-size:cover}.hero h1{font-size:clamp(27px,5vw,48px);margin:10px 0;letter-spacing:-1.5px}.hero p{max-width:600px;line-height:1.5;margin:0;color:#e8fff4}.eyebrow{font-weight:800;letter-spacing:2px;font-size:10px;color:#8bf3c5}.head{display:flex;justify-content:space-between;gap:18px;align-items:center;margin:27px 0 17px}.head h2{margin:0;font-size:24px}.head small{color:#7e988d}.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(245px,1fr));gap:16px}.card{border:1px solid #e2eee7;background:white;border-radius:16px;overflow:hidden}.card img,.no-image{width:100%;height:170px;object-fit:cover;background:#e7f5ed;display:grid;place-items:center;color:#4c9a7b;font-size:39px}.body{padding:18px}.body b{font-size:16px}.body p{font-size:12px;line-height:1.6;color:#708b7d;min-height:36px}.price{display:block;color:#078a60;font-weight:800;font-size:14px;margin:10px 0}.status{font-size:11px;border-radius:50px;background:#edf7f1;padding:6px 10px;display:inline-block}.btn{background:#06aa77;border:0;color:white;font-weight:700;padding:12px 16px;border-radius:9px;cursor:pointer}.card .btn{display:block;width:100%;margin-top:14px}.empty{padding:50px 20px;text-align:center;border-radius:14px;border:1px dashed #bfdccc;color:#728c7c;background:white}.contact{background:white;border:1px solid #e2ede5;padding:24px;border-radius:16px;margin-top:24px}.contact h3{margin:0 0 8px}.contact p{font-size:13px;color:#718d7f;line-height:1.6}.inquiry-form{padding:24px;background:#fff;border:1px solid #dbece2;border-radius:16px;margin:22px 0}.inquiry-form h3{margin:0 0 9px}.inquiry-form p{font-size:12px;color:#6b8378}.inquiry-form .fields{display:grid;grid-template-columns:1fr 1fr;gap:14px}.inquiry-form label{display:block;font-size:12px;font-weight:700;margin:10px 0 6px}.inquiry-form input,.inquiry-form textarea{width:100%;font:inherit;font-size:14px;border:1px solid #d3e5d8;border-radius:9px;padding:12px}.inquiry-form textarea{min-height:100px;resize:vertical}.inquiry-form button:disabled{opacity:.55}.form-status{font-size:12px;color:#0d7651;line-height:1.5;min-height:20px;margin:12px 0}.notice2{font-size:11px;color:#7a9789;text-align:center;padding:35px 0}@media(max-width:700px){.top span{display:none}.hero{min-height:235px;padding:25px}.head{align-items:start;flex-direction:column}.inquiry-form .fields{grid-template-columns:1fr}}
-
-.ai-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(340px,420px);gap:24px;align-items:start;margin:24px 0}
-.ai-panel{background:#fff;border:1px solid #cde6d9;box-shadow:0 12px 34px #073a2010;border-radius:18px;overflow:hidden;position:sticky;top:16px}
-.ai-header{display:flex;gap:12px;align-items:center;background:#0d6b4c;color:white;padding:17px}.ai-avatar{width:42px;height:42px;display:grid;place-items:center;border-radius:13px;background:#ffffff2a;font-size:24px}.ai-header b{font-size:15px;display:block}.ai-header small{font-size:11px;color:#c9f1dc;display:block;margin-top:5px}
-.ai-messages{height:330px;overflow:auto;display:flex;flex-direction:column;gap:10px;padding:16px;background:#f6faf7}
-.ai-bubble{max-width:90%;padding:12px 14px;font-size:13px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;border-radius:13px;background:white;border:1px solid #e2ede6}.ai-bubble.user{align-self:flex-end;background:#d6f7e5;border-color:#c4eddb}.ai-bubble.assistant{align-self:flex-start}
-.ai-suggestions{display:flex;flex-wrap:wrap;gap:7px;padding:9px 13px;border-top:1px solid #e9f1eb;background:#fff}.ai-suggestions button{background:#eff8f2;color:#087854;border:1px solid #d0eadc;border-radius:30px;font-size:11px;padding:8px 10px;cursor:pointer}
-.ai-input{display:flex;gap:8px;padding:12px;background:white;border-top:1px solid #edf0ed}.ai-input input{flex:1;min-width:0;padding:13px;border:1px solid #d3e6d9;border-radius:10px;font-size:13px}.ai-input button{border:0;border-radius:10px;background:#06a978;color:#fff;font-weight:800;padding:0 16px;cursor:pointer}.ai-input button:disabled{opacity:.5}
-.ai-foot{font-size:11px;padding:10px 13px;color:#708c7e;background:#fff;border-top:1px solid #eef2ef}
-.ai-link{color:#07865f;font-weight:750;cursor:pointer;text-decoration:underline}
-.offering-wrap{min-width:0}.ai-status{font-size:11px;color:#688879;line-height:1.5}
-@media(max-width:850px){.ai-layout{grid-template-columns:1fr}.ai-panel{position:static;order:-1}.ai-messages{height:310px}}
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#064b39"><meta name="description" content="Business products, services, prices and AI customer assistance.">
+<title>SmartStore • NexusSales AI</title><style>
+:root{font:14px system-ui,-apple-system,"Segoe UI",sans-serif;color:#193d2f;background:#f5f9f6}*{box-sizing:border-box}body{margin:0}a{color:#06815c;text-decoration:none}button,input,textarea{font:inherit}button{cursor:pointer}header{height:70px;padding:0 max(20px,calc((100vw - 1150px)/2));background:#fff;border-bottom:1px solid #e3eee7;display:flex;align-items:center;justify-content:space-between}header b{font-size:20px}header small{font-size:11px;color:#859e90}.wrap{max-width:1150px;margin:auto;padding:20px}section.cover{min-height:265px;background:linear-gradient(110deg,#063e30,#08a575);background-size:cover;background-position:center;border-radius:19px;display:flex;align-items:end;overflow:hidden;padding:35px;color:white}section.cover h1{font-size:clamp(27px,5vw,46px);margin:8px 0;letter-spacing:-1.4px}section.cover p{max-width:700px;color:#dcfaeb;line-height:1.7}h2{font-size:23px;letter-spacing:-.5px}.tag{font-size:10px;font-weight:850;letter-spacing:2px;color:#83ffcf}.layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,380px);gap:22px;margin:25px 0;align-items:start}.products{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}.item{background:#fff;border:1px solid #dceadf;border-radius:14px;overflow:hidden}.item img,.item .placeholder{width:100%;height:153px;object-fit:cover;background:#e9f5ed;display:grid;place-items:center;color:#169d71;font-size:36px}.item-body{padding:17px}.item h3{font-size:15px;margin:3px 0}.item p{font-size:12px;color:#758f7d;line-height:1.6}.price{font-weight:850;color:#048d64;font-size:13px}.status{display:block;margin:8px 0;color:#799487;font-size:11px}.btn{background:#05a775;color:white;border:0;border-radius:10px;padding:12px 15px;font-weight:750;font-size:12px}.item .btn{width:100%;margin-top:9px}.chat{background:#fff;border:1px solid #d0e5d8;border-radius:16px;overflow:hidden;position:sticky;top:18px}.chat-head{background:#087657;color:#fff;padding:17px;display:flex;align-items:center;gap:11px}.avatar{background:#ffffff24;border-radius:11px;width:42px;height:42px;display:grid;place-items:center;font-size:24px}.chat-head b{display:block;font-size:15px}.chat-head small{color:#d4f4e3;font-size:11px}.feed{height:350px;overflow:auto;padding:15px;display:flex;flex-direction:column;gap:10px;background:#f6faf7}.bubble{max-width:89%;padding:12px 13px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6;font-size:12px;border-radius:12px;border:1px solid #e2ebe5;background:#fff}.bubble.user{align-self:flex-end;background:#d8f7e5}.bubble.bot{align-self:flex-start}.quick{display:flex;gap:6px;flex-wrap:wrap;padding:10px;border-top:1px solid #edf2ed}.quick button{background:#eef8f1;border:1px solid #cde9d9;border-radius:30px;padding:8px 9px;color:#067853;font-weight:700;font-size:10px}.chat-form{display:flex;gap:7px;padding:10px;border-top:1px solid #e6eee8}.chat-form input{flex:1;min-width:0;border-radius:9px;padding:11px;border:1px solid #d0e2d5;font-size:12px}.chat-form button{border:0;border-radius:9px;background:#06a674;color:#fff;padding:0 13px;font-weight:800}.chat-form button:disabled{opacity:.5}.chat-foot{padding:10px;text-align:center;color:#7e9588;font-size:10px}.card{background:white;border:1px solid #dbe9de;border-radius:15px;padding:22px;margin:19px 0}.card p{color:#819589;line-height:1.7;font-size:12px}.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.contact label{display:block;color:#3b6552;font-weight:700;font-size:12px;margin:13px 0 8px}.contact input,.contact textarea{display:block;width:100%;border:1px solid #d3e5d8;padding:12px;border-radius:9px;margin-top:7px;outline:none}.contact textarea{min-height:105px}.form-msg{font-size:12px;min-height:18px;color:#086a48;margin-top:11px}.notice{background:#fff7e7;border:1px solid #efdeb5;padding:16px;border-radius:12px;color:#805e30;line-height:1.7;font-size:12px}.empty{padding:45px;background:white;border:1px dashed #bfdacb;border-radius:13px;text-align:center;color:#7e9989}.hidden{display:none!important}.footer{text-align:center;padding:35px;color:#99ac9f;font-size:11px}@media(max-width:850px){.layout{grid-template-columns:1fr}.chat{position:static;grid-row:1}.feed{height:300px}}@media(max-width:510px){.wrap{padding:12px}section.cover{padding:25px;min-height:215px}.contact-grid{grid-template-columns:1fr}}
 </style></head><body>
-<header class="top"><b id="businessName">NexusSales SmartStore</b><span>Products • Services • Quotes • Consultations</span><a href="./index.html">Owner dashboard</a></header>
-<main><div class="notice" id="publishNotice"><strong>Store setup:</strong> Your catalog is currently loaded from this browser. Customer inquiries are collected on the server, but public cross-device catalogs still require a connected business database.</div>
-<section class="hero" id="hero"><span class="eyebrow">WELCOME</span><h1 id="headline">Your business, one smart link.</h1><p id="intro">Products, services and expert advice, all in one place.</p></section>
-<section class="ai-layout">
-<div class="offering-wrap"><div class="head"><div><h2>What we offer</h2><small id="count">Explore our offerings</small></div><button class="btn" id="contactButton">Ask for help</button></div><section id="cards" class="cards"></section></div>
-<aside class="ai-panel" aria-label="Business assistant chat">
-<div class="ai-header"><div class="ai-avatar">✦</div><div><b id="aiTitle">Ask our business assistant</b><small id="aiMode">Checking assistant connection…</small></div></div>
-<div class="ai-messages" id="aiMessages" role="log" aria-live="polite"><div class="ai-bubble assistant" id="aiWelcome">Hi! How can I help you today?</div></div>
-<div class="ai-suggestions"><button type="button" data-ask="What products or services do you offer?">What do you offer?</button><button type="button" data-ask="Can you tell me about prices?">Prices</button><button type="button" data-ask="What are your business hours?">Business hours</button><button type="button" id="aiContact">Request a quote</button></div>
-<form class="ai-input" id="aiChatForm"><input id="aiQuestion" maxlength="700" required autocomplete="off" placeholder="Ask about products, services or prices…"><button id="aiSend" type="submit">Send</button></form>
-<div class="ai-foot"><span id="aiStatus">Answers use the business information provided by the owner.</span> <span class="ai-link" id="askHuman">Contact the business</span></div>
-</aside>
-</section>
-<section class="contact"><h3>Have a question or need a quote?</h3><p>Tell the business what you need. We will record your inquiry securely for follow-up. No appointment is automatically confirmed.</p><button class="btn" id="contactBottom">Request information</button></section>
-<section id="inquirySection" class="inquiry-form"><h3>Contact this business</h3><p>Enter your information and we'll record your request for the business team.</p>
-<form name="nexus-store-inquiry" id="inquiryForm" method="POST" data-netlify="true" netlify-honeypot="bot-field" action="/store.html">
-<input type="hidden" name="form-name" value="nexus-store-inquiry">
-<p style="display:none"><label>Leave blank <input name="bot-field"></label></p>
-<input type="hidden" name="business_slug" id="leadSlug"><input type="hidden" name="business_name" id="leadBusiness"><input type="hidden" name="offering" id="leadOffering">
-<div class="fields"><div><label for="leadName">Your name</label><input id="leadName" name="customer_name" required maxlength="100" autocomplete="name"></div>
-<div><label for="leadEmail">Email address</label><input id="leadEmail" type="email" name="customer_email" maxlength="180" autocomplete="email" required></div></div>
-<label for="leadPhone">Phone number</label><input id="leadPhone" type="tel" name="customer_phone" maxlength="40" autocomplete="tel" placeholder="Optional">
-<label for="leadMessage">What do you need?</label><textarea id="leadMessage" name="customer_message" required maxlength="1500" placeholder="Tell us about the product or service you're interested in"></textarea>
-<button class="btn" id="leadSubmit" type="submit">Send inquiry</button>
-<p class="form-status" id="formStatus" role="status" aria-live="polite"></p>
-</form></section>
-<div class="notice2">Powered by NexusSales AI • Your inquiry will be recorded for follow-up</div></main>
-<script>
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const img=u=>{let v=String(u||'');return /^https:\/\//i.test(v)||/^data:image\/(jpeg|png|webp);base64,/i.test(v)?v:''};
-let settings={},items=[];try{settings=JSON.parse(localStorage.getItem('zapzap_settings')||'{}');items=JSON.parse(localStorage.getItem('zapzap_catalog')||'[]')}catch{}
-const slug=String(new URLSearchParams(location.search).get('s')||'');const normalized=s=>String(s||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9-]/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'');
-if(slug&&slug!==normalized(settings.slug||settings.business)){settings={};items=[];}
-document.title=(settings.business||'SmartStore')+' • NexusSales AI';
-document.querySelector('#businessName').textContent=settings.business||'NexusSales SmartStore';
-document.querySelector('#headline').textContent=settings.storeHeadline||'Your business, one smart link.';
-document.querySelector('#intro').textContent=settings.storeDescription||'Explore products and services, and connect with a specialist.';
-const hero=document.querySelector('#hero');if(img(settings.storeImage)){hero.style.backgroundImage='linear-gradient(90deg,#073b32c7,#073b3277),url("'+img(settings.storeImage).replace(/[\r\n"'()]/g,'')+'")'}
-document.querySelector('#count').textContent=items.length+' offering(s)';
-
-const aiFeed=document.getElementById("aiMessages"),aiInput=document.getElementById("aiQuestion"),aiSend=document.getElementById("aiSend");
-const aiHistory=[];let aiLive=false;
-const businessData=()=>({name:settings.business||"This business",description:[settings.description||"",settings.storeDescription||"",settings.products||""].join("\n").slice(0,1800),hours:settings.hours||""});
-function assistantBubble(role,text){
- const b=document.createElement("div");b.className="ai-bubble "+role;b.textContent=String(text).slice(0,2200).replace(/\\n/g,"\n");aiFeed.appendChild(b);aiFeed.scrollTop=aiFeed.scrollHeight;return b;
-}
-function localCatalogReply(q){
- const l=q.toLowerCase(),list=items.filter(p=>p.name).slice(0,12);
- const about=l.match(/(price|cost|how much|quanto|preço|precio|valor|services|service|product|offer|provide|sell|available|do you|dois|faz|serviço|produto|list|what)/);
- const entry=list.find(p=>String(p.name).toLowerCase().split(/\s+/).some(w=>w.length>4&&l.includes(w)));
- if(entry){
-  let response=entry.name+": "+(entry.description||"Details are available on request")+".";
-  response+=" "+(entry.price?"Listed price: "+entry.price+".":"Pricing needs confirmation.");
-  response+=" "+(entry.availability?"Status: "+entry.availability+".":"Availability needs confirmation.");
-  return response+"\n\nWould you like to request a quote or ask another question?";
- }
- if(/hour|open|close|hor[aá]rio|funcionamento|abert|hora/i.test(l))return settings.hours?"Our listed hours are "+settings.hours+".":"Business hours haven't been provided yet. You can request details using the form below.";
- if(/contact|call|phone|email|human|representative|agent|quote|estimate|appointment|booking|schedule|orçamento|cita|consulta/i.test(l))return "I can help you send a request to the business. Select “Contact the business” below to enter your details. An appointment isn't confirmed until the team responds.";
- if(about){
-  if(!list.length)return "The business hasn't published its offerings in this preview. You can send a question using the contact form below.";
-  return "Here are the offerings the business has listed:\n"+list.map(p=>"• "+p.name+(p.price?" — "+p.price:" — price on request")).join("\n")+"\n\nWhat would you like to know more about?";
- }
- if(businessData().description)return businessData().description.slice(0,600)+"\n\nYou can ask me about the listed offerings, prices, hours, or request a quote.";
- return "I can answer questions about the products and services listed here. What are you interested in?";
-}
-async function initAssistant(){
- document.getElementById("aiTitle").textContent=(settings.agent||"Business assistant")+" · "+(settings.business||"SmartStore");
- document.getElementById("aiWelcome").textContent="Hi! Welcome to "+(settings.business||"our store")+"! Ask me about products, services, prices, or requesting a quote.";
- // Show grounded catalog help when cloud AI isn't connected, rather than pretending it is generative AI.
- try{
-  if(location.hostname==="localhost"||location.hostname==="127.0.0.1"){
-   const r=await fetch("/api/health",{cache:"no-store"});const j=await r.json();
-   if(r.ok&&j.aiReady)aiLive=true;
-  }else{
-   const r=await fetch("/.netlify/functions/store-chat",{cache:"no-store"});const j=await r.json();aiLive=r.ok&&j.online===true;
-  }
- }catch{}
- document.getElementById("aiMode").textContent=aiLive?"AI assistant · Live":"Catalog assistant · Store information";
- document.getElementById("aiStatus").textContent=aiLive?"AI answers are grounded in the store's setup.":"Catalog answers use listed store details. Live AI isn't connected yet.";
-}
-async function askAssistant(question){
- question=String(question||"").trim().slice(0,700);if(!question)return;
- assistantBubble("user",question);aiInput.value="";aiInput.disabled=true;aiSend.disabled=true;
- const pending=assistantBubble("assistant","Checking the business details…");
- let result="";
- if(aiLive){
-  try{
-   let r,j;
-   if(location.hostname==="localhost"||location.hostname==="127.0.0.1"){
-    r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:question,settings:{business:businessData().name,agent:settings.agent||"Assistant",description:businessData().description,hours:businessData().hours,tone:"Friendly & professional",products:settings.products||""},catalog:items.slice(0,35),history:aiHistory.slice(-8)})});
-    j=await r.json();if(r.ok&&j.source==="ai")result=j.reply;
-   }else{
-    r=await fetch("/.netlify/functions/store-chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:question,business:businessData(),catalog:items.slice(0,35),history:aiHistory.slice(-8)})});
-    j=await r.json();if(r.ok&&j.source==="ai")result=j.reply;
-   }
-  }catch{}
- }
- if(!result){
-  result=localCatalogReply(question);
-  if(aiLive){aiLive=false;document.getElementById("aiMode").textContent="Catalog assistant · Store information";document.getElementById("aiStatus").textContent="Live AI temporarily unavailable. Showing only published store information.";}
- }
- pending.textContent=String(result).replace(/\\n/g,"\n").slice(0,2200);
- aiHistory.push({role:"user",content:question},{role:"assistant",content:result});if(aiHistory.length>10)aiHistory.splice(0,aiHistory.length-10);
- aiFeed.scrollTop=aiFeed.scrollHeight;aiInput.disabled=false;aiSend.disabled=false;aiInput.focus();
-}
-document.getElementById("aiChatForm").onsubmit=e=>{e.preventDefault();askAssistant(aiInput.value)};
-document.querySelectorAll("[data-ask]").forEach(btn=>btn.onclick=()=>askAssistant(btn.dataset.ask));
-document.getElementById("aiContact").onclick=()=>inquire("a quote");
-document.getElementById("askHuman").onclick=()=>inquire("the business");
-initAssistant();
-
-document.querySelector('#leadSlug').value=slug||normalized(settings.slug||settings.business);
-document.querySelector('#leadBusiness').value=(settings.business||'Unpublished store').slice(0,150);
-const cards=document.querySelector('#cards');
-cards.innerHTML=items.length?items.map(p=>'<article class="card">'+(img(p.image)?'<img alt="" src="'+esc(img(p.image))+'">':'<div class="no-image">✧</div>')+'<div class="body"><b>'+esc(p.name)+'</b><span class="price">'+esc(p.price||'Request a quote')+'</span><span class="status">'+esc(p.type||'Service')+' · '+esc(p.availability||'Contact for details')+'</span><p>'+esc(p.description||'')+'</p><button class="btn" data-inquiry="'+esc(p.name)+'">Ask about this</button></div></article>').join(''):'<div class="empty">Nothing listed yet. The owner can add products, services, packages and consultations in My Store.</div>';
-function inquire(name){
- document.getElementById('leadOffering').value=String(name).slice(0,130);
- const box=document.getElementById('leadMessage');
- if(!box.value.trim()&&name!=='the business'&&name!=='an offering')box.value='I would like more information about '+name+'.';
- document.getElementById('inquirySection').scrollIntoView({behavior:'smooth',block:'start'});
- document.getElementById('leadName').focus({preventScroll:true});
-}
-document.querySelectorAll('[data-inquiry]').forEach(b=>b.onclick=()=>inquire(b.dataset.inquiry));
-document.querySelector('#contactButton').onclick=()=>inquire('the business');
-document.querySelector('#contactBottom').onclick=()=>inquire('an offering');
-document.getElementById('inquiryForm').addEventListener('submit',async e=>{
- e.preventDefault();
- const form=e.currentTarget,button=document.getElementById('leadSubmit'),message=document.getElementById('formStatus');
- if(!form.reportValidity())return;
- button.disabled=true;button.textContent='Sending…';message.textContent='';
- try{
-  const payload=new URLSearchParams(new FormData(form));
-  const response=await fetch('/store.html',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:payload.toString()});
-  if(!response.ok)throw new Error('Submission was not accepted');
-  form.reset();
-  document.querySelector('#leadSlug').value=slug||normalized(settings.slug||settings.business);
-  document.querySelector('#leadBusiness').value=(settings.business||'Unpublished store').slice(0,150);
-  message.textContent='Your inquiry was submitted. Thank you! The business team can review it and follow up.';
- }catch{
-  message.textContent='Your inquiry could not be sent. Please try again later.';
- }finally{button.disabled=false;button.textContent='Send inquiry'}
-});
-</script></body></html>
+<header><b id="businessName">NexusSales SmartStore</b><small>Powered by NexusSales AI</small></header>
+<main class="wrap"><div class="notice" id="storeUnavailable">Loading this business…</div>
+<div id="storeContent" class="hidden"><section class="cover" id="hero"><div><div class="tag">WELCOME</div><h1 id="headline"></h1><p id="intro"></p></div></section>
+<div class="layout"><section><h2>Products & services</h2><p id="count"></p><div id="products" class="products"></div></section>
+<aside class="chat" id="chatPanel"><div class="chat-head"><div class="avatar">✦</div><div><b id="assistantName">Business AI assistant</b><small id="chatStatus">Checking live AI…</small></div></div>
+<div id="chatFeed" class="feed" role="log" aria-live="polite"><div class="bubble bot" id="welcome">Hi! How can I help?</div></div>
+<div class="quick"><button type="button" data-ask="What do you offer?">What do you offer?</button><button type="button" data-ask="Can you explain your prices?">Pricing</button><button type="button" data-ask="What are your business hours?">Hours</button><button type="button" id="askQuote">Request quote</button></div>
+<form id="chatForm" class="chat-form"><input id="question" maxlength="700" required placeholder="Ask about this business…" autocomplete="off"><button id="chatSend" type="submit">Send</button></form>
+<div class="chat-foot">Answers use the business's published information. No purchases or bookings are processed by chat.</div></aside></div>
+<section class="card contact" id="contact"><h2>Ask for a quote or a callback</h2><p>Send your request directly to this business. The team can review it and reply; no appointment is automatically booked.</p>
+<form id="contactForm"><div class="contact-grid"><label>Your name<input id="customerName" maxlength="100" autocomplete="name" required></label><label>Email address<input id="customerEmail" maxlength="180" type="email" autocomplete="email" required></label></div>
+<label>Phone number (optional)<input id="customerPhone" maxlength="35" type="tel" autocomplete="tel"></label>
+<label>What can we help with?<textarea id="customerMessage" maxlength="1500" required></textarea></label>
+<label class="hidden">Leave this blank<input id="hp" tabindex="-1" autocomplete="off"></label>
+<button id="contactSend" class="btn" type="submit">Send inquiry</button><div id="contactStatus" class="form-msg" aria-live="polite"></div></form></section></div></main>
+<div class="footer">NexusSales AI • Digital storefront and AI-powered customer assistance</div>
+<script type="module" src="/store-live.js"></script></body></html>
