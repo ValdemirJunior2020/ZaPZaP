@@ -72,6 +72,13 @@ async function loadWorkspace(){
   render();
  }catch(e){toast(e.message);if(/sign in|session|invalid login|unauthorized/i.test(e.message)){saveSession(null);setVisible(false)}else{setVisible(true);$("viewContent").innerHTML='<div class="alert">Business data is temporarily unavailable. Your account has not been logged out. Refresh the page to retry.</div>'}}
 }
+function showConfirmationEmail(email){
+ const node=$("authMsg");node.textContent="";
+ const lead=document.createElement("span");lead.textContent="We've sent a verification link. Please check: ";node.append(lead);
+ const address=document.createElement("strong");address.textContent=email;address.style.cssText="display:inline-block;background:#e1fbec;color:#075d45;border:1px solid #7fdab5;padding:5px 9px;border-radius:8px;font-weight:850";node.append(address);
+ const instruction=document.createElement("span");instruction.textContent=" Check Inbox, Spam/Junk, and Promotions. Click Confirm Email, then return and sign in. Your trial starts only when your SmartStore goes live.";node.append(instruction);
+ node.setAttribute("role","status");
+}
 async function submitAuth(e){
  e.preventDefault();if(busy||!cfg)return;
  const email=$("authEmail").value.trim(),password=$("authPassword").value;
@@ -82,7 +89,7 @@ async function submitAuth(e){
   const j=await authRequest(signingUp?"/auth/v1/signup":"/auth/v1/token?grant_type=password",
    {email,password,...(signingUp?{data:{business_name:name,phone}}:{})});
   if(!j.access_token){
-   text("authMsg","Account created. Check your email for a confirmation link, then sign in. Your trial hasn't started yet.");
+   showConfirmationEmail(email);
    return;
   }
   saveSession({...j,email,expires_at:j.expires_at||Math.floor(Date.now()/1000)+Number(j.expires_in||3600)});
