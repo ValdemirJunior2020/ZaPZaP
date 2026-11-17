@@ -24,6 +24,7 @@ export async function handler(event){
   const user=await authenticate(event,c);
   const record=await entitlement(c,user.id);
   if(!record)return json(503,{error:"Account billing setup is incomplete"});
+  if(record.is_complimentary===true)return json(409,{error:"This account has permanent complimentary access. No subscription is required."});
   if(record.subscription_status==="ACTIVE")return json(409,{error:"Subscription already active"});
   if(record.paypal_subscription_id){
    const old=await paypal(c,"/v1/billing/subscriptions/"+encodeURIComponent(record.paypal_subscription_id));
