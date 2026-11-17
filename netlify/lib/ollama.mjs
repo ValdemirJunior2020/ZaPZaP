@@ -1,0 +1,23 @@
+// Private Ollama transport for NexusSales public and trial conversations.
+// Only a server-defined HTTPS gateway is accepted; never use a customer-controlled URL.
+function config(){
+ const raw=(process.env.NEXUS_OLLAMA_URL||"").trim();
+ const token=process.env.NEXUS_OLLAMA_GATEWAY_TOKEN||"";
+ if(!raw||!token)return null;
+ let url;try{url=new URL(raw)}catch{return null}
+ if(url.protocol!=="https:"||url.username||url.password||url.search||url.hash||!url.hostname||url.pathname!=="/")return null;
+ return{base:url.origin,token,model:process.env.NEXUS_OLLAMA_MODEL||"qwen3:8b"};
+}
+function ready(){return process.env.NEXUS_LIVE_CHAT_ENABLED==="true"&&Boolean(config())}
+async function query(messages,{maxTokens=380,timeoutMs=75000}={}){
+ const c=config();if(!c)throw Error("Ollama gateway not configured");
+ const r=await fetch(c.base+"/api/chat",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+c.token},
+  body:JSON.stringify({model:c.model,messages,stream:false,think:false,options:{temperature:0.25,num_predict:maxTokens}}),signal:AbortSignal.timeout(timeoutMs)});
+ if(!r.ok)throw Error("Ollama gateway status "+r.status);
+ const j=await r.json();
+ const answer=String(j?.message?.content||"").trim();
+ if(!answer)throw Error("Ollama model did not provide visible answer");
+ return answer.slice(0,2500);
+}
+async function verify(){if(!ready())return false;try{return Boolean(await query([{role:"user",content:"Reply with exactly OK."}],{maxTokens:30,timeoutMs:18000}))}catch(e){console.error("Ollama readiness:",e.message);return false}}
+export{ready,verify,query};
