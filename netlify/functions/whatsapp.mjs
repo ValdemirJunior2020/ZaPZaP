@@ -1,60 +1,85 @@
 import crypto from "node:crypto";
-
-const json=(statusCode,body)=>({statusCode,headers:{"Content-Type":"application/json","Cache-Control":"no-store"},body:JSON.stringify(body)});
-const rawBody=event=>event.isBase64Encoded?Buffer.from(event.body||"","base64"):Buffer.from(event.body||"","utf8");
-const lang=(s)=>/[ãõçáéíóúâêôà]/i.test(s)||/\b(olá|oi|vocês|preço|quanto custa|obrigad[oa]|agendar|carro|hoje)\b/i.test(s)?"pt":/[¿¡ñ]/.test(s)||/\b(hola|precio|gracias|quiero|cita|mañana|cuánto|tienen|necesito)\b/i.test(s)?"es":"en";
-const busy={en:"Thanks for messaging us! We are helping other customers right now and will be with you shortly.",es:"¡Gracias por escribirnos! Estamos atendiendo a otros clientes. En breve estaremos contigo.",pt:"Obrigado por entrar em contato! Estamos atendendo outros clientes. Em breve vamos falar com você."};
-const trim=(s,n)=>String(s||"").slice(0,n);
-async function respondToCustomer(text){
-  const language=lang(text);
-  const business=trim(process.env.ZAP_BUSINESS_NAME||"our business",120);
-  const hours=trim(process.env.ZAP_BUSINESS_HOURS||"",300);
-  const offerings=trim(process.env.ZAP_BUSINESS_PRODUCTS||"",1800);
-  if(process.env.OPENAI_API_KEY){
-    const system="You are a concise WhatsApp customer service and sales assistant for "+business+". Always reply in the customer's language. Never invent prices, inventory, availability, appointments or payment confirmation. When uncertain ask to transfer to a human. Hours: "+hours+". Products: "+offerings;
-    const controller=AbortSignal.timeout(8500);
-    try {
-      const r=await fetch("https://api.openai.com/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+process.env.OPENAI_API_KEY},body:JSON.stringify({model:process.env.OPENAI_MODEL||"gpt-4.1-mini",messages:[{role:"system",content:system},{role:"user",content:text}],max_tokens:220,temperature:0.3}),signal:controller});
-      if(r.ok){const j=await r.json();const response=j?.choices?.[0]?.message?.content;if(typeof response==="string"&&response.trim())return response.trim().slice(0,2000)}
-    }catch(e){console.warn("AI fallback:",e.message)}
-  }
-  const offers={
-    en:"Hi! Thanks for contacting "+business+". "+(offerings?"Here are our listed offerings: "+offerings+". ":"")+"What can I help you with today?",
-    es:"¡Hola! Gracias por contactar a "+business+". "+(offerings?"Nuestros productos y servicios: "+offerings+". ":"")+"¿En qué podemos ayudarte?",
-    pt:"Olá! Obrigado por entrar em contato com "+business+". "+(offerings?"Nossos produtos e serviços: "+offerings+". ":"")+"Como podemos ajudar?"
-  };
-  if(/\b(busy|wait|aguarde|espera|fila)\b/i.test(text))return busy[language];
-  return offers[language];
+import{env,db,json,entitlement,access,offerings}from "../lib/tenant.mjs";
+import{businessMessages}from"../lib/business-ai.mjs";
+import{query as ollamaQuery,ready as ollamaReady}from"../lib/ollama.mjs";
+import{allow}from"../lib/abuse.mjs";
+const raw=e=>e.isBase64Encoded?Buffer.from(e.body||"","base64"):Buffer.from(e.body||"","utf8");
+const cap=(v,n)=>String(v||"").slice(0,n);
+const graphVersion=()=>/^v\d+\.\d+$/.test(process.env.META_GRAPH_VERSION||"")?process.env.META_GRAPH_VERSION:"v23.0";
+const validMetaId=x=>/^[0-9]{5,30}$/.test(x||"");
+async function sendText(phoneId,to,body){
+ const token=process.env.WHATSAPP_ACCESS_TOKEN||"";
+ if(!token)throw Error("WhatsApp access token unavailable");
+ const r=await fetch("https://graph.facebook.com/"+graphVersion()+"/"+encodeURIComponent(phoneId)+"/messages",{
+  method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},
+  body:JSON.stringify({messaging_product:"whatsapp",to,type:"text",text:{preview_url:false,body:cap(body,3900)}}),
+  signal:AbortSignal.timeout(13000)
+ });
+ if(!r.ok)throw Error("Meta outbound HTTP "+r.status);
 }
-async function sendText(to,body){
-  const phone=process.env.WHATSAPP_PHONE_NUMBER_ID,token=process.env.WHATSAPP_ACCESS_TOKEN;
-  if(!phone||!token)throw new Error("WhatsApp credentials not configured");
-  const version=process.env.META_GRAPH_VERSION||"v23.0";
-  const response=await fetch("https://graph.facebook.com/"+version+"/"+encodeURIComponent(phone)+"/messages",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({messaging_product:"whatsapp",to,type:"text",text:{preview_url:false,body:body.slice(0,3900)}}),signal:AbortSignal.timeout(10000)});
-  if(!response.ok){const detail=await response.text();throw new Error("Meta API "+response.status+" "+detail.slice(0,300))}
-  return response.json();
+async function channel(c,phoneId){
+ const rows=await db(c,"nx_whatsapp_channels?phone_number_id=eq."+encodeURIComponent(phoneId)+"&enabled=eq.true&select=store_id");
+ const ch=rows?.[0];if(!ch)return null;
+ const stores=await db(c,"nx_stores?id=eq."+encodeURIComponent(ch.store_id)+"&published=eq.true&select=*");
+ const store=stores?.[0];if(!store)return null;
+ const ent=await entitlement(c,store.owner_id);
+ return access(ent).allowed?{store,ent}:null;
 }
-export const handler=async(event)=>{
-  if(event.httpMethod==="GET"){
-    const p=event.queryStringParameters||{};
-    if(!process.env.WHATSAPP_VERIFY_TOKEN)return json(503,{error:"Webhook not configured"});
-    if(p["hub.mode"]==="subscribe"&&p["hub.verify_token"]===process.env.WHATSAPP_VERIFY_TOKEN)return{statusCode:200,headers:{"Content-Type":"text/plain"},body:p["hub.challenge"]||""};
-    return json(403,{error:"Invalid webhook verification token"});
+async function processMessage(c,phoneId,message){
+ const found=await channel(c,phoneId);
+ if(!found){console.warn("WhatsApp phone number unmapped or inactive");return false}
+ const id=cap(message.id,200),text=cap(message.text?.body,700),from=cap(message.from,35);
+ if(!id||!text||!/^\d{7,20}$/.test(from))return false;
+ const claimed=await db(c,"rpc/nx_claim_whatsapp_message",{method:"POST",body:{p_message_id:id,p_store_id:found.store.id}});
+ if(claimed!==true)return false; // Never send twice on duplicate webhook delivery.
+ const update=async status=>db(c,"nx_whatsapp_messages?message_id=eq."+encodeURIComponent(id),{method:"PATCH",body:{status},prefer:"return=minimal"});
+ try{
+  if(!ollamaReady())throw Error("Ollama gateway offline");
+  if(!await allow(c,"whatsapp",phoneId+":"+from,20,3600))throw Error("WhatsApp client budget reached");
+  const max=found.ent.subscription_status==="ACTIVE"?1000:100;
+  const allowed=await db(c,"rpc/nx_consume_chat_quota",{method:"POST",body:{p_store_id:found.store.id,p_cap:max}});
+  if(allowed!==true)throw Error("Store AI budget reached");
+  const products=await offerings(c,found.store.id);
+  const prompts=businessMessages(found.store,products,text);
+  const answer=await ollamaQuery(prompts,{maxTokens:280,timeoutMs:18000});
+  await sendText(phoneId,from,answer);
+  await update("sent");
+  return true;
+ }catch(e){
+  console.error("WhatsApp message not delivered:",e.message);
+  await update("failed").catch(()=>{});
+  return false;
+ }
+}
+export async function handler(event){
+ if(event.httpMethod==="GET"){
+  const p=event.queryStringParameters||{};
+  if(!process.env.WHATSAPP_VERIFY_TOKEN)return json(503,{error:"Webhook not configured"});
+  if(p["hub.mode"]==="subscribe"&&p["hub.verify_token"]===process.env.WHATSAPP_VERIFY_TOKEN)
+    return{statusCode:200,headers:{"Content-Type":"text/plain"},body:p["hub.challenge"]||""};
+  return json(403,{error:"Invalid verification token"});
+ }
+ if(event.httpMethod!=="POST")return json(405,{error:"Method not allowed"});
+ if(!process.env.WHATSAPP_APP_SECRET)return json(503,{error:"Webhook not configured"});
+ const body=raw(event);if(body.length>250000)return json(413,{error:"Payload too large"});
+ const sig=event.headers?.["x-hub-signature-256"]||event.headers?.["X-Hub-Signature-256"]||"";
+ const expected="sha256="+crypto.createHmac("sha256",process.env.WHATSAPP_APP_SECRET).update(body).digest("hex");
+ if(sig.length!==expected.length||!crypto.timingSafeEqual(Buffer.from(sig),Buffer.from(expected)))return json(403,{error:"Invalid signature"});
+ let payload;try{payload=JSON.parse(body.toString("utf8"))}catch{return json(400,{error:"Invalid JSON"})}
+ if(payload.object!=="whatsapp_business_account")return json(200,{received:true});
+ const changes=(payload.entry||[]).flatMap(x=>x.changes||[]);
+ let received=0,delivered=0;
+ const c=env();
+ for(const change of changes){
+  const phoneId=String(change.value?.metadata?.phone_number_id||"");
+  if(!validMetaId(phoneId))continue;
+  // One configured Meta number maps to exactly one verified NexusSales tenant.
+  const messages=(change.value?.messages||[]).filter(m=>m?.type==="text"&&m.id&&m.from&&m.text?.body);
+  for(const message of messages.slice(0,3)){
+   received++;
+   try{if(await processMessage(c,phoneId,message))delivered++}
+   catch(e){console.error("WhatsApp request failed:",e.message)}
   }
-  if(event.httpMethod!=="POST")return json(405,{error:"Method not allowed"});
-  const secret=process.env.WHATSAPP_APP_SECRET;
-  if(!secret)return json(503,{error:"Webhook secret not configured"});
-  const signature=event.headers?.["x-hub-signature-256"]||event.headers?.["X-Hub-Signature-256"]||"";
-  const expected="sha256="+crypto.createHmac("sha256",secret).update(rawBody(event)).digest("hex");
-  const a=Buffer.from(signature),b=Buffer.from(expected);
-  if(a.length!==b.length||!crypto.timingSafeEqual(a,b))return json(403,{error:"Invalid signature"});
-  let payload;try{payload=JSON.parse(rawBody(event).toString("utf8"))}catch{return json(400,{error:"Invalid JSON"})}
-  const incoming=(payload.entry||[]).flatMap(x=>x.changes||[]).flatMap(x=>x.value?.messages||[]).filter(x=>x.type==="text"&&x.from&&x.text?.body);
-  if(!incoming.length)return json(200,{ok:true,processed:0});
-  // This prototype processes incoming events synchronously. Production needs durable idempotency and a queue.
-  let sent=0;
-  for(const message of incoming.slice(0,3)){
-    try{const reply=await respondToCustomer(trim(message.text.body,1500));await sendText(message.from,reply);sent++}catch(e){console.error("WhatsApp send error",e.message);return json(502,{ok:false,error:"WhatsApp delivery failed",sent})}
-  }
-  return json(200,{ok:true,processed:sent});
-};
+ }
+ return json(200,{received:true,messages:received,delivered});
+}
