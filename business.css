@@ -69,3 +69,31 @@
 @media(max-width:850px){.demo-layout{grid-template-columns:1fr}.demo-chat-card{min-height:460px}.demo-chat-messages{min-height:220px}}
 @media(max-width:520px){.demo-section{padding:40px 15px}.demo-business-panel{padding:17px}.demo-chat-header{padding:15px 13px}.demo-chat-controls{padding:13px}.demo-chat-messages{padding:18px 13px}.demo-industry{padding:9px 3px;font-size:10px}.demo-industry img{height:34px}.demo-catalog-item{font-size:11px;flex-wrap:wrap}.demo-chat-header strong{font-size:12px}.demo-chat-header small{font-size:8px}}
 @media(prefers-reduced-motion:reduce){.demo-industry{transition:none}}
+
+
+/* Owner-only Qwen3 preview. Testing does not publish or start a trial. */
+.testbot-wrap{display:grid;grid-template-columns:minmax(250px,.88fr) minmax(320px,1.12fr);gap:17px;align-items:start;margin:18px 0}
+.testbot-wrap .card{margin:0;min-width:0}
+.testbot-setup h2{font-size:24px;letter-spacing:-.7px;margin:12px 0}
+.testbot-setup p{font-size:13px;line-height:1.7;color:#708f80}
+.testbot-status{color:#1c7250;font-size:12px;font-weight:650;padding:10px 0;border-bottom:1px solid #e5f0e9}
+.testbot-setup .testbot-help{font-size:11px;margin:19px 0 13px}
+.testbot-setup .actions{display:flex;flex-wrap:wrap;gap:8px}
+.testbot-setup .actions .button{font-size:11px}
+.testbot-chat{display:flex;flex-direction:column;min-height:500px;padding:0!important;overflow:hidden}
+.testbot-chat-head{display:flex;gap:12px;align-items:center;background:linear-gradient(100deg,#095443,#086f57);color:#fff;padding:18px 21px}
+.testbot-ai-icon{width:42px;height:42px;border-radius:13px;background:#6af7cd;color:#07553e;display:grid;place-items:center;font-size:24px}
+.testbot-chat-head strong{display:block;font-size:14px}
+.testbot-chat-head small{display:block;color:#bef4e0;font-size:9px;letter-spacing:.9px;margin-top:3px}
+.testbot-messages{flex:1;overflow-y:auto;max-height:360px;min-height:265px;display:flex;flex-direction:column;gap:12px;padding:19px;background:linear-gradient(140deg,#f5fcf8,#fff)}
+.testbot-bubble{max-width:88%;padding:12px 15px;border-radius:16px;font-size:13px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.testbot-bubble.assistant{align-self:flex-start;background:#e6f4eb;color:#224f39;border-bottom-left-radius:4px}
+.testbot-bubble.user{align-self:flex-end;background:#05a77b;color:#fff;border-bottom-right-radius:4px}
+.testbot-controls{padding:16px 19px 19px;border-top:1px solid #e0eee5}
+.testbot-hints{font-size:11px;color:#779585;line-height:1.6;margin-bottom:12px}
+.testbot-form{display:flex;gap:8px;align-items:stretch}
+.testbot-form input{flex:1;min-width:0;border:1px solid #c8e0d3;border-radius:11px;padding:12px;font-size:13px}
+.testbot-form button{white-space:nowrap}
+.testbot-meta{font-size:11px;color:#6c9280;line-height:1.5;margin:12px 0 0}
+@media(max-width:1000px){.testbot-wrap{grid-template-columns:1fr}}
+@media(max-width:550px){.testbot-wrap{gap:13px}.testbot-setup{padding:18px!important}.testbot-chat{min-height:440px}.testbot-messages{min-height:230px;padding:12px}.testbot-controls{padding:13px}.testbot-form button{padding:11px 13px}}
