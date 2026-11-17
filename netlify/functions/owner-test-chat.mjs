@@ -33,6 +33,11 @@ export async function handler(event){
  }catch(error){
   console.error("Owner private AI test failed:",String(error?.message||error).slice(0,160));
   const code=error?.status||503;
-  return json(code,{error:code===401?"Please sign in again.":code===400?"Invalid request.":code===403?"Access denied.":"The live AI isn't responding. Check the secure Ollama gateway; your trial has not been started."});
+  const detail=String(error?.message||"");
+  if(/^Ollama gateway status (401|403)$/.test(detail))return json(502,{code:"GATEWAY_AUTH",error:"Ollama gateway rejected the token. Netlify's gateway token must match your local gateway token."});
+  if(/^Ollama gateway status (404|502|503|521|522|523|530)$/.test(detail))return json(503,{code:"GATEWAY_ROUTE",error:"Cloudflare is not reaching the local Ollama gateway. Check the tunnel route."});
+  if(error?.name==="TimeoutError"||error?.name==="AbortError")return json(503,{code:"GATEWAY_TIMEOUT",error:"Ollama did not finish replying in time. Your test does not start a trial."});
+  if(error instanceof TypeError||/fetch failed|ENOTFOUND|ECONNREFUSED|EAI_AGAIN/i.test(detail))return json(503,{code:"GATEWAY_NETWORK",error:"Netlify cannot connect to the Cloudflare Ollama gateway."});
+  return json(code,{code:"TEST_UNAVAILABLE",error:code===401?"Please sign in again.":code===400?"Invalid request.":code===403?"Access denied.":"The AI test is currently unavailable. Your access and trial remain unchanged."});
  }
 }
