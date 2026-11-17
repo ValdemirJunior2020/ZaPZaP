@@ -90,3 +90,24 @@ test("Shared adapter forwards Node.js POST body and auth header",async()=>{
  assert.equal(response.status,200);
  assert.deepEqual(JSON.parse(response.body),{ok:true});
 });
+
+
+test("Ollama configuration failures return safe specific codes",async()=>{
+ const {readiness}=await import("../netlify/lib/ollama.mjs");
+ const names=["NEXUS_LIVE_CHAT_ENABLED","NEXUS_OLLAMA_URL","NEXUS_OLLAMA_GATEWAY_TOKEN"];
+ const old=Object.fromEntries(names.map(name=>[name,process.env[name]]));
+ try{
+  delete process.env.NEXUS_LIVE_CHAT_ENABLED;
+  delete process.env.NEXUS_OLLAMA_URL;
+  delete process.env.NEXUS_OLLAMA_GATEWAY_TOKEN;
+  assert.equal(readiness().code,"CHAT_DISABLED");
+  process.env.NEXUS_LIVE_CHAT_ENABLED=" true ";
+  assert.equal(readiness().code,"GATEWAY_URL_MISSING");
+  process.env.NEXUS_OLLAMA_URL="http://127.0.0.1:11434/";
+  assert.equal(readiness().code,"GATEWAY_URL_INVALID");
+  process.env.NEXUS_OLLAMA_URL="https://nexus-ollama.hotelplannerqa.com/";
+  assert.equal(readiness().code,"GATEWAY_TOKEN_MISSING");
+  process.env.NEXUS_OLLAMA_GATEWAY_TOKEN="test-token";
+  assert.deepEqual(readiness(),{ready:true,code:"READY"});
+ }finally{for(const name of names){if(old[name]===undefined)delete process.env[name];else process.env[name]=old[name]}}
+});
