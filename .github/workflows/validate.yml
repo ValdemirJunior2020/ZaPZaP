@@ -11,7 +11,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm run check
+      - run: npm run test:ci
       - name: HTTP smoke test
         run: |
           node server.mjs > /tmp/zapzap.log 2>&1 &
