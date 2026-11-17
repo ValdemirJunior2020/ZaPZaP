@@ -1,3 +1,4 @@
+import{bookPublic}from"../lib/calendar.mjs";
 import{allow,clientIp}from"../lib/abuse.mjs";
 import{env,json,str,parse,postOrigin,publishedStore,db}from"../lib/tenant.mjs";
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -29,6 +30,9 @@ export async function handler(event){
    const sources=await db(c,"nx_qr_sources?code=eq."+encodeURIComponent(str(p.sourceCode,80))+"&store_id=eq."+encodeURIComponent(found.store.id)+"&enabled=eq.true&select=id");
    sourceId=sources?.[0]?.id||null;
   }
+  // Structured appointment requests use transactional calendar booking. No unscreened date text is treated as a confirmed booking.
+  if(kind==="appointment"&&p.serviceId&&p.staffId&&p.startAt)
+   return bookPublic(c,found.store,p,sessionId,sourceId);
   const rows=await db(c,"nx_leads",{method:"POST",body:{
    store_id:found.store.id,session_id:sessionId,source_id:sourceId,
    customer_name:name,customer_email:email,customer_phone:phone,interest,status:kind==="appointment"?"Appointment Requested":"New",
