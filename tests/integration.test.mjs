@@ -113,3 +113,55 @@ test("PayPal billing remains disabled pending sandbox validation",async()=>{
  const r=await checkout({httpMethod:"POST",headers:{host:"zapzap-bot.netlify.app",origin:"https://zapzap-bot.netlify.app"},body:JSON.stringify({tier:"core"})});
  assert.equal(r.statusCode,503);
 });
+
+test("Anonymous AI demo routes only fictional business catalogs through Ollama",async()=>{
+ configure();
+ const {handler}=await import("../netlify/functions/demo-chat.mjs");
+ const original=globalThis.fetch;
+ let ollama=null,quotaCalls=0;
+ globalThis.fetch=async(url,options={})=>{
+  const u=String(url);
+  if(u.includes("/rest/v1/rpc/nx_consume_abuse_budget")){quotaCalls++;return res(true)}
+  if(u==="https://qwen.example.com/api/chat"){ollama=JSON.parse(options.body);return res({message:{content:"The Harborline SUV is $24,900 in this fictional demo."}})}
+  throw Error("unexpected demo request "+u);
+ };
+ try{
+  const event={httpMethod:"POST",headers:{origin:"https://zapzap-bot.netlify.app",host:"zapzap-bot.netlify.app","x-nf-client-connection-ip":"192.0.2.18"},body:JSON.stringify({business:"auto",message:"How much is the SUV?",store_id:"forged",catalog:[{name:"Other tenant"}]})};
+  const result=await handler(event);
+  assert.equal(result.statusCode,200);
+  assert.equal(JSON.parse(result.body).source,"ollama");
+  assert.match(JSON.stringify(ollama.messages),/SunHarbor Auto/);
+  assert.match(JSON.stringify(ollama.messages),/24,900/);
+  assert.doesNotMatch(JSON.stringify(ollama.messages),/Other tenant|forged/);
+  assert.equal(quotaCalls,3);
+ }finally{globalThis.fetch=original}
+});
+test("Anonymous demo rejects unknown business and oversized question before calling the model",async()=>{
+ configure();
+ const {handler}=await import("../netlify/functions/demo-chat.mjs");
+ const original=globalThis.fetch;
+ globalThis.fetch=async()=>{throw Error("Must not call any external service")};
+ try{
+  const base={httpMethod:"POST",headers:{origin:"https://zapzap-bot.netlify.app",host:"zapzap-bot.netlify.app"}};
+  assert.equal((await handler({...base,body:JSON.stringify({business:"real-store-id",message:"Hello"})})).statusCode,400);
+  assert.equal((await handler({...base,body:JSON.stringify({business:"auto",message:"x".repeat(351)})})).statusCode,400);
+  assert.equal((await handler({...base,headers:{origin:"https://other-site.example",host:"zapzap-bot.netlify.app"},body:JSON.stringify({business:"auto",message:"Hello"})})).statusCode,403);
+ }finally{globalThis.fetch=original}
+});
+test("Anonymous demo rate limit refuses requests without invoking Ollama",async()=>{
+ configure();
+ const {handler}=await import("../netlify/functions/demo-chat.mjs");
+ const original=globalThis.fetch;
+ let modelCalled=false;
+ globalThis.fetch=async(url)=>{
+  if(String(url).includes("nx_consume_abuse_budget"))return res(false);
+  if(String(url).includes("/api/chat"))modelCalled=true;
+  throw Error("Unexpected network call "+url);
+ };
+ try{
+  const event={httpMethod:"POST",headers:{origin:"https://zapzap-bot.netlify.app",host:"zapzap-bot.netlify.app"},body:JSON.stringify({business:"hvac",message:"AC pricing?"})};
+  // Mocked transient backend errors must also fail closed, without a model invocation.
+  assert.equal((await handler(event)).statusCode,503);
+  assert.equal(modelCalled,false);
+ }finally{globalThis.fetch=original}
+});
