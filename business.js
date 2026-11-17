@@ -93,6 +93,7 @@ async function submitAuth(e){
 function signOut(){saveSession(null);workspace=null;setVisible(false);window.scrollTo(0,0)}
 function statusText(){
  const a=workspace?.access||{},r=a.reason;
+ if(r==="COMPLIMENTARY")return"Lifetime complimentary access";
  if(r==="PAID")return"Subscription active";
  if(r==="TRIAL")return a.trialHoursLeft+" hours left in trial";
  if(r==="TRIAL_EXPIRED")return"Trial ended • subscription required";
@@ -119,6 +120,7 @@ function render(){
 function renderOverview(){
  const s=workspace.store,items=workspace.offerings||[],leads=workspace.leads||[];
  let html='<div class="view-grid"><div class="card"><div class="meta">Published storefront</div><strong class="metric">'+(s?.published?'Live':'Not live')+'</strong><p>'+(s?.published?'Your SmartLink is available to customers.':'Complete setup to publish your business.')+'</p></div><div class="card"><div class="meta">Offerings</div><strong class="metric">'+items.length+'</strong><p>Products, services and consultations</p></div><div class="card"><div class="meta">Customer inquiries</div><strong class="metric">'+leads.length+'</strong><p>Leads linked to this business</p></div></div>';
+ if(workspace.access.reason==="COMPLIMENTARY")html+='<div class="alert success">Your business has lifetime complimentary access. No trial countdown or subscription payment is required.</div>';
  if(!workspace.aiConfigured)html+='<div class="alert">Live AI is not yet connected to NexusSales. Your trial will NOT start, and your public store cannot be published until the hosted AI service is configured.</div>';
  else if(!s?.published)html+='<div class="alert success">Your AI service is available. Save your store and offerings, then publish to start the 48-hour trial.</div>';
  if(workspace.access.reason==="TRIAL_EXPIRED")html+='<div class="alert">Your 48-hour trial has ended. A verified PayPal subscription is required to resume your store and AI assistant.</div>';
@@ -198,7 +200,7 @@ async function submitTestBot(event,retry=true){
    testBotHistory.push({role:"user",content:message},{role:"assistant",content:data.reply});
   }
   testBotHistory=testBotHistory.slice(-6);
-  text("testBotStatus","Answered by Ollama Qwen3. Your 48-hour trial has not started.");
+  text("testBotStatus",workspace?.access?.reason==="COMPLIMENTARY"?"Answered by Qwen3. Your complimentary access stays active.":"Answered by Ollama Qwen3. Your 48-hour trial has not started.");
  }catch(error){
   pending.textContent=error?.name==="TimeoutError"?"Your AI did not answer in time. Try again.":error.message;
   text("testBotStatus","No fake answers were used. Your trial remains unchanged.");
@@ -216,7 +218,7 @@ function renderLinks(){
  '<a class="button" href="sms:?body='+encodeURIComponent("Explore "+s.name+": "+url)+'">Share by text</a>'+
  '<a class="button" href="mailto:?subject='+encodeURIComponent("Explore "+s.name)+'&body='+encodeURIComponent("You can ask our AI assistant about our offerings here: "+url)+'">Share by email</a></div>'+
  '<img class="qr" alt="Store SmartLink QR code" loading="lazy" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&amp;data='+encodeURIComponent(url)+'">'+
- '<div class="actions"><button id="publishStore" class="primary" '+(!workspace.aiConfigured||!isEditable()||!(workspace.offerings||[]).length||s.published?'disabled':'')+'>Publish store & start trial</button>'+
+ '<div class="actions"><button id="publishStore" class="primary" '+(!workspace.aiConfigured||!isEditable()||!(workspace.offerings||[]).length||s.published?'disabled':'')+'>'+(workspace.access.reason==="COMPLIMENTARY"?"Publish store — free forever":"Publish store & start trial")+'</button>'+
  (s.published?'<button id="pauseStore" class="button">Unpublish store</button>':'')+'</div></div>'+
  '<div class="card"><h2>Website widget • +$79/month</h2><p>Embed your AI salesperson on an existing website. The 48-hour trial includes widget access; after the trial, an active $228/month bundled subscription is required.</p>'+(
  workspace.bot?.enabled?'<label>Install script (add before the closing body tag)<textarea id="widgetCode" rows="3" readonly>'+htmlEsc('<script src="'+location.origin+'/widget.js" data-bot-id="'+workspace.bot.bot_id+'" async></'+'script>')+'</textarea></label><div class="actions"><button class="button" id="copyWidgetCode">Copy widget code</button><button class="button danger" id="disableWidget">Disable widget</button></div>':
@@ -232,7 +234,7 @@ function renderLeads(){
 }
 function renderBilling(){
  const a=workspace.access||{},url="/account.html";
- const status=a.reason==="TRIAL"?"Your trial ends "+new Date(a.trialEndsAt).toLocaleString():a.reason==="PAID"?"Your account is subscribed.":a.reason==="TRIAL_EXPIRED"?"The trial has ended.":"The 48-hour trial has not started. It begins when your live AI store is published.";
+ const status=a.reason==="COMPLIMENTARY"?"Lifetime complimentary account — no expiration or subscription payment required.":a.reason==="TRIAL"?"Your trial ends "+new Date(a.trialEndsAt).toLocaleString():a.reason==="PAID"?"Your account is subscribed.":a.reason==="TRIAL_EXPIRED"?"The trial has ended.":"The 48-hour trial has not started. It begins when your live AI store is published.";
  return '<div class="card"><h2>'+htmlEsc(statusText())+'</h2><p>'+htmlEsc(status)+'</p><div class="view-grid"><div><strong class="metric">$149<small>/mo</small></strong><p>Core store, AI salesperson, SmartLinks and leads.</p></div><div><strong class="metric">$228<small>/mo</small></strong><p>Core + embedded website widget ($79 add-on).</p></div></div><div class="actions"><a class="primary" href="'+url+'">Manage PayPal subscription</a></div><p class="hint">Checkout remains disabled until billing, provider and database integrations pass production validation.</p></div>';
 }
 function bindView(){
@@ -250,7 +252,7 @@ function bindView(){
  if(viewName==="links"&&workspace.store){
   $("copyLink").onclick=()=>navigator.clipboard.writeText(smartUrl()).then(()=>toast("SmartLink copied")).catch(()=>toast("Unable to copy"));
   const pub=$("publishStore");if(pub)pub.onclick=async()=>{
-   if(!confirm("Publish your store and start the 48-hour trial now?"))return;
+   if(!confirm(workspace.access.reason==="COMPLIMENTARY"?"Publish your store now? Your complimentary access will remain free.":"Publish your store and start the 48-hour trial now?"))return;
    try{await ownerApi("publish",{});await loadWorkspace();toast("Your store is now live!")}catch(e){toast(e.message)}
   };
   const enable=$("enableWidget");if(enable)enable.onclick=async()=>{try{await ownerApi("enable_widget",{});await loadWorkspace();viewName="links";render();toast("Widget code generated")}catch(e){toast(e.message)}};
