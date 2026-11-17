@@ -9,7 +9,7 @@ const toast=s=>{$("toast").textContent=s;$("toast").classList.remove("hidden");s
 const text=(id,value)=>{const e=$(id);if(e)e.textContent=value};
 function setVisible(loggedIn){
  $("marketing").classList.toggle("hidden",loggedIn);$("signupArea").classList.toggle("hidden",loggedIn);
- $("features").classList.toggle("hidden",loggedIn);$("pricing").classList.toggle("hidden",loggedIn);
+ $("features").classList.toggle("hidden",loggedIn);$("pricing").classList.toggle("hidden",loggedIn);$("liveDemo").classList.toggle("hidden",loggedIn);
  $("workspace").classList.toggle("hidden",!loggedIn);$("topnav").classList.toggle("hidden",loggedIn);$("accountTop").classList.toggle("hidden",!loggedIn);
 }
 function authFields(){
