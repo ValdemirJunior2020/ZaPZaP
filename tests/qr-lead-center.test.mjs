@@ -94,3 +94,21 @@ test("Owner transcript lookup is restricted to own lead/store",async()=>{
   assert.equal(messagesFetched,0);
  }finally{globalThis.fetch=old}
 });
+
+test("Embedded widget and account scripts remain syntactically valid",async()=>{
+ const {readFile}=await import("node:fs/promises");
+ const {fileURLToPath}=await import("node:url");
+ const {resolve,dirname}=await import("node:path");
+ const root=resolve(dirname(fileURLToPath(import.meta.url)),"..");
+ for(const path of ["widget-chat.html","account.html"]){
+  const html=await readFile(resolve(root,path),"utf8");
+  const scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(x=>x[1]).filter(x=>x.trim());
+  assert.ok(scripts.length, path+" must contain its inline script");
+  for(const code of scripts)assert.doesNotThrow(()=>new Function(code),path+" contains invalid script");
+ }
+ const store=await readFile(resolve(root,"store-live.js"),"utf8");
+ assert.match(store,/sourceCode\?"&src="/,"tracked QR sources must reach public API");
+ const confirmation=await readFile(resolve(root,"supabase/templates/confirmation.html"),"utf8");
+ assert.match(confirmation,/{{ \.ConfirmationURL }}/);
+ assert.match(confirmation,/{{ \.Email }}/);
+});
