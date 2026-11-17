@@ -89,6 +89,7 @@ async function submitInquiry(e){
 }
 $("chatForm").onsubmit=e=>{e.preventDefault();ask($("question").value)};
 document.querySelectorAll("[data-ask]").forEach(btn=>btn.onclick=()=>ask(btn.dataset.ask));
-$("askQuote").onclick=()=>requestQuote("a quote");
+$("askQuote").onclick=()=>{$("requestType").value="quote";requestQuote("a quote")};
+$("askAppointment").onclick=()=>{$("requestType").value="appointment";$("requestType").dispatchEvent(new Event("change"));requestQuote("an appointment")};
 $("contactForm").onsubmit=submitInquiry;
 load();
