@@ -34,11 +34,12 @@ async function db(c,path,{method="GET",body,prefer}={}){
  return data;
 }
 async function entitlement(c,id){
- const rows=await db(c,"nx_entitlements?user_id=eq."+encodeURIComponent(id)+"&select=user_id,trial_started_at,subscription_status,paypal_subscription_id,paypal_plan_id");
+ const rows=await db(c,"nx_entitlements?user_id=eq."+encodeURIComponent(id)+"&select=user_id,trial_started_at,subscription_status,paypal_subscription_id,paypal_plan_id,is_complimentary");
  return rows?.[0]||null;
 }
 function access(ent){
  if(!ent)return{allowed:false,reason:"NO_ACCOUNT",trialEndsAt:null,trialHoursLeft:0};
+ if(ent.is_complimentary===true)return{allowed:true,reason:"COMPLIMENTARY",trialEndsAt:null,trialHoursLeft:null,subscriptionStatus:"COMPLIMENTARY",subscriptionId:null,subscriptionPlan:null};
  const end=ent.trial_started_at?Date.parse(ent.trial_started_at)+48*60*60*1000:NaN;
  const paid=ent.subscription_status==="ACTIVE";
  const trial=["TRIAL","PENDING"].includes(ent.subscription_status)&&Number.isFinite(end)&&Date.now()<end;
@@ -48,7 +49,7 @@ const pricing=Object.freeze({core:{amount:149,label:"NexusSales SmartLinks",widg
 function planId(c,tier){return tier==="core_widget"?c.widgetPlan:c.plan}
 function widgetEnabled(c,ent){
  const a=access(ent);
- return a.allowed&&(a.reason==="TRIAL"||Boolean(c.widgetPlan&&ent?.paypal_plan_id===c.widgetPlan&&ent?.subscription_status==="ACTIVE"));
+ return a.allowed&&(a.reason==="TRIAL"||a.reason==="COMPLIMENTARY"||Boolean(c.widgetPlan&&ent?.paypal_plan_id===c.widgetPlan&&ent?.subscription_status==="ACTIVE"));
 }
 async function paypalToken(c){
  if(!c.clientId||!c.secret)throw Object.assign(new Error("PayPal not configured"),{status:503});
