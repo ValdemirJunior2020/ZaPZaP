@@ -1,3 +1,4 @@
+import{ownerCalendar,calendarOwnerData}from"../lib/calendar.mjs";
 import{normalizePersonality,PERSONALITIES}from"../lib/ai-personalities.mjs";
 import{cancelSubscription,deleteAccount}from"../lib/account-lifecycle.mjs";
 import{widgetEnabled}from"../lib/billing.mjs";
@@ -21,7 +22,8 @@ export async function handler(event){
    const qrSources=store?await db(c,"nx_qr_sources?store_id=eq."+encodeURIComponent(store.id)+"&select=id,code,label,enabled,offering_id,scan_count,created_at&order=created_at.desc&limit=100"):[];
    let bot=null;
    if(store){try{const found=await db(c,"nx_bots?store_id=eq."+encodeURIComponent(store.id)+"&select=bot_id,enabled,greeting,primary_color");bot=found?.[0]||null}catch{}}
-   return json(200,{email:user.email,profile,store,offerings:items,leads,qrSources,bot,widgetAllowed:widgetEnabled(c,ent),access:access(ent),aiConfigured:aiReady()});
+   const calendar=await calendarOwnerData(c,store);
+   return json(200,{email:user.email,profile,store,offerings:items,leads,qrSources,calendar,bot,widgetAllowed:widgetEnabled(c,ent),access:access(ent),aiConfigured:aiReady()});
   }
   const data=parse(event,30000),action=str(data.action,40);
   if(action==="cancel_subscription")return cancelSubscription(c,user,ent);
@@ -50,6 +52,7 @@ export async function handler(event){
    return json(200,{store});
   }
   if(!store)return json(400,{error:"Save your business details first"});
+  if(action.startsWith("calendar_"))return ownerCalendar(c,store,action,data);
   if(action==="save_chat_settings"){
    const count=Number(data.chatMaxMessages),minutes=Number(data.chatMaxMinutes);
    if(!Number.isInteger(count)||count<5||count>30||!Number.isInteger(minutes)||minutes<5||minutes>30)return json(400,{error:"Choose 5–30 messages and 5–30 minutes"});
