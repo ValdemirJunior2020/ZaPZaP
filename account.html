@@ -29,13 +29,13 @@ async function refresh(){
  el("accountEmail").textContent=sessionStorage.getItem("nexus_account_email")||(()=>{try{return JSON.parse(sessionStorage.getItem("nexus_owner_v1")||"null")?.email}catch{return null}})()||"Business owner";
  if(!r.ok){el("billingStatus").textContent="Billing setup incomplete";el("trialDetails").textContent=data.error||"Connection unavailable";el("subscribe").disabled=true;return}
  const ends=data.trialEndsAt?new Date(data.trialEndsAt).toLocaleString():"Not started";
- const paid=data.reason==="PAID",trial=data.reason==="TRIAL",notStarted=data.reason==="NOT_STARTED";
- el("billingStatus").textContent=paid?"✓ Subscription active":trial?"48-hour trial • "+data.trialHoursLeft+" hours remaining":notStarted?"Trial available — not started":"Your free trial has ended";
+ const comp=data.reason==="COMPLIMENTARY",paid=data.reason==="PAID",trial=data.reason==="TRIAL",notStarted=data.reason==="NOT_STARTED";
+ el("billingStatus").textContent=comp?"✓ Lifetime complimentary access":paid?"✓ Subscription active":trial?"48-hour trial • "+data.trialHoursLeft+" hours remaining":notStarted?"Trial available — not started":"Your free trial has ended";
  el("trialDetails").textContent=notStarted?"Your 48-hour trial begins once the business's hosted AI is working and you publish the SmartStore.":paid?"Paid access is active.":trial?"Trial expires: "+ends+". You may subscribe at any time.":"Trial expired: "+ends+". A subscription is required for access.";
- el("subscribe").disabled=paid||!(selectedTier==="core_widget"?data.widgetPlanConfigured:data.planConfigured);
- el("subscribe").textContent=paid?"Active subscriber":(selectedTier==="core_widget"?data.widgetPlanConfigured:data.planConfigured)?"Subscribe • $"+(selectedTier==="core_widget"?"228":"149")+"/month":"PayPal sandbox setup pending";
- el("tierCore").disabled=paid;el("tierWidget").disabled=paid;
- if(paid){el("tierCore").setAttribute("aria-pressed",String(!data.widgetEnabled));el("tierWidget").setAttribute("aria-pressed",String(data.widgetEnabled));}
+ el("subscribe").disabled=comp||paid||!(selectedTier==="core_widget"?data.widgetPlanConfigured:data.planConfigured);
+ el("subscribe").textContent=comp?"No payment required":paid?"Active subscriber":(selectedTier==="core_widget"?data.widgetPlanConfigured:data.planConfigured)?"Subscribe • $"+(selectedTier==="core_widget"?"228":"149")+"/month":"PayPal sandbox setup pending";
+ el("tierCore").disabled=comp||paid;el("tierWidget").disabled=comp||paid;
+ if(comp||paid){el("tierCore").setAttribute("aria-pressed",String(!data.widgetEnabled));el("tierWidget").setAttribute("aria-pressed",String(data.widgetEnabled));}
  if(location.search.includes("billing=approved")){show("paymentNote",true);el("paymentNote").textContent="Your PayPal approval was received. Subscription access will activate when PayPal confirms it through a verified webhook."}
 }
 async function init(){
