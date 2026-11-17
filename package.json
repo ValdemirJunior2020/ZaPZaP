@@ -10,6 +10,6 @@
     "test:ci": "npm run check && npm test"
   },
   "engines": {
-    "node": ">=20"
+    "node": "22.x"
   }
 }
