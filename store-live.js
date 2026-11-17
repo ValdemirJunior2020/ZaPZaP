@@ -1,3 +1,4 @@
+import{setupCalendarPicker,updateCalendarVisibility,calendarSelection,isStructuredCalendar}from"./calendar-public.js";
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const slug=(()=>{const match=location.pathname.match(/^\/s\/([a-z0-9-]{3,50})\/?$/i);return match?match[1]:new URLSearchParams(location.search).get("slug")||new URLSearchParams(location.search).get("s")||""})();
@@ -13,6 +14,7 @@ async function load(){
   const data=await res.json();
   if(!res.ok||!data.store)throw Error("This store is not available yet. Please contact the business directly.");
   store=data.store;items=data.offerings||[];ready=data.chatReady===true;
+  setupCalendarPicker(data.calendar,slug);
   remaining=store.chatMaxMessages||10;
   if(data.qrSource){$('headline').textContent=data.qrSource.label+' • '+(store.headline||store.name);const p=items.find(x=>x.id===data.qrSource.offeringId);if(p)$('customerMessage').value='I would like information about '+p.name+'.';}
   $('requestType').querySelector('[value=appointment]').disabled=store.appointmentsEnabled===false;
@@ -67,7 +69,7 @@ function endChat(){
  $('chatFoot').textContent='Your chat limit has been reached. Leave your phone number or email and the business can continue helping.';
  $('contact').scrollIntoView({behavior:'smooth',block:'start'});
 }
-$('requestType').onchange=()=>{$('preferredTimeWrap').classList.toggle('hidden',$('requestType').value!=='appointment')};
+$('requestType').onchange=updateCalendarVisibility;
 function requestQuote(name){
  if(name&&name!=="a quote"&&!$("customerMessage").value.trim())$("customerMessage").value="I'd like information about "+name+".";
  $("contact").scrollIntoView({behavior:"smooth",block:"start"});
@@ -77,12 +79,13 @@ async function submitInquiry(e){
  e.preventDefault();if(!store)return;
  const name=$("customerName").value.trim(),email=$("customerEmail").value.trim(),phone=$("customerPhone").value.trim(),interest=$("customerMessage").value.trim();
  if(!email&&!phone){$('contactStatus').textContent='Provide a phone number or email address so the business can reply.';return}
+ if(isStructuredCalendar()&&!Object.values(calendarSelection()||{}).every(Boolean)){$("contactStatus").textContent="Select a service, staff member and available appointment time.";return}
  const send=$("contactSend");send.disabled=true;$("contactStatus").textContent="Saving your inquiry…";
  try{
-  const r=await fetch("/.netlify/functions/store-inquiry",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({slug,name,email,phone,interest,sessionId,sourceCode,requestType:$("requestType").value,preferredTime:$("preferredTime").value,honeypot:$("hp").value})});
+  const r=await fetch("/.netlify/functions/store-inquiry",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({slug,name,email,phone,interest,sessionId,sourceCode,requestType:$("requestType").value,preferredTime:$("preferredTime").value,...(calendarSelection()||{}),honeypot:$("hp").value})});
   const data=await r.json().catch(()=>({}));
   if(r.status!==201||data.accepted!==true)throw Error(data.error||"The message was not saved");
-  $("contactStatus").textContent="Your request has been received and saved for "+store.name+". The business can review it and follow up.";
+  $("contactStatus").textContent=data.message||"Your request has been received and saved for "+store.name+". The business can review it and follow up.";
   $("contactForm").reset();
  }catch(e){$("contactStatus").textContent=e.message||"Your inquiry could not be saved. Please try again."}
  finally{send.disabled=false}
