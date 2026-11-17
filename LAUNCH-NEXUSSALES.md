@@ -24,8 +24,10 @@ Run these SQL files in the NexusSales project's SQL editor in this exact order:
 3. `supabase/nexussales-owner-profiles.sql`
 4. `supabase/nexussales-widget.sql`
 5. `supabase/nexussales-runtime.sql`
+6. `supabase/nexussales-abuse-whatsapp.sql`
+7. `supabase/nexussales-whatsapp-queue.sql`
 
-Verify `nx_stores`, `nx_offerings`, `nx_owner_profiles`, `nx_entitlements`, `nx_bots`, `nx_leads`, `nx_chat_daily_usage` are present. Review Auth email confirmation settings. Set Supabase Auth Site URL to `https://zapzap-bot.netlify.app/`. Run Supabase security and performance advisors.
+Verify `nx_stores`, `nx_offerings`, `nx_owner_profiles`, `nx_entitlements`, `nx_bots`, `nx_leads`, `nx_chat_daily_usage`, `nx_abuse_windows`, `nx_whatsapp_channels`, and `nx_whatsapp_messages` are present. Verify the queue functions `nx_enqueue_whatsapp`, `nx_claim_next_whatsapp` and `nx_finish_whatsapp` are restricted to the service role. Review Auth email confirmation settings. Set Supabase Auth Site URL to `https://zapzap-bot.netlify.app/`. Run Supabase security and performance advisors.
 
 ## Netlify environment variables
 Open https://app.netlify.com/projects/zapzap-bot/configuration/env and add values scoped to PRODUCTION FUNCTIONS, then redeploy.
@@ -33,6 +35,7 @@ Open https://app.netlify.com/projects/zapzap-bot/configuration/env and add value
 - `NEXUS_SUPABASE_PUBLISHABLE_KEY` = public `sb_publishable_...` key
 - `NEXUS_SUPABASE_SECRET_KEY` = private `sb_secret_...` key; **secret, functions only**. `NEXUS_SUPABASE_SERVICE_ROLE_KEY` legacy fallback also supported.
 - `NEXUS_OLLAMA_URL` = dedicated HTTPS reverse-proxy/tunnel base URL for the Qwen3 Ollama service (must be a root HTTPS URL, e.g., `https://your-secure-gateway.example.com/`)
+- `NEXUS_ABUSE_SECRET` = random 32+ character server-only signing key for cross-instance abuse fingerprints
 - `NEXUS_OLLAMA_GATEWAY_TOKEN` = strong secret token enforced by the HTTPS reverse proxy before allowing `/api/chat`; **secret, functions only**
 - `NEXUS_OLLAMA_MODEL` = `qwen3:8b` (default; the model must already be installed on your machine or hosted GPU)
 - `NEXUS_LIVE_CHAT_ENABLED` = `true` only after the secure Ollama gateway is reachable, authenticated, and tested.
@@ -62,3 +65,10 @@ PayPal (do not enable billing until sandbox E2E test):
 Netlify cannot call `http://127.0.0.1:11434` on your Windows computer. A configured HTTPS reverse proxy or managed secure tunnel must authenticate the `Authorization: Bearer ...` token and forward requests privately to `http://127.0.0.1:11434`. Ollama itself does not enforce bearer-token authentication by default. Never expose port 11434 to the public internet, or disable verification for convenience.
 
 Do not reuse The Good Side project or any service carrying unrelated user information as the bot gateway. Create a dedicated NexusSales gateway. The Netlify function only accepts the configured server-side origin, not customer-supplied URLs. Browser clients never get the token.
+
+## Verified November 16 deployments and remaining blockers
+- Netlify production deploy `6afbabb49b9ee49da36e8667` is **ready**; its deployed functions include `whatsapp` and scheduled `whatsapp-retry` at `*/2 * * * *`.
+- GitHub Actions security integration and HTTP smoke tests passed on isolated diagnostic PR #1, which was closed without merging.
+- Do not mistake passing mocked tests for a live two-tenant acceptance test. **No dedicated NexusSales Supabase project or secure Ollama gateway has been connected yet.**
+- WhatsApp inbound messages are queued before being acknowledged. Worker claims are leased and retried exponentially for up to five attempts, then marked `dead` for operator investigation. A Meta transport timeout after Meta has already accepted a send can still cause a duplicate; exactly-once external delivery is not guaranteed.
+- Supabase quoted **$0/month** to create a dedicated project under organization `coffee-shop`, but its create action requires an explicit cost confirmation ID. Creation remains pending that confirmation. Never change the existing The Good Side project.
