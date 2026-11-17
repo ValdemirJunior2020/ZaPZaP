@@ -1,3 +1,4 @@
+import{cancelSubscription,deleteAccount}from"../lib/account-lifecycle.mjs";
 import{widgetEnabled}from"../lib/billing.mjs";
 import{env,db,json,str,slug,domainUrl,userFrom,ownStore,offerings,ownerProfile,access,postOrigin,parse,safeError,aiReady,verifyHostedAI,iso}from "../lib/tenant.mjs";
 const canEdit=ent=>Boolean(ent?.is_complimentary)||!ent?.trial_started_at||access(ent).allowed;
@@ -22,6 +23,9 @@ export async function handler(event){
    return json(200,{email:user.email,profile,store,offerings:items,leads,qrSources,bot,widgetAllowed:widgetEnabled(c,ent),access:access(ent),aiConfigured:aiReady()});
   }
   const data=parse(event,30000),action=str(data.action,40);
+  if(action==="cancel_subscription")return cancelSubscription(c,user,ent);
+  if(action==="delete_account")return deleteAccount(c,user,ent,data);
+
   if(!canEdit(ent)&&!["pause","disable_widget","lead_history","update_lead"].includes(action))return json(402,{error:"Your trial has ended. Subscribe to continue.",access:access(ent)});
   if(action==="save_store"){
    const i=data.store||{};
@@ -141,6 +145,7 @@ export async function handler(event){
  }catch(err){
   console.error("Owner workspace:",err.message);
   if(/duplicate key/i.test(err.message))return json(409,{error:"That SmartLink is already taken. Choose another store name."});
+  if(["cancel_subscription","delete_account"].includes(String((()=>{try{return JSON.parse(event.body||"{}").action}catch{return""}})())))return json(err.status||503,{error:[400,403,409].includes(err.status)?err.message:"Account operation could not be completed. No additional action was taken."});
   return safeError(err);
  }
 }
