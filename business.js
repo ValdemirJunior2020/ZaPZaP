@@ -1,3 +1,4 @@
+import{renderCalendar,bindCalendar}from"./calendar-ui.js";
 const $=id=>document.getElementById(id);
 const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const cleanSlug=s=>String(s||"").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9-]/g,"-").replace(/-+/g,"-").replace(/^-|-$/g,"").slice(0,48);
@@ -116,11 +117,12 @@ function render(){
  testbot:["TEST MY AI","Talk to your own AI salesperson","Preview real answers from your business catalog before publishing."],
  links:["TRACKED QR CODES","Turn foot traffic into leads","Create trackable QR codes for storefronts, vehicles, services and products."],
  leads:["LEAD CENTER","Leads & conversations","Every inquiry, appointment request and captured conversation."],
+ calendar:["BOOKING CALENDAR","Appointments & availability","Manage your services, team, opening hours and appointment requests."],
  billing:["48-HOUR TRIAL & BILLING","Your subscription","Core $149/month, website widget +$79/month."]};
  const t=titles[viewName]||titles.overview;
  text("workspaceEyebrow",t[0]);text("workspaceHeading",t[1]);text("workspaceSubtitle",t[2]);text("trialBadge",statusText());
  document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===viewName));
- const views={overview:renderOverview,store:renderStore,offerings:renderOfferings,testbot:renderTestBot,links:renderLinks,leads:renderLeads,billing:renderBilling};
+ const views={overview:renderOverview,store:renderStore,offerings:renderOfferings,testbot:renderTestBot,links:renderLinks,leads:renderLeads,calendar:()=>renderCalendar(workspace.calendar,workspace.store),billing:renderBilling};
  $("viewContent").innerHTML=(views[viewName]||views.overview)();
  bindView();
 }
@@ -296,6 +298,7 @@ function renderBilling(){
  return '<div class="card"><h2>'+htmlEsc(statusText())+'</h2><p>'+htmlEsc(status)+'</p><div class="view-grid"><div><strong class="metric">$149<small>/mo</small></strong><p>Core store, AI salesperson, SmartLinks and leads.</p></div><div><strong class="metric">$228<small>/mo</small></strong><p>Core + embedded website widget ($79 add-on).</p></div></div><div class="actions">'+(a.reason==="COMPLIMENTARY"?'<span class="status-badge">✓ No payment required</span>':'<a class="primary" href="'+url+'">Manage PayPal subscription</a>')+'</div>'+(a.reason==="COMPLIMENTARY"?'<p class="hint">All NexusSales features are included with your complimentary access.</p>':'<p class="hint">Manage your subscription, security and account deletion in Account Settings.</p>')+'</div>';
 }
 function bindView(){
+ if(viewName==="calendar"&&workspace?.store)bindCalendar(workspace.calendar,ownerApi,loadWorkspace,toast);
  document.querySelectorAll("[data-jump]").forEach(e=>e.onclick=()=>{viewName=e.dataset.jump;render()});
  if(viewName==="leads"){
   const filter=$("leadFilter");
