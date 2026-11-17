@@ -134,6 +134,18 @@ function renderOverview(){
  html+='<div class="card"><h2>Get ready to sell</h2><p>Tell the assistant what you offer, include real prices and hours, then publish a permanent SmartLink. Customers can ask questions without creating an account.</p><div class="actions"><button class="primary" data-jump="store">Configure business</button><button class="button" data-jump="offerings">Add products or services</button><button class="button" data-jump="testbot">✦ Test My AI</button><button class="button" data-jump="links">View SmartLink</button></div></div>';
  return html;
 }
+const personalityOptions=[
+ {id:"professional",icon:"◈",title:"Professional Consultant",desc:"Confident, accurate and consultative. Great for most businesses.",best:"Recommended default"},
+ {id:"friendly",icon:"♡",title:"Friendly Guide",desc:"Warm, patient and easy to understand. Great for retail and family services.",best:"Approachable"},
+ {id:"sales",icon:"↗",title:"Sales Specialist",desc:"Discovers needs, explains benefits and offers a helpful next step.",best:"Lead conversion"},
+ {id:"concierge",icon:"✧",title:"Premium Concierge",desc:"Attentive, polished and discreet. Great for luxury and premium services.",best:"White-glove service"},
+ {id:"concise",icon:"≡",title:"Fast & Direct",desc:"Short, clear answers with minimal small talk.",best:"Quick responses"}
+];
+function personalityCards(selected){
+ return '<fieldset class="wide personality-fieldset"><legend>AI personality <span class="hint">Choose how your assistant communicates</span></legend>'+
+ '<div class="personality-grid">'+personalityOptions.map(p=>'<label class="personality-card"><input type="radio" name="storePersonality" value="'+p.id+'" '+(selected===p.id?'checked':'')+'><span class="personality-card-body"><span class="personality-icon">'+p.icon+'</span><strong>'+p.title+'</strong><small>'+p.desc+'</small><em>'+p.best+'</em></span></label>').join('')+'</div>'+
+ '<p class="hint">All personalities use your saved business facts. They never invent prices, discounts, guarantees or confirmed appointments. Save, then test the tone under Test My AI.</p></fieldset>';
+}
 function renderStore(){
  const s=workspace.store||{},p=workspace.profile||{};
  return '<div class="card"><form id="storeForm" class="detail-form">'+
@@ -141,6 +153,7 @@ function renderStore(){
  '<label>Permanent SmartLink name<input id="storeSlug" maxlength="48" required '+(s.id?'readonly':'')+' value="'+htmlEsc(s.slug||"")+'" placeholder="your-business"></label>'+
  '<label>Industry<input id="storeIndustry" maxlength="100" value="'+htmlEsc(s.industry||"")+'" placeholder="Marketing, plumbing, HVAC, retail, etc."></label>'+
  '<label>AI assistant name<input id="storeAgent" maxlength="70" value="'+htmlEsc(s.agent_name||"Business Assistant")+'"></label>'+
+ personalityCards(s.ai_personality||"professional")+
  '<label class="wide">Store headline<input id="storeHeadline" maxlength="180" value="'+htmlEsc(s.headline||"")+'" placeholder="Expert services for your next project"></label>'+
  '<label class="wide">Business description and policies<textarea id="storeDescription" rows="5" maxlength="2500">'+htmlEsc(s.description||"")+'</textarea></label>'+
  '<label>Business hours<input id="storeHours" maxlength="280" value="'+htmlEsc(s.hours||"")+'" placeholder="Mon–Fri 8AM–5PM"></label>'+
@@ -162,10 +175,12 @@ function renderTestBot(){
  const st=workspace?.store,items=workspace?.offerings||[];
  const ready=Boolean(st&&items.length&&isEditable());
  const intro=st?("Hi! I am "+(st.agent_name||"your business assistant")+". Ask me about "+st.name+"'s products and services."):"Save your business profile first to begin.";
+ const style=personalityOptions.find(p=>p.id===(st?.ai_personality||"professional"))||personalityOptions[0];
  return '<div class="testbot-wrap"><div class="testbot-setup card"><span class="tag">PRIVATE PREVIEW • ONLY YOU</span><h2>Your own AI. Your real business information.</h2><p>This is a private testing space. Your assistant uses the products, prices, description and hours you saved. Test it before publishing.</p>'+
  '<div class="testbot-status">'+(st?'✓ Business saved':'○ Save business details')+'</div>'+
  '<div class="testbot-status">'+(items.length?'✓ '+items.length+' product(s) or service(s) loaded':'○ Add at least one offering')+'</div>'+
- '<div class="testbot-status">✓ Testing never publishes the store or starts your 48-hour trial.</div>'+
+ '<div class="testbot-status">✓ Testing never publishes the store or starts your 48-hour trial.</div>'+ 
+ '<div class="testbot-status">✦ Personality: <strong>'+htmlEsc(style.title)+'</strong> — '+htmlEsc(style.desc)+'</div>'+
  '<p class="testbot-help">20 private test questions per day. Answers come directly from Ollama Qwen3, not example responses.</p>'+
  '<div class="actions"><button type="button" class="button" data-jump="store">Business details</button><button type="button" class="button" data-jump="offerings">Edit offerings</button><button type="button" class="button" data-jump="links">Publish when ready</button></div></div>'+
  '<div class="testbot-chat card"><div class="testbot-chat-head"><div class="testbot-ai-icon">✦</div><div><strong>'+htmlEsc(st?.agent_name||"My AI Assistant")+'</strong><small>'+htmlEsc(st?.name||"Your business")+' • PRIVATE TEST CHAT</small></div></div>'+
@@ -362,6 +377,7 @@ async function saveStore(e){
  e.preventDefault();
  const store={name:$("storeName").value.trim(),slug:$("storeSlug").value.trim()||cleanSlug($("storeName").value),
   industry:$("storeIndustry").value.trim(),agent_name:$("storeAgent").value.trim(),
+  ai_personality:document.querySelector('input[name="storePersonality"]:checked')?.value||"professional",
   headline:$("storeHeadline").value.trim(),description:$("storeDescription").value.trim(),
   hours:$("storeHours").value.trim(),store_image_url:$("storeImage").value.trim()};
  const button=e.target.querySelector("[type=submit]");button.disabled=true;
