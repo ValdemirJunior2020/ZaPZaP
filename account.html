@@ -40,7 +40,7 @@ async function refresh(){
 }
 async function init(){
  try{
-  const r=await fetch("/.netlify/functions/public-config",{cache:"no-store"});
+  const r=await fetch("/api/public-config",{cache:"no-store"});
   if(!r.ok)throw Error("A dedicated Supabase project has not been connected yet");
   cfg=await r.json();if(!cfg.configured)throw Error("Business account connection is not configured");
   status("Secure account signup is available. Your 48-hour trial starts when the account is created.");
