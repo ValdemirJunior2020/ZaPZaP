@@ -11,6 +11,38 @@
   },
   "rewrites": [
     {
+      "source": "/.netlify/functions/demo-chat",
+      "destination": "/api/public?route=demo-chat"
+    },
+    {
+      "source": "/.netlify/functions/public-config",
+      "destination": "/api/public?route=public-config"
+    },
+    {
+      "source": "/.netlify/functions/public-store",
+      "destination": "/api/public?route=public-store"
+    },
+    {
+      "source": "/.netlify/functions/widget-config",
+      "destination": "/api/public?route=widget-config"
+    },
+    {
+      "source": "/api/demo-chat",
+      "destination": "/api/public?route=demo-chat"
+    },
+    {
+      "source": "/api/public-config",
+      "destination": "/api/public?route=public-config"
+    },
+    {
+      "source": "/api/public-store",
+      "destination": "/api/public?route=public-store"
+    },
+    {
+      "source": "/api/widget-config",
+      "destination": "/api/public?route=widget-config"
+    },
+    {
       "source": "/.netlify/functions/:function",
       "destination": "/api/:function"
     },
