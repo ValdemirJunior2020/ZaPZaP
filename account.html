@@ -32,13 +32,14 @@ function show(id,yes){el(id).classList.toggle('hidden',!yes)}
 function token(){try{return JSON.parse(sessionStorage.getItem("nexus_owner_v1")||"null")?.access_token||sessionStorage.getItem("nexus_account_access_token")||""}catch{return sessionStorage.getItem("nexus_account_access_token")||""}}
 function bearer(){return{"Authorization":"Bearer "+token(),"Content-Type":"application/json"}}
 async function refresh(){
- if(!token()){show("authPanel",!!cfg);show("billingPanel",false);return}
+ if(!token()){show("authPanel",!!cfg);show("billingPanel",false);show("accountSettings",false);return}
  const r=await fetch("/.netlify/functions/billing-status",{headers:bearer(),cache:"no-store"});
  const data=await r.json().catch(()=>({}));
  if(r.status===401){sessionStorage.removeItem("nexus_account_access_token");show("authPanel",true);show("billingPanel",false);authmsg("Your session expired. Sign in again.");return}
  show("authPanel",false);show("billingPanel",true);
  el("accountEmail").textContent=sessionStorage.getItem("nexus_account_email")||(()=>{try{return JSON.parse(sessionStorage.getItem("nexus_owner_v1")||"null")?.email}catch{return null}})()||"Business owner";
- if(!r.ok){el("billingStatus").textContent="Billing setup incomplete";el("trialDetails").textContent=data.error||"Connection unavailable";el("subscribe").disabled=true;return}
+ if(!r.ok){show("accountSettings",false);el("billingStatus").textContent="Billing setup incomplete";el("trialDetails").textContent=data.error||"Connection unavailable";el("subscribe").disabled=true;return}
+ window.nexusAccountTools?.showSettings(data);
  const ends=data.trialEndsAt?new Date(data.trialEndsAt).toLocaleString():"Not started";
  const comp=data.reason==="COMPLIMENTARY",paid=data.reason==="PAID",trial=data.reason==="TRIAL",notStarted=data.reason==="NOT_STARTED";
  el("billingStatus").textContent=comp?"✓ Lifetime complimentary access":paid?"✓ Subscription active":trial?"48-hour trial • "+data.trialHoursLeft+" hours remaining":notStarted?"Trial available — not started":"Your free trial has ended";
@@ -55,7 +56,8 @@ async function init(){
   if(!r.ok)throw Error("A dedicated Supabase project has not been connected yet");
   cfg=await r.json();if(!cfg.configured)throw Error("Business account connection is not configured");
   status("Secure account signup is available. Your 48-hour trial starts when you publish your AI-powered SmartStore.");
-  await refresh();
+  if(window.nexusAccountTools?.recoveryActive){show("authPanel",false);show("billingPanel",false);show("accountSettings",false);show("resetPanel",true)}
+  else await refresh();
  }catch(e){status(e.message+". This page is ready for setup but is not accepting subscriptions.");}
 }
 el("toggleSignup").onclick=()=>{signup=!signup;show("signupBusinessFields",signup);el("businessName").required=signup;el("businessPhone").required=signup;el("authTitle").textContent=signup?"Create business account":"Business owner sign in";el("authButton").textContent=signup?"Start 48-hour trial":"Sign in";el("toggleSignup").textContent=signup?"Already have an account? Sign in":"Create a business account";authmsg("")};
@@ -71,6 +73,6 @@ el("authForm").onsubmit=async e=>{e.preventDefault();if(!cfg)return;const email=
 el("tierCore").onclick=()=>chooseTier("core");el("tierWidget").onclick=()=>chooseTier("core_widget");
 function chooseTier(tier){selectedTier=tier;el("tierCore").setAttribute("aria-pressed",String(tier==="core"));el("tierWidget").setAttribute("aria-pressed",String(tier==="core_widget"));if(token())refresh();}
 el("subscribe").onclick=async()=>{el("subscribe").disabled=true;try{const r=await fetch("/.netlify/functions/billing-checkout",{method:"POST",headers:bearer(),body:JSON.stringify({tier:selectedTier})});const j=await r.json();if(!r.ok||!j.approvalUrl)throw Error(j.error||"Unable to start PayPal checkout");const u=new URL(j.approvalUrl);if(!["https:"].includes(u.protocol)||!(u.hostname==="paypal.com"||u.hostname.endsWith(".paypal.com")))throw Error("Invalid approval destination");location.assign(u.href)}catch(e){alert(e.message);el("subscribe").disabled=false}};
-el("signout").onclick=()=>{sessionStorage.removeItem("nexus_account_access_token");sessionStorage.removeItem("nexus_account_email");sessionStorage.removeItem("nexus_owner_v1");show("billingPanel",false);show("authPanel",true)};
+el("signout").onclick=()=>{sessionStorage.removeItem("nexus_account_access_token");sessionStorage.removeItem("nexus_account_email");sessionStorage.removeItem("nexus_owner_v1");show("billingPanel",false);show("accountSettings",false);show("authPanel",true)};
 init();
-</script></body></html>
+</script><script src="/account-settings.js" defer></script></body></html>
