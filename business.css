@@ -166,3 +166,57 @@
 .personality-card:hover .personality-card-body{transform:translateY(-2px);border-color:#83d6b4}
 @media(max-width:570px){.personality-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.personality-card-body{min-height:193px;padding:12px}}
 @media(max-width:355px){.personality-grid{grid-template-columns:1fr}.personality-card-body{min-height:145px}}
+
+
+/* NexusSales booking calendar */
+.cal-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin:16px 0}
+.cal-stat{background:linear-gradient(145deg,#fff,#f4fbf7);border:1px solid #dfefe5;border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:7px}
+.cal-stat small{font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:#7a9686;font-weight:800}
+.cal-stat strong{font-size:29px;color:#086449;letter-spacing:-1px}
+.cal-stat span{font-size:11px;color:#8b9d92}
+.cal-card{margin:17px 0!important}
+.cal-card h2{margin:0 0 8px;font-size:19px;letter-spacing:-.6px}
+.cal-card p{font-size:12px;color:#789383;line-height:1.6}
+.cal-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:17px}
+.cal-head p{margin:0}
+.cal-pill{background:#e4f8ed;color:#087050;font-size:11px;border:1px solid #c4ead5;padding:7px 10px;border-radius:30px;font-weight:800}
+.cal-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;align-items:end}
+.cal-form label{font-size:11px;color:#4b7962;font-weight:700}
+.cal-form input:not([type=checkbox]),.cal-form select,.cal-inline input,.cal-inline select,.cal-mini-item select,.cal-head select,.cal-move-form input,.cal-move-form select{width:100%;border:1px solid #d1e8d9;background:#fff;border-radius:10px;padding:10px 12px;font-size:12px;color:#17573c}
+.cal-form button{align-self:end}
+.cal-check{display:flex;gap:10px;align-items:center;padding:14px 0}
+.cal-check input{width:17px;height:17px}
+.cal-columns{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+.cal-inline{display:flex;gap:7px;align-items:center;margin:14px 0}
+.cal-inline input{flex:1;min-width:0}
+.cal-inline select{width:85px}
+.cal-inline button{white-space:nowrap}
+.cal-mini-list{display:flex;flex-direction:column;gap:7px;margin-top:13px}
+.cal-mini-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px;border:1px solid #e0efe6;border-radius:10px;background:#fbfefc}
+.cal-mini-item div{flex:1}
+.cal-mini-item strong{font-size:12px;color:#1a6347}
+.cal-mini-item small{display:block;font-size:10px;color:#829b89;margin-top:5px}
+.cal-mini-item button{font-size:10px;white-space:nowrap}
+.cal-mini-item select{width:80px}
+.cal-week{display:grid;gap:8px;margin:15px 0}
+.cal-day{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:15px;align-items:center;padding:9px 12px;background:#f8fcf9;border:1px solid #e1eee5;border-radius:11px}
+.cal-day label{font-size:11px;margin:0}
+.cal-day-name{display:flex;align-items:center;gap:10px}
+.cal-day-name input{width:17px;height:17px}
+.cal-day input[type=time]{margin:0;border:1px solid #d3e8db;border-radius:8px;padding:9px;background:#fff;width:100%}
+.cal-booking-list{display:flex;flex-direction:column;gap:11px}
+.cal-booking{border:1px solid #d8eade;border-radius:14px;background:#fcfefd;padding:17px}
+.cal-booking-summary{display:flex;justify-content:space-between;align-items:flex-start;gap:13px}
+.cal-booking-summary div{min-width:0}
+.cal-booking-summary strong{display:block;font-size:14px;color:#11543c}
+.cal-booking-summary span{display:block;font-size:12px;color:#4b7a62;margin:6px 0}
+.cal-booking-summary small{color:#859b8b;font-size:11px;overflow-wrap:anywhere}
+.cal-booking-summary em{font-style:normal;font-weight:800;font-size:10px;color:#066c4f;border-radius:25px;background:#e8f9f0;padding:6px 10px;white-space:nowrap}
+.cal-booking-actions{display:flex;gap:8px;flex-wrap:wrap;margin:13px 0}
+.cal-booking-actions button{font-size:11px}
+.cal-move-form{display:grid;grid-template-columns:1fr 1fr auto;align-items:end;gap:10px;border-top:1px solid #e2efe6;padding-top:10px}
+.cal-move-form label{font-size:10px}
+.cal-move-form button{white-space:nowrap}
+@media(max-width:1100px){.cal-stats{grid-template-columns:repeat(2,1fr)}.cal-columns{grid-template-columns:1fr}}
+@media(max-width:700px){.cal-form{grid-template-columns:1fr 1fr}.cal-move-form{grid-template-columns:1fr 1fr}.cal-move-form button{grid-column:1/-1}.cal-day{grid-template-columns:1fr 1fr}.cal-day-name{grid-column:1/-1}}
+@media(max-width:460px){.cal-stats{gap:8px}.cal-stat{padding:12px}.cal-form{grid-template-columns:1fr}.cal-mini-item{flex-wrap:wrap}}
