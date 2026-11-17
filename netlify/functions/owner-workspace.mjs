@@ -1,3 +1,4 @@
+import{normalizePersonality,PERSONALITIES}from"../lib/ai-personalities.mjs";
 import{cancelSubscription,deleteAccount}from"../lib/account-lifecycle.mjs";
 import{widgetEnabled}from"../lib/billing.mjs";
 import{env,db,json,str,slug,domainUrl,userFrom,ownStore,offerings,ownerProfile,access,postOrigin,parse,safeError,aiReady,verifyHostedAI,iso}from "../lib/tenant.mjs";
@@ -33,7 +34,8 @@ export async function handler(event){
    if(name.length<2)return json(400,{error:"Enter a business name"});
    const requested=slug(i.slug||name);
    if(!requested||requested.length<3)return json(400,{error:"Store link must have at least three characters"});
-   const saved={name,slug:requested,industry:str(i.industry,100)||"Other",
+   if(i.ai_personality!==undefined&&!Object.hasOwn(PERSONALITIES,i.ai_personality))return json(400,{error:"Choose a valid AI personality"});
+   const saved={name,slug:requested,industry:str(i.industry,100)||"Other",ai_personality:normalizePersonality(i.ai_personality),
     headline:str(i.headline,180),description:str(i.description,2500),hours:str(i.hours,280),
     agent_name:str(i.agent_name,70)||"Business Assistant",store_image_url:domainUrl(i.store_image_url),
     color:/^#[a-fA-F0-9]{6}$/.test(i.color||"")?i.color:"#06aa77",updated_at:iso()};
