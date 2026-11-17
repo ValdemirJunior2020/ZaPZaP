@@ -292,7 +292,7 @@ function bindView(){
      '<p><strong>Customer request</strong><br>'+htmlEsc(lead.interest)+'</p>'+
      '<label>Follow-up status <select id="leadStatusSelect">'+["New","Contacted","Appointment Requested","Booked","Won","Lost"].map(s=>'<option value="'+s+'" '+(s===lead.status?'selected':'')+'>'+s+'</option>').join("")+'</select></label>'+
      '<button type="button" class="primary" id="saveLeadStatus">Save status</button>'+
-     '<h3>AI conversation history</h3><div class="lead-transcript">'+((result.messages||[]).length?(result.messages.map(m=>'<div class="lead-msg '+(m.role==="user"?'visitor':'assistant')+'"><small>'+htmlEsc(m.role==="user"?"Visitor":"AI Assistant")+'</small><p>'+htmlEsc(m.content)+'</p></div>').join("")):'<p class="hint">No conversation was linked to this inquiry.</p>'+'</div>';
+     '<h3>AI conversation history</h3><div class="lead-transcript">'+((result.messages||[]).length?result.messages.map(m=>'<div class="lead-msg '+(m.role==="user"?'visitor':'assistant')+'"><small>'+htmlEsc(m.role==="user"?"Visitor":"AI Assistant")+'</small><p>'+htmlEsc(m.content)+'</p></div>').join(""):'<p class="hint">No conversation was linked to this inquiry.</p>')+'</div>';
     $("closeLeadDetail").onclick=()=>panel.classList.add("hidden");
     $("saveLeadStatus").onclick=async()=>{try{await ownerApi("update_lead",{id:lead.id,status:$("leadStatusSelect").value});await loadWorkspace();toast("Lead status updated")}catch(e){toast(e.message)}};
    }catch(e){panel.textContent=e.message}
