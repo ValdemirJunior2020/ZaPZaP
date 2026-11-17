@@ -22,3 +22,50 @@
 .example-company{min-width:232px;min-height:92px;padding:12px 17px;background:linear-gradient(142deg,#fff 0%,#f8fffb 100%);border:1px solid rgba(8,142,114,.16);box-shadow:0 8px 22px rgba(8,73,64,.07)}
 .example-company-logo{display:block;width:220px;height:64px;max-width:100%;object-fit:contain;flex:none;filter:drop-shadow(0 2px 3px rgba(11,67,58,.05))}
 @media(max-width:520px){.example-company{min-width:204px;min-height:80px;padding:8px 13px}.example-company-logo{width:190px;height:60px}}
+
+/* Live anonymous AI demonstration */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.demo-section{max-width:1170px;margin:0 auto;padding:56px 22px 50px}
+.demo-intro{text-align:center;max-width:720px;margin:0 auto 27px}
+.demo-intro h2{font-size:clamp(26px,3.2vw,40px);letter-spacing:-1.5px;line-height:1.16;color:#143d31;margin:12px auto}
+.demo-intro p{font-size:14px;color:#7a9589;line-height:1.7}
+.demo-layout{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:20px;align-items:stretch}
+.demo-business-panel,.demo-chat-card{min-width:0;border-radius:23px;background:#fff;border:1px solid #dcece3;box-shadow:0 15px 44px rgba(24,90,61,.07);overflow:hidden}
+.demo-business-panel{padding:26px}
+.demo-panel-eyebrow{display:block;font-size:10px;letter-spacing:1.7px;color:#708e7e;font-weight:850;margin-bottom:15px}
+.demo-industries{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.demo-industry{background:#f7fbf8;border:1px solid #e2eee6;border-radius:14px;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:14px 6px;color:#607e6e;font-size:11px;font-weight:750;transition:background .16s,box-shadow .16s,border-color .16s}
+.demo-industry img{width:100%;max-width:140px;height:45px;object-fit:contain}
+.demo-industry.active,.demo-industry:hover{background:#eefaf3;border-color:#45c59a;box-shadow:0 0 0 2px rgba(6,165,113,.08)}
+.demo-industry:focus-visible,.demo-suggestions button:focus-visible,.demo-chat-form button:focus-visible{outline:3px solid #60cfa9;outline-offset:3px}
+.demo-business-details{margin-top:24px;background:linear-gradient(140deg,#f0faf4,#f8fcfa);border:1px solid #ddecdf;border-radius:16px;padding:19px}
+.demo-business-details h3{font-size:21px;letter-spacing:-.7px;margin:0 0 4px}
+.demo-business-details p{font-size:12px;color:#6f8d80;margin:0 0 18px;line-height:1.55}
+.demo-catalog-item{display:flex;gap:12px;justify-content:space-between;align-items:flex-start;padding:12px 0;border-top:1px solid #daeadf;font-size:12px}
+.demo-catalog-item strong{font-weight:750;color:#315b46}
+.demo-catalog-item span{white-space:nowrap;color:#087d57;font-weight:750}
+.demo-fiction-note{margin:15px 0 0;color:#80998b;font-size:11px;line-height:1.6}
+.demo-chat-card{display:flex;flex-direction:column;min-height:510px}
+.demo-chat-header{background:linear-gradient(115deg,#0b5141,#0b7159);color:#fff;padding:18px 20px;display:flex;align-items:center;gap:11px}
+.demo-chat-orb{width:43px;height:43px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(145deg,#42edb6,#b3ffe6);color:#0b5640;font-size:23px}
+.demo-chat-header strong{font-size:14px}
+.demo-chat-header small{display:block;margin-top:4px;font-size:9px;letter-spacing:1px;color:#b7e5d0}
+.demo-live-dot{margin-left:auto;font-size:10px;color:#d6f9e6;padding:6px 9px;border-radius:30px;background:#ffffff17;white-space:nowrap}
+.demo-live-dot.online:before{content:"";display:inline-block;background:#6cffb9;width:7px;height:7px;border-radius:50%;margin-right:5px}
+.demo-chat-messages{flex:1;min-height:225px;max-height:315px;overflow:auto;display:flex;flex-direction:column;gap:13px;padding:24px 20px;background:radial-gradient(ellipse at 0 0,#f0fcf7,transparent 60%),#fff}
+.demo-bubble{max-width:87%;border-radius:15px;padding:13px 15px;font-size:12px;line-height:1.65;overflow-wrap:anywhere;white-space:pre-wrap}
+.demo-bubble.assistant{align-self:flex-start;background:#eff7f1;color:#355e4b;border-bottom-left-radius:4px}
+.demo-bubble.user{align-self:flex-end;background:#0aa578;color:#fff;border-bottom-right-radius:4px}
+.demo-chat-controls{padding:15px 20px 19px;border-top:1px solid #e4ede8}
+.demo-suggestions{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:13px}
+.demo-suggestions button{border:1px solid #d1e9db;border-radius:30px;padding:7px 10px;background:#f3faf6;font-size:10px;color:#0b8662;font-weight:700}
+.demo-suggestions button:hover{background:#dff8e9}
+.demo-chat-form{display:flex;gap:8px}
+.demo-chat-form input{flex:1;min-width:0;font-size:13px;border:1px solid #cddfd5;padding:12px 13px;border-radius:12px;outline:none}
+.demo-chat-form input:focus{border-color:#0ca778;box-shadow:0 0 0 3px #d3f5e4}
+.demo-chat-form button{border:none;border-radius:12px;color:#fff;background:#08a879;padding:12px 16px;font-weight:800;font-size:12px}
+.demo-chat-foot{display:flex;gap:8px;justify-content:space-between;align-items:center;margin-top:13px;font-size:10px;color:#849b8d;line-height:1.5;flex-wrap:wrap}
+.demo-chat-foot a{font-weight:800;color:#07956d;white-space:nowrap}
+@media(max-width:850px){.demo-layout{grid-template-columns:1fr}.demo-chat-card{min-height:460px}.demo-chat-messages{min-height:220px}}
+@media(max-width:520px){.demo-section{padding:40px 15px}.demo-business-panel{padding:17px}.demo-chat-header{padding:15px 13px}.demo-chat-controls{padding:13px}.demo-chat-messages{padding:18px 13px}.demo-industry{padding:9px 3px;font-size:10px}.demo-industry img{height:34px}.demo-catalog-item{font-size:11px;flex-wrap:wrap}.demo-chat-header strong{font-size:12px}.demo-chat-header small{font-size:8px}}
+@media(prefers-reduced-motion:reduce){.demo-industry{transition:none}}
