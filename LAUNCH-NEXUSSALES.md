@@ -26,6 +26,7 @@ Run these SQL files in the NexusSales project's SQL editor in this exact order:
 5. `supabase/nexussales-runtime.sql`
 6. `supabase/nexussales-abuse-whatsapp.sql`
 7. `supabase/nexussales-whatsapp-queue.sql`
+8. `supabase/nexussales-server-write-enforcement.sql`
 
 Verify `nx_stores`, `nx_offerings`, `nx_owner_profiles`, `nx_entitlements`, `nx_bots`, `nx_leads`, `nx_chat_daily_usage`, `nx_abuse_windows`, `nx_whatsapp_channels`, and `nx_whatsapp_messages` are present. Verify the queue functions `nx_enqueue_whatsapp`, `nx_claim_next_whatsapp` and `nx_finish_whatsapp` are restricted to the service role. Review Auth email confirmation settings. Set Supabase Auth Site URL to `https://zapzap-bot.netlify.app/`. Run Supabase security and performance advisors.
 
@@ -72,3 +73,12 @@ Do not reuse The Good Side project or any service carrying unrelated user inform
 - Do not mistake passing mocked tests for a live two-tenant acceptance test. **No dedicated NexusSales Supabase project or secure Ollama gateway has been connected yet.**
 - WhatsApp inbound messages are queued before being acknowledged. Worker claims are leased and retried exponentially for up to five attempts, then marked `dead` for operator investigation. A Meta transport timeout after Meta has already accepted a send can still cause a duplicate; exactly-once external delivery is not guaranteed.
 - Supabase quoted **$0/month** to create a dedicated project under organization `coffee-shop`, but its create action requires an explicit cost confirmation ID. Creation remains pending that confirmation. Never change the existing The Good Side project.
+
+## Dedicated Supabase created on $0/month project quote
+- Project: `NexusSales AI`, ID `upjlglwojmdjfjtdoxqg`, `us-east-1`
+- Project URL: `https://upjlglwojmdjfjtdoxqg.supabase.co`
+- The seven initial schema files and the final server-write enforcement migration were applied successfully. 10 public tables verified, all with RLS enabled.
+- Browser user roles have no direct INSERT/UPDATE/DELETE on stores, offerings, leads, bots, or entitlements. Writes require the Netlify backend's server-side key.
+- **Never touch or reuse The Good Side's project.** Only configure Netlify for the NexusSales project ID above.
+- Netlify API denies editing environment variables (HTTP 403); `NEXUS_SUPABASE_URL`, `NEXUS_SUPABASE_PUBLISHABLE_KEY`, and the NexusSales-only service key still need to be configured inside Netlify with Functions scope, then redeploy. The service key MUST be secret and never committed.
+- Do not activate payment billing or the 48-hour trial until live AI and signup-to-chat tests pass.
