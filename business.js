@@ -275,6 +275,57 @@ function renderBilling(){
 }
 function bindView(){
  document.querySelectorAll("[data-jump]").forEach(e=>e.onclick=()=>{viewName=e.dataset.jump;render()});
+ if(viewName==="leads"){
+  const filter=$("leadFilter");
+  filter.onchange=()=>document.querySelectorAll("[data-lead]").forEach(row=>{row.classList.toggle("hidden",filter.value!=="all"&&row.dataset.status!==filter.value)});
+  document.querySelectorAll("[data-lead]").forEach(row=>row.onclick=async()=>{
+   const lead=(workspace.leads||[]).find(l=>l.id===row.dataset.lead);if(!lead)return;
+   const panel=$("leadDetail");panel.classList.remove("hidden");panel.textContent="Loading customer history…";
+   try{
+    const result=await ownerApi("lead_history",{id:lead.id});
+    const sources=workspace.qrSources||[],src=sources.find(s=>s.id===lead.source_id);
+    panel.innerHTML='<div class="lead-bar"><h2>'+htmlEsc(lead.customer_name)+'</h2><button type="button" id="closeLeadDetail" class="button">Close</button></div>'+
+     '<div class="lead-detail-grid"><div><small>CONTACT</small><p>'+htmlEsc(lead.customer_email||"—")+'<br>'+htmlEsc(lead.customer_phone||"—")+'</p></div>'+
+     '<div><small>REQUEST TYPE</small><p>'+htmlEsc(lead.request_type||"information")+'</p></div>'+
+     '<div><small>QR SOURCE</small><p>'+htmlEsc(src?.label||"SmartStore / widget")+'</p></div>'+
+     '<div><small>PREFERRED TIME</small><p>'+htmlEsc(lead.preferred_time||"Not supplied")+'</p></div></div>'+
+     '<p><strong>Customer request</strong><br>'+htmlEsc(lead.interest)+'</p>'+
+     '<label>Follow-up status <select id="leadStatusSelect">'+["New","Contacted","Appointment Requested","Booked","Won","Lost"].map(s=>'<option value="'+s+'" '+(s===lead.status?'selected':'')+'>'+s+'</option>').join("")+'</select></label>'+
+     '<button type="button" class="primary" id="saveLeadStatus">Save status</button>'+
+     '<h3>AI conversation history</h3><div class="lead-transcript">'+((result.messages||[]).length?(result.messages.map(m=>'<div class="lead-msg '+(m.role==="user"?'visitor':'assistant')+'"><small>'+htmlEsc(m.role==="user"?"Visitor":"AI Assistant")+'</small><p>'+htmlEsc(m.content)+'</p></div>').join("")):'<p class="hint">No conversation was linked to this inquiry.</p>'+'</div>';
+    $("closeLeadDetail").onclick=()=>panel.classList.add("hidden");
+    $("saveLeadStatus").onclick=async()=>{try{await ownerApi("update_lead",{id:lead.id,status:$("leadStatusSelect").value});await loadWorkspace();toast("Lead status updated")}catch(e){toast(e.message)}};
+   }catch(e){panel.textContent=e.message}
+   panel.scrollIntoView({behavior:"smooth",block:"nearest"});
+  });
+ }
+ if(viewName==="links"&&workspace.store){
+  const qrForm=$("qrForm");if(qrForm)qrForm.onsubmit=async event=>{
+   event.preventDefault();try{await ownerApi("create_qr",{label:$("qrLabel").value,offeringId:$("qrOffering").value});await loadWorkspace();toast("Tracked QR created")}catch(e){toast(e.message)}
+  };
+  const settings=$("chatSettingsForm");if(settings)settings.onsubmit=async event=>{
+   event.preventDefault();try{await ownerApi("save_chat_settings",{chatMaxMessages:Number($("chatMaxMessages").value),chatMaxMinutes:Number($("chatMaxMinutes").value),appointmentsEnabled:$("appointmentsEnabled").checked});await loadWorkspace();toast("Customer chat limits saved")}catch(e){toast(e.message)}
+  };
+  document.querySelectorAll("[data-copy-qr]").forEach(button=>button.onclick=()=>navigator.clipboard.writeText(qrSourceUrl(button.dataset.copyQr)).then(()=>toast("QR link copied")).catch(()=>toast("Copy failed")));
+  document.querySelectorAll("[data-toggle-qr]").forEach(button=>button.onclick=async()=>{
+   const source=(workspace.qrSources||[]).find(s=>s.id===button.dataset.toggleQr);if(!source)return;
+   try{await ownerApi("set_qr_enabled",{id:source.id,enabled:!source.enabled});await loadWorkspace();toast("QR code updated")}catch(e){toast(e.message)}
+  });
+  document.querySelectorAll("[data-print-qr]").forEach(button=>button.onclick=()=>{
+   const source=(workspace.qrSources||[]).find(s=>s.id===button.dataset.printQr);if(!source)return;
+   const url=qrSourceUrl(source.code);
+   const popup=window.open("","_blank","width=550,height=720");
+   if(!popup){toast("Allow popups to print QR");return}
+   const doc=popup.document;doc.title="NexusSales QR • "+source.label;
+   const style=doc.createElement("style");style.textContent="body{font:18px system-ui,sans-serif;text-align:center;color:#174836;padding:32px}h1{font-size:28px}img{width:320px;height:320px}p{overflow-wrap:anywhere}.brand{color:#06a978;font-weight:800}@media print{button{display:none}}";doc.head.append(style);
+   const brand=doc.createElement("p");brand.className="brand";brand.textContent="NEXUSSALES AI";doc.body.append(brand);
+   const h=doc.createElement("h1");h.textContent=source.label;doc.body.append(h);
+   const p=doc.createElement("p");p.textContent="Scan to ask a question or request a callback";doc.body.append(p);
+   const img=doc.createElement("img");img.alt="Scan QR";img.src="https://api.qrserver.com/v1/create-qr-code/?size=500x500&data="+encodeURIComponent(url);doc.body.append(img);
+   const small=doc.createElement("p");small.textContent=url;doc.body.append(small);
+   const print=doc.createElement("button");print.textContent="Print sign";print.onclick=()=>popup.print();doc.body.append(print);
+  });
+ }
  if(viewName==="testbot"){$("testBotForm").onsubmit=submitTestBot;}
  if(viewName==="store")$("storeForm").onsubmit=saveStore;
  if(viewName==="offerings"){
