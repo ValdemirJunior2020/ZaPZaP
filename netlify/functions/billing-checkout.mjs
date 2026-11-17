@@ -11,7 +11,14 @@ export async function handler(event){
   if(!tier)return json(400,{error:"Select a valid subscription plan"});
   const selected=planId(c,tier);
   if(!selected)return json(503,{error:"Selected PayPal plan is not configured yet"});
-  // Server independently validates the configured PayPal plan before checkout.
+  // Authenticate and reject complimentary/active accounts before making any PayPal API requests.
+  const user=await authenticate(event,c);
+  const record=await entitlement(c,user.id);
+  if(!record)return json(503,{error:"Account billing setup is incomplete"});
+  if(record.is_complimentary===true)return json(409,{error:"This account has permanent complimentary access. No subscription is required."});
+  if(record.subscription_status==="ACTIVE")return json(409,{error:"Subscription already active"});
+  // Server independently validates price, currency and recurrence against the LIVE/Sandbox plan
+  // selected by the deployment. Never trust a browser-provided amount or PayPal button snippet.
   const plan=await paypal(c,"/v1/billing/plans/"+encodeURIComponent(selected));
   const regular=(plan.billing_cycles||[]).filter(x=>x.tenure_type==="REGULAR");
   const price=regular[0]?.pricing_scheme?.fixed_price;
@@ -21,11 +28,6 @@ export async function handler(event){
      (plan.billing_cycles||[]).some(x=>x.tenure_type==="TRIAL")){
     return json(503,{error:"PayPal plan price or frequency does not match the chosen subscription"});
   }
-  const user=await authenticate(event,c);
-  const record=await entitlement(c,user.id);
-  if(!record)return json(503,{error:"Account billing setup is incomplete"});
-  if(record.is_complimentary===true)return json(409,{error:"This account has permanent complimentary access. No subscription is required."});
-  if(record.subscription_status==="ACTIVE")return json(409,{error:"Subscription already active"});
   if(record.paypal_subscription_id){
    const old=await paypal(c,"/v1/billing/subscriptions/"+encodeURIComponent(record.paypal_subscription_id));
    if(old.custom_id===user.id&&old.plan_id===selected&&["APPROVAL_PENDING","APPROVED"].includes(old.status)){
@@ -45,7 +47,7 @@ export async function handler(event){
   if(!created.id||!approvalUrl)throw new Error("PayPal approval URL unavailable");
   await db(c,"nx_entitlements?user_id=eq."+encodeURIComponent(user.id),{method:"PATCH",body:{
     paypal_subscription_id:created.id,paypal_plan_id:selected,
-    subscription_status:created.status==="ACTIVE"?"PENDING":"PENDING",updated_at:new Date().toISOString()
+    subscription_status:"PENDING",updated_at:new Date().toISOString()
    },prefer:"return=minimal"});
   return json(200,{approvalUrl});
  }catch(e){console.error("Billing checkout failed:",e.message);return json(e.status||503,{error:e.status===401?"Please sign in":"Checkout is temporarily unavailable"})}
