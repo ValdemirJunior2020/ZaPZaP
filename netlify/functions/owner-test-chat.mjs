@@ -1,7 +1,7 @@
 import {env,json,userFrom,ownStore,offerings,postOrigin,parse,aiReady,access} from "../lib/tenant.mjs";
 import {allow,clientIp} from "../lib/abuse.mjs";
 import {businessMessages} from "../lib/business-ai.mjs";
-import {query as ollamaQuery} from "../lib/ollama.mjs";
+import {query as ollamaQuery,readiness} from "../lib/ollama.mjs";
 
 // Owner-only sandbox. The business and catalog are ALWAYS loaded using
 // the authenticated Supabase user. Testing never writes trial or publish state.
@@ -20,7 +20,7 @@ export async function handler(event){
   if(!store)return json(400,{error:"Save your business details first."});
   const items=await offerings(c,store.id);
   if(!items.length)return json(400,{error:"Add at least one product or service to test your AI."});
-  if(!aiReady())return json(503,{error:"The AI gateway is not configured or is offline. Your trial has not started."});
+  if(!aiReady())return json(503,{code:readiness().code,error:"The AI gateway is not configured or is offline. Your trial has not started."});
   // Database-backed, cross-instance budgets. No client-provided tenant ID.
   if(!await allow(c,"owner_test_global","all",500,86400))return json(429,{error:"Testing capacity reached for today."});
   if(!await allow(c,"owner_test_daily",user.id,20,86400))return json(429,{error:"You've used your 20 test questions for today."});
