@@ -116,11 +116,12 @@ function render(){
  testbot:["TEST MY AI","Talk to your own AI salesperson","Preview real answers from your business catalog before publishing."],
  links:["TRACKED QR CODES","Turn foot traffic into leads","Create trackable QR codes for storefronts, vehicles, services and products."],
  leads:["LEAD CENTER","Leads & conversations","Every inquiry, appointment request and captured conversation."],
+ personal:["PERSONAL AI ASSISTANT","Your personal AI, one shareable link","Meet Hope: faith-inspired encouragement, everyday answers and business lead capture."],
  billing:["48-HOUR TRIAL & BILLING","Your subscription","Core $149/month, website widget +$79/month."]};
  const t=titles[viewName]||titles.overview;
  text("workspaceEyebrow",t[0]);text("workspaceHeading",t[1]);text("workspaceSubtitle",t[2]);text("trialBadge",statusText());
- document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===viewName));
- const views={overview:renderOverview,store:renderStore,offerings:renderOfferings,testbot:renderTestBot,links:renderLinks,leads:renderLeads,billing:renderBilling};
+ document.querySelectorAll("[data-view]").forEach(b=>{if(b.dataset.view==="personal")b.classList.toggle("hidden",workspace?.personalAssistant?.enabled!==true);b.classList.toggle("active",b.dataset.view===viewName)});
+ const views={overview:renderOverview,store:renderStore,offerings:renderOfferings,testbot:renderTestBot,links:renderLinks,leads:renderLeads,personal:renderPersonalAssistant,billing:renderBilling};
  $("viewContent").innerHTML=(views[viewName]||views.overview)();
  bindView();
 }
@@ -248,6 +249,18 @@ function renderLinks(){
  )+(!workspace.widgetAllowed?'<p class="hint">The website widget requires an active bundled subscription after the trial.</p>':'')+'</div>';
  return body+renderQrSources()+renderChatSettings();
 }
+function renderPersonalAssistant(){
+ const mine=workspace?.personalAssistant?.enabled===true;
+ if(!mine)return '<div class="card"><h2>Personal AI Assistant</h2><p>This special edition is not enabled for your account yet.</p></div>';
+ const link=location.origin+'/assistant';
+ return '<div class="card"><div class="tag">YOUR SPECIAL AI EXPERIENCE</div><h2>Hope · Faithful Encourager</h2>'+
+ '<p>Share your link anywhere, including WhatsApp. Visitors open a responsive NexusSales page and chat with Hope. No WhatsApp integration or Meta API is needed.</p>'+
+ '<div class="link-input"><input id="personalLink" value="'+htmlEsc(link)+'" readonly><button class="button" id="copyPersonalLink">Copy link</button></div>'+
+ '<div class="link-actions"><a class="button" href="'+htmlEsc(link)+'" target="_blank" rel="noopener">Open Hope</a>'+
+ '<a class="button" target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent("Meet Hope, my AI assistant. Chat here: "+link)+'">Share on WhatsApp</a></div>'+
+ '<div class="setup-alert success">Exclusive to your complimentary account. Conversations are saved securely; visitors who submit their contact details appear in Leads & Chats.</div>'+
+ '<p class="hint">Hope explains that she is an AI, gives practical help and faith-based encouragement when welcomed, and only introduces NexusSales when relevant. You can view the opt-in leads in your existing Lead Center.</p></div>';
+}
 function renderLeads(){
  const leads=workspace.leads||[],sources=workspace.qrSources||[];
  const newCount=leads.filter(l=>l.status==="New").length;
@@ -296,6 +309,7 @@ function renderBilling(){
  return '<div class="card"><h2>'+htmlEsc(statusText())+'</h2><p>'+htmlEsc(status)+'</p><div class="view-grid"><div><strong class="metric">$149<small>/mo</small></strong><p>Core store, AI salesperson, SmartLinks and leads.</p></div><div><strong class="metric">$228<small>/mo</small></strong><p>Core + embedded website widget ($79 add-on).</p></div></div><div class="actions">'+(a.reason==="COMPLIMENTARY"?'<span class="status-badge">✓ No payment required</span>':'<a class="primary" href="'+url+'">Manage PayPal subscription</a>')+'</div>'+(a.reason==="COMPLIMENTARY"?'<p class="hint">All NexusSales features are included with your complimentary access.</p>':'<p class="hint">Manage your subscription, security and account deletion in Account Settings.</p>')+'</div>';
 }
 function bindView(){
+ if(viewName==="personal"&&$("copyPersonalLink"))$("copyPersonalLink").onclick=()=>navigator.clipboard.writeText($("personalLink").value).then(()=>toast("Hope link copied")).catch(()=>toast("Unable to copy"));
  document.querySelectorAll("[data-jump]").forEach(e=>e.onclick=()=>{viewName=e.dataset.jump;render()});
  if(viewName==="leads"){
   const filter=$("leadFilter");
