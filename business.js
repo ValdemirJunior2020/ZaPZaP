@@ -263,7 +263,7 @@ function renderQrSources(){
  (!workspace.store?.published?'<p class="hint">Publish your SmartStore to generate tracked QR codes.</p>':'')+
  '<div class="qr-list">'+sources.map(s=>{
  const url=qrSourceUrl(s.code),qr='https://api.qrserver.com/v1/create-qr-code/?size=250x250&data='+encodeURIComponent(url);
- const count=(workspace.leads||[]).filter(l=>l.source_id===s.id).length;
+ const count=(workspace.leads||[]).filter(l=>l.source_id===s.id).length,scans=Number(s.scan_count||0);
  return '<div class="qr-item"><img src="'+htmlEsc(qr)+'" alt="QR code for '+htmlEsc(s.label)+'" loading="lazy"><div><strong>'+htmlEsc(s.label)+'</strong><small>'+count+' lead(s) • '+(s.enabled?'Active':'Disabled')+'</small><a href="'+htmlEsc(url)+'" target="_blank" rel="noopener">Open QR link</a><div class="actions"><button type="button" class="button" data-copy-qr="'+htmlEsc(s.code)+'">Copy URL</button><button type="button" class="button" data-print-qr="'+htmlEsc(s.id)+'">Print sign</button><button type="button" class="button" data-toggle-qr="'+htmlEsc(s.id)+'">'+(s.enabled?'Disable':'Enable')+'</button></div></div></div>'
  }).join('')+'</div></div>';
 }
