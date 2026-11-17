@@ -1,17 +1,17 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Business assistant • NexusSales AI</title><style>
-:root{font:13px system-ui,sans-serif;color:#1b3e30;background:#f7faf7}*{box-sizing:border-box}html,body{margin:0;height:100%}body{display:flex;flex-direction:column}.head{background:#087858;color:white;padding:17px;font-weight:800;font-size:15px}.head small{display:block;font-size:11px;font-weight:500;margin-top:5px;color:#d0f5e1}.feed{flex:1;min-height:0;overflow-y:auto;padding:15px;display:flex;flex-direction:column;gap:11px}.bubble{max-width:90%;padding:12px;border-radius:12px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}.bot{align-self:flex-start;background:#fff;border:1px solid #e0ebe4}.user{align-self:flex-end;background:#dbf5e6}.form{display:flex;gap:7px;padding:11px;background:white;border-top:1px solid #e5eee8}.form input{flex:1;min-width:0;border:1px solid #d1e2d8;padding:11px;border-radius:8px;font:inherit}.form button{border:0;background:#07a777;border-radius:8px;color:white;font-weight:750;padding:0 14px}.form button:disabled{opacity:.4}.foot{font-size:10px;text-align:center;color:#8da295;padding:8px;background:white}
+:root{font:13px system-ui,sans-serif;color:#1b3e30;background:#f7faf7}*{box-sizing:border-box}html,body{margin:0;height:100%}body{display:flex;flex-direction:column}.head{background:#087858;color:white;padding:17px;font-weight:800;font-size:15px}.head small{display:block;font-size:11px;font-weight:500;margin-top:5px;color:#d0f5e1}.feed{flex:1;min-height:0;overflow-y:auto;padding:15px;display:flex;flex-direction:column;gap:11px}.bubble{max-width:90%;padding:12px;border-radius:12px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}.bot{align-self:flex-start;background:#fff;border:1px solid #e0ebe4}.user{align-self:flex-end;background:#dbf5e6}.form{display:flex;gap:7px;padding:11px;background:white;border-top:1px solid #e5eee8}.form input{flex:1;min-width:0;border:1px solid #d1e2d8;padding:11px;border-radius:8px;font:inherit}.form button{border:0;background:#07a777;border-radius:8px;color:white;font-weight:750;padding:0 14px}.form button:disabled{opacity:.4}.foot{font-size:10px;text-align:center;color:#8da295;padding:8px;background:white}.lead-toggle{margin:0 11px 6px;padding:9px 12px;border:1px solid #bce7d7;background:#e8f8f0;color:#075b48;font:700 12px system-ui,sans-serif;border-radius:9px;text-align:center;cursor:pointer}.lead-form{display:none;background:#fff;padding:10px 12px 12px;border-top:1px solid #e5eee8;max-height:245px;overflow-y:auto}.lead-form.open{display:block}.lead-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.lead-form input,.lead-form textarea{min-width:0;width:100%;padding:9px;border:1px solid #ccdcd3;border-radius:7px;font:12px system-ui,sans-serif}.lead-form textarea{grid-column:1/-1;resize:vertical;min-height:49px}.lead-form button{background:#078962;border:0;padding:10px;border-radius:8px;color:white;font-weight:700;cursor:pointer}.lead-form button:disabled{opacity:.5}.lead-status{font-size:11px;line-height:1.4;margin:6px 0}.hp{position:absolute;left:-10000px}
 </style></head><body><header class="head"><span id="business">Business assistant</span><small id="status">Connecting securely…</small></header><main class="feed" id="feed" role="log" aria-live="polite"><div class="bubble bot" id="hello">Checking this assistant…</div></main>
-<form class="form" id="form"><input id="message" required maxlength="700" placeholder="Ask about products or services…" disabled autocomplete="off"><button id="send" disabled>Send</button></form><div class="foot">Powered by NexusSales AI • Payments and bookings are not handled in chat</div>
+<form class="form" id="form"><input id="message" required maxlength="700" placeholder="Ask about products or services…" disabled autocomplete="off"><button id="send" disabled>Send</button></form><button class="lead-toggle" id="leadToggle" type="button" aria-expanded="false" aria-controls="leadForm">Leave your contact details</button><form id="leadForm" class="lead-form" aria-label="Business inquiry"><div class="lead-grid"><input id="leadName" name="name" placeholder="Your name" autocomplete="name" required minlength="2" maxlength="100"><input id="leadEmail" name="email" placeholder="Email address" type="email" autocomplete="email" required maxlength="180"><input id="leadPhone" name="phone" placeholder="Phone (optional)" type="tel" autocomplete="tel" maxlength="35"><textarea id="leadInterest" name="interest" placeholder="What can we help you with?" required minlength="5" maxlength="1500"></textarea></div><input id="leadHp" class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true"><p id="leadStatus" class="lead-status" role="status" aria-live="polite"></p><button type="submit" id="leadSend">Send inquiry</button></form><div class="foot">Powered by NexusSales AI • Payments and bookings are not handled in chat</div>
 <script>
 const botId=new URLSearchParams(location.search).get("bot")||"";
-const el=id=>document.getElementById(id),feed=el("feed");let ready=false,history=[],busy=false;
+const el=id=>document.getElementById(id),feed=el("feed");let ready=false,history=[],busy=false,storeSlug="";
 function add(role,text){const b=document.createElement("div");b.className="bubble "+role;b.textContent=String(text).slice(0,2500);feed.appendChild(b);feed.scrollTop=feed.scrollHeight;return b}
 async function init(){
  if(!/^bot_[a-z0-9]{20,50}$/.test(botId)){el("hello").textContent="Invalid assistant link.";el("status").textContent="Unavailable";return}
  try{
   const r=await fetch("/.netlify/functions/widget-config?botId="+encodeURIComponent(botId),{cache:"no-store"});
   const data=await r.json();if(!r.ok||data.available!==true)throw Error("Not active");
-  el("business").textContent=data.businessName||"Business assistant";
+  storeSlug=data.slug||"";el("business").textContent=data.businessName||"Business assistant";
   el("status").textContent="Live AI • Products and services";
   el("hello").textContent=data.greeting||"Hi! How can I help today?";
   ready=true;el("message").disabled=false;el("send").disabled=false;
@@ -28,6 +28,22 @@ el("form").onsubmit=async e=>{
   pending.textContent=data.reply;history.push({role:"user",content:message},{role:"assistant",content:data.reply});history=history.slice(-8);
  }catch{pending.textContent="I can't answer right now. Please contact the business directly."}
  finally{busy=false;el("message").disabled=false;el("send").disabled=false;el("message").focus();feed.scrollTop=feed.scrollHeight}
+};
+el("leadToggle").onclick=()=>{const form=el("leadForm");const open=!form.classList.contains("open");form.classList.toggle("open",open);el("leadToggle").setAttribute("aria-expanded",String(open));el("leadToggle").textContent=open?"Hide contact form":"Leave your contact details"};
+el("leadForm").onsubmit=async event=>{
+ event.preventDefault();
+ const button=el("leadSend");
+ if(button.disabled||!storeSlug)return;
+ button.disabled=true;el("leadStatus").textContent="Saving your inquiry…";
+ try{
+  const payload={slug:storeSlug,name:el("leadName").value.trim(),email:el("leadEmail").value.trim(),phone:el("leadPhone").value.trim(),interest:el("leadInterest").value.trim(),honeypot:el("leadHp").value};
+  const response=await fetch("/api/store-inquiry",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),cache:"no-store"});
+  const data=await response.json().catch(()=>({}));
+  if(response.status!==201||data.accepted!==true)throw Error(data.error||"Unable to send inquiry");
+  el("leadStatus").textContent="Inquiry received! The business can now follow up.";
+  el("leadForm").reset();
+ }catch(error){el("leadStatus").textContent=error.message||"Could not save your inquiry. Please retry."}
+ finally{button.disabled=false}
 };
 init();
 </script></body></html>
