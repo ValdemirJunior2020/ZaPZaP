@@ -16,7 +16,7 @@ export async function handler(event){
    const profile=await ownerProfile(c,user.id);
    const items=store?await offerings(c,store.id):[];
    const leads=store?await db(c,"nx_leads?store_id=eq."+encodeURIComponent(store.id)+"&select=id,customer_name,customer_email,customer_phone,interest,status,request_type,preferred_time,source_id,session_id,created_at,updated_at&order=created_at.desc&limit=100"):[];
-   const qrSources=store?await db(c,"nx_qr_sources?store_id=eq."+encodeURIComponent(store.id)+"&select=id,code,label,enabled,offering_id,created_at&order=created_at.desc&limit=100"):[];
+   const qrSources=store?await db(c,"nx_qr_sources?store_id=eq."+encodeURIComponent(store.id)+"&select=id,code,label,enabled,offering_id,scan_count,created_at&order=created_at.desc&limit=100"):[];
    let bot=null;
    if(store){try{const found=await db(c,"nx_bots?store_id=eq."+encodeURIComponent(store.id)+"&select=bot_id,enabled,greeting,primary_color");bot=found?.[0]||null}catch{}}
    return json(200,{email:user.email,profile,store,offerings:items,leads,qrSources,bot,widgetAllowed:widgetEnabled(c,ent),access:access(ent),aiConfigured:aiReady()});
