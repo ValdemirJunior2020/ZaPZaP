@@ -97,7 +97,7 @@ test("Admin requires MFA aal2 and verified super_admin account",async()=>{
  try{
   globalThis.fetch=fakeNetwork();assert.equal((await admin(event("aal1"))).statusCode,403);assert.equal((await admin(event("aal2"))).statusCode,200);
   globalThis.fetch=fakeNetwork({role:"owner"});assert.equal((await admin(event("aal2"))).statusCode,403);
-  assert.equal((await admin({httpMethod:"POST",headers:{},body:'{"pin":"1893"}'})).statusCode,405);
+  assert.equal((await admin({httpMethod:"POST",headers:{},body:'{"pin":"0000"}'})).statusCode,405);
  }finally{globalThis.fetch=original}
 });
 test("Store chat ignores customer-supplied business/catalog and queries private owner data",async()=>{
