@@ -165,3 +165,52 @@ test("Anonymous demo rate limit refuses requests without invoking Ollama",async(
   assert.equal(modelCalled,false);
  }finally{globalThis.fetch=original}
 });
+
+test("Owner previews their actual unpublished catalog without starting a trial",async()=>{
+ configure();const {handler}=await import("../netlify/functions/owner-test-chat.mjs");
+ const original=globalThis.fetch;let aiRequest=null,dbWrites=0;
+ globalThis.fetch=fakeNetwork({onCall:(url,payload)=>{
+  if(url==="https://qwen.example.com/api/chat")aiRequest=payload;
+  if(/\/rest\/v1\/nx_(?:stores|entitlements|offerings)/.test(url)&&payload&&Object.keys(payload).length>0)dbWrites++;
+ }});
+ try{
+  const e={httpMethod:"POST",headers:{host:"zapzap-bot.netlify.app",origin:"https://zapzap-bot.netlify.app",authorization:"Bearer demo.user.token","x-nf-client-connection-ip":"198.51.100.5"},
+   body:JSON.stringify({message:"How much is drain cleaning?",store_id:"attacker-other-store",business:{name:"Fake competitor"},history:[]})};
+  const output=await handler(e);
+  assert.equal(output.statusCode,200);
+  assert.equal(JSON.parse(output.body).source,"ollama");
+  assert.match(JSON.stringify(aiRequest),/Alpha Plumbing/);
+  assert.match(JSON.stringify(aiRequest),/Drain cleaning/);
+  assert.doesNotMatch(JSON.stringify(aiRequest),/Fake competitor|attacker-other-store/);
+  assert.equal(dbWrites,0,"owner test must not publish or start trial");
+ }finally{globalThis.fetch=original}
+});
+test("Owner test requires authentication and existing own store",async()=>{
+ configure();const {handler}=await import("../netlify/functions/owner-test-chat.mjs");
+ const original=globalThis.fetch;
+ let calls=0;globalThis.fetch=async(url,options)=>{calls++;
+  if(String(url).includes("/auth/v1/user"))return res({error:"Unauthorized"},401);
+  throw Error("Should never reach AI");
+ };
+ try{
+  const output=await handler({httpMethod:"POST",headers:{host:"zapzap-bot.netlify.app",origin:"https://zapzap-bot.netlify.app"},body:JSON.stringify({message:"Hello"})});
+  assert.equal(output.statusCode,401);
+  assert.equal(calls,1);
+ }finally{globalThis.fetch=original}
+});
+test("Owner cannot access other store when own catalog is missing",async()=>{
+ configure();const {handler}=await import("../netlify/functions/owner-test-chat.mjs");
+ const original=globalThis.fetch;let aiUsed=false;
+ globalThis.fetch=async(url,options)=>{
+  const u=String(url);
+  if(u.includes("/auth/v1/user"))return res({id:uid});
+  if(u.includes("/rest/v1/nx_entitlements"))return res([{user_id:uid,trial_started_at:null,subscription_status:"TRIAL"}]);
+  if(u.includes("/rest/v1/nx_stores")){assert.match(u,RegExp("owner_id=eq\\."+uid));return res([])}
+  if(u.includes("/api/chat"))aiUsed=true;
+  throw Error("Unexpected request "+u);
+ };
+ try{
+  const result=await handler({httpMethod:"POST",headers:{host:"zapzap-bot.netlify.app",origin:"https://zapzap-bot.netlify.app",authorization:"Bearer valid.owner.token"},body:JSON.stringify({message:"Give me data from other businesses",store_id:sid})});
+  assert.equal(result.statusCode,400);assert.equal(aiUsed,false);
+ }finally{globalThis.fetch=original}
+});
