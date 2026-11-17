@@ -160,8 +160,8 @@ test("Anonymous demo rate limit refuses requests without invoking Ollama",async(
  };
  try{
   const event={httpMethod:"POST",headers:{origin:"https://zapzap-bot.netlify.app",host:"zapzap-bot.netlify.app"},body:JSON.stringify({business:"hvac",message:"AC pricing?"})};
-  // Mocked transient backend errors must also fail closed, without a model invocation.
-  assert.equal((await handler(event)).statusCode,503);
+  // An exhausted durable budget must return 429 without invoking the model.
+  assert.equal((await handler(event)).statusCode,429);
   assert.equal(modelCalled,false);
  }finally{globalThis.fetch=original}
 });
