@@ -56,3 +56,37 @@ test("Consolidated public endpoint invokes existing handlers only",async()=>{
  const valid=await run(new Request("https://nexussales.vercel.app/api/public?route=public-config"));
  assert.ok([200,503].includes(valid.status),"public-config reports configured or unavailable, not a route failure");
 });
+
+
+test("Vercel Node.js runtime accepts relative URLs and sends a native response",async()=>{
+ const{default:run}=await import("../api/public.mjs");
+ const makeResponse=()=>({
+  status:0,headers:{},body:"",
+  writeHead(status,headers){this.status=status;this.headers=headers},
+  end(body){this.body=String(body??"")}
+ });
+ const request={url:"/api/public-config?utm_source=chatgpt.com&route=public-config",method:"GET",headers:{host:"nexussales.vercel.app"}};
+ const response=makeResponse();
+ await run(request,response);
+ assert.ok([200,503].includes(response.status),"relative Vercel request URL must not cause ERR_INVALID_URL");
+ assert.ok(JSON.parse(response.body).configured!==undefined);
+ const missing=makeResponse();
+ await run({...request,url:"/api/public?route=unknown"},missing);
+ assert.equal(missing.status,404);
+});
+test("Shared adapter forwards Node.js POST body and auth header",async()=>{
+ const{Readable}=await import("node:stream");
+ const request=Readable.from([Buffer.from('{"action":"test"}')]);
+ request.url="/api/owner-workspace?x=1";
+ request.method="POST";
+ request.headers={authorization:"Bearer test",host:"example.com","content-type":"application/json"};
+ const response={writeHead(status,headers){this.status=status;this.headers=headers},end(payload){this.body=String(payload)}};
+ await adapt(request,async event=>{
+  assert.equal(event.queryStringParameters.x,"1");
+  assert.equal(event.headers.authorization,"Bearer test");
+  assert.deepEqual(JSON.parse(event.body),{action:"test"});
+  return{statusCode:200,body:JSON.stringify({ok:true}),headers:{"Content-Type":"application/json"}};
+ },response);
+ assert.equal(response.status,200);
+ assert.deepEqual(JSON.parse(response.body),{ok:true});
+});
