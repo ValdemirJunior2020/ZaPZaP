@@ -1,3 +1,4 @@
+import{JUNIOR_OWNER_ID,JUNIOR_EXPERIENCE,juniorMessages}from"../lib/junior-assistant.mjs";
 import{allow,clientIp}from"../lib/abuse.mjs";
 import{businessMessages}from"../lib/business-ai.mjs";
 import{query as ollamaQuery}from"../lib/ollama.mjs";
@@ -5,7 +6,16 @@ import{env,json,str,parse,postOrigin,publishedStore,aiReady,db,entitlement,acces
 import{widgetEnabled}from"../lib/billing.mjs";
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export async function handler(event){
- if(event.httpMethod==="GET")return json(200,{online:aiReady()});
+ if(event.httpMethod==="GET"){
+  if(event.queryStringParameters?.experience!==JUNIOR_EXPERIENCE)return json(200,{online:aiReady()});
+  try{
+   const c=env();
+   const rows=await db(c,"nx_stores?owner_id=eq."+JUNIOR_OWNER_ID+"&published=eq.true&select=slug,owner_id,chat_max_messages");
+   const st=rows?.[0],ent=st?await entitlement(c,st.owner_id):null;
+   if(!st||!ent?.is_complimentary||!access(ent).allowed)return json(404,{error:"Assistant unavailable"});
+   return json(200,{online:aiReady(),slug:st.slug,limit:Math.max(5,Math.min(30,Number(st.chat_max_messages)||10))});
+  }catch(e){console.error("Junior assistant public config:",e.message);return json(503,{error:"Assistant temporarily unavailable"})}
+ }
  if(event.httpMethod!=="POST")return json(405,{error:"Method not allowed"});
  if(!postOrigin(event))return json(403,{error:"Origin rejected"});
  if(!aiReady())return json(503,{error:"Live AI is temporarily unavailable. Leave an inquiry for the business."});
@@ -14,7 +24,13 @@ export async function handler(event){
   if(!message)return json(400,{error:"Question is required"});
   const c=env();
   if(!await allow(c,"store_chat",clientIp(event),10,60))return json(429,{error:"Too many requests. Try again later"});
+  const juniorMode=req.experience===JUNIOR_EXPERIENCE;
   let slug=str(req.slug,50);
+  if(juniorMode){
+   const ownerStores=await db(c,"nx_stores?owner_id=eq."+JUNIOR_OWNER_ID+"&published=eq.true&select=slug");
+   if(!ownerStores?.[0])return json(404,{error:"Assistant unavailable"});
+   slug=ownerStores[0].slug;
+  }
   if(req.botId){
    const botId=str(req.botId,80);
    if(!/^bot_[a-z0-9]{20,50}$/.test(botId))return json(404,{error:"Assistant unavailable"});
@@ -30,6 +46,7 @@ export async function handler(event){
   const published=await publishedStore(c,slug);
   if(!published)return json(404,{error:"Store not available"});
   const {store,items,ent}=published;
+  if(juniorMode&&(store.owner_id!==JUNIOR_OWNER_ID||ent.is_complimentary!==true))return json(403,{error:"This assistant belongs to a different business"});
   const dailyLimit=ent.is_complimentary===true?1000:ent.subscription_status==="ACTIVE"?1000:100;
   const used=await db(c,"rpc/nx_consume_chat_quota",{method:"POST",body:{p_store_id:store.id,p_cap:dailyLimit}});
   if(used!==true)return json(429,{error:"Assistant message limit reached today"});
@@ -50,7 +67,7 @@ export async function handler(event){
   const qrRows=sourceCode?await db(c,"nx_qr_sources?store_id=eq."+encodeURIComponent(store.id)+"&code=eq."+encodeURIComponent(sourceCode)+"&enabled=eq.true&select=label,offering_id"):[];
   const qrSource=qrRows?.[0]||null;
   const linkedOffering=qrSource?.offering_id?items.find(item=>item.id===qrSource.offering_id)||null:null;
-  const messages=businessMessages(store,items,message,history,qrSource?{label:qrSource.label,offering:linkedOffering}:null);
+  const messages=juniorMode?juniorMessages(message,history):businessMessages(store,items,message,history,qrSource?{label:qrSource.label,offering:linkedOffering}:null);
   // Persist only actual visitor/AI messages, never browser-provided transcripts.
   await db(c,"nx_chat_messages",{method:"POST",body:{session_id:claim.sessionId,store_id:store.id,role:"user",content:message},prefer:"return=minimal"});
   const answer=await ollamaQuery(messages,{maxTokens:450,timeoutMs:50000});

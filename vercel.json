@@ -51,6 +51,14 @@
       "destination": "/admin.html"
     },
     {
+      "source": "/assistant",
+      "destination": "/junior.html"
+    },
+    {
+      "source": "/junior",
+      "destination": "/junior.html"
+    },
+    {
       "source": "/s/:slug",
       "destination": "/store.html"
     }
@@ -109,7 +117,7 @@
       ]
     },
     {
-      "source": "/(index.html|business.html|account.html|store.html)",
+      "source": "/(index.html|business.html|account.html|store.html|junior.html)",
       "headers": [
         {
           "key": "Content-Security-Policy",
