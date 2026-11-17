@@ -35,14 +35,16 @@ const root=$("liveDemo");if(root){
    const data=await response.json().catch(()=>({}));
    if(!response.ok)throw Error(data.error||"The live demo is currently unavailable.");
    if(!data.reply||data.source!=="ollama"||data.business!==selected)throw Error("The live demo did not return a verified reply.");
+   $("demoOnline").textContent="Qwen3 responding";$("demoOnline").classList.add("online");
    pending.textContent=data.reply;
    history.push({role:"user",content:message},{role:"assistant",content:data.reply});history=history.slice(-6);
    status.textContent="Answered by Qwen3 • Fictional business information.";
   }catch(error){
+   $("demoOnline").textContent="AI offline";$("demoOnline").classList.remove("online");
    pending.textContent=error.name==="AbortError"?"Qwen3 took too long to respond. Please try again.":error.message;
    status.textContent="No simulated answer was substituted. Real Qwen3 responses only.";
   }finally{clearTimeout(timeout);busy=false;send.disabled=false;question.disabled=false;messages.scrollTop=messages.scrollHeight}
  });
  select("auto");
- fetch("/.netlify/functions/demo-chat",{cache:"no-store"}).then(r=>r.json()).then(j=>{const online=$("demoOnline");online.textContent=j.configured?"AI configured":"AI offline";online.classList.toggle("online",Boolean(j.configured))}).catch(()=>{$("demoOnline").textContent="AI offline"});
+ fetch("/.netlify/functions/demo-chat",{cache:"no-store"}).then(r=>r.json()).then(j=>{const online=$("demoOnline");online.textContent=j.configured?"AI connection unverified":"AI offline";online.classList.remove("online")}).catch(()=>{$("demoOnline").textContent="AI offline"});
 }
