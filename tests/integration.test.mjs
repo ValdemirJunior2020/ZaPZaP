@@ -195,7 +195,7 @@ test("Owner test requires authentication and existing own store",async()=>{
  try{
   const output=await handler({httpMethod:"POST",headers:{host:"zapzap-bot.netlify.app",origin:"https://zapzap-bot.netlify.app"},body:JSON.stringify({message:"Hello"})});
   assert.equal(output.statusCode,401);
-  assert.equal(calls,1);
+  assert.equal(calls,0,"missing authorization must be rejected before any DB request");
  }finally{globalThis.fetch=original}
 });
 test("Owner cannot access other store when own catalog is missing",async()=>{
