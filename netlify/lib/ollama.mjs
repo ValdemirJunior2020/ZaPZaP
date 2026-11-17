@@ -8,7 +8,18 @@ function config(){
  if(url.protocol!=="https:"||url.username||url.password||url.search||url.hash||!url.hostname||url.pathname!=="/")return null;
  return{base:url.origin,token,model:process.env.NEXUS_OLLAMA_MODEL||"qwen3:8b"};
 }
-function ready(){return process.env.NEXUS_LIVE_CHAT_ENABLED==="true"&&Boolean(config())}
+function readiness(){
+ const enabled=String(process.env.NEXUS_LIVE_CHAT_ENABLED||"").trim().toLowerCase()==="true";
+ const raw=String(process.env.NEXUS_OLLAMA_URL||"").trim();
+ const token=String(process.env.NEXUS_OLLAMA_GATEWAY_TOKEN||"");
+ if(!enabled)return{ready:false,code:"CHAT_DISABLED"};
+ if(!raw)return{ready:false,code:"GATEWAY_URL_MISSING"};
+ let url;try{url=new URL(raw)}catch{return{ready:false,code:"GATEWAY_URL_INVALID"}}
+ if(url.protocol!=="https:"||url.username||url.password||url.search||url.hash||!url.hostname||url.pathname!=="/")return{ready:false,code:"GATEWAY_URL_INVALID"};
+ if(!token)return{ready:false,code:"GATEWAY_TOKEN_MISSING"};
+ return{ready:true,code:"READY"};
+}
+function ready(){return readiness().ready}
 async function query(messages,{maxTokens=380,timeoutMs=75000}={}){
  const c=config();if(!c)throw Error("Ollama gateway not configured");
  const r=await fetch(c.base+"/api/chat",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+c.token},
@@ -20,4 +31,4 @@ async function query(messages,{maxTokens=380,timeoutMs=75000}={}){
  return answer.slice(0,2500);
 }
 async function verify(){if(!ready())return false;try{return Boolean(await query([{role:"user",content:"Reply with exactly OK."}],{maxTokens:30,timeoutMs:18000}))}catch(e){console.error("Ollama readiness:",e.message);return false}}
-export{ready,verify,query};
+export{ready,readiness,verify,query};
