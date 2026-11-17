@@ -3,6 +3,7 @@ import{env,db,json,str,slug,domainUrl,userFrom,ownStore,offerings,ownerProfile,a
 const canEdit=ent=>Boolean(ent?.is_complimentary)||!ent?.trial_started_at||access(ent).allowed;
 const opts=["Product","Service","Package","Consultation","Custom quote"];
 const avail=["Available","Booking required","Request a quote","In stock","Out of stock","Contact for availability"];
+const leadStatuses=["New","Contacted","Appointment Requested","Booked","Won","Lost"];
 export async function handler(event){
  const c=env();
  if(!["GET","POST"].includes(event.httpMethod))return json(405,{error:"Method not allowed"});
@@ -14,13 +15,14 @@ export async function handler(event){
   if(event.httpMethod==="GET"){
    const profile=await ownerProfile(c,user.id);
    const items=store?await offerings(c,store.id):[];
-   const leads=store?await db(c,"nx_leads?store_id=eq."+encodeURIComponent(store.id)+"&select=id,customer_name,customer_email,customer_phone,interest,status,created_at&order=created_at.desc&limit=100"):[];
+   const leads=store?await db(c,"nx_leads?store_id=eq."+encodeURIComponent(store.id)+"&select=id,customer_name,customer_email,customer_phone,interest,status,request_type,preferred_time,source_id,session_id,created_at,updated_at&order=created_at.desc&limit=100"):[];
+   const qrSources=store?await db(c,"nx_qr_sources?store_id=eq."+encodeURIComponent(store.id)+"&select=id,code,label,enabled,offering_id,created_at&order=created_at.desc&limit=100"):[];
    let bot=null;
    if(store){try{const found=await db(c,"nx_bots?store_id=eq."+encodeURIComponent(store.id)+"&select=bot_id,enabled,greeting,primary_color");bot=found?.[0]||null}catch{}}
-   return json(200,{email:user.email,profile,store,offerings:items,leads,bot,widgetAllowed:widgetEnabled(c,ent),access:access(ent),aiConfigured:aiReady()});
+   return json(200,{email:user.email,profile,store,offerings:items,leads,qrSources,bot,widgetAllowed:widgetEnabled(c,ent),access:access(ent),aiConfigured:aiReady()});
   }
   const data=parse(event,30000),action=str(data.action,40);
-  if(!canEdit(ent)&&!["pause","disable_widget"].includes(action))return json(402,{error:"Your trial has ended. Subscribe to continue.",access:access(ent)});
+  if(!canEdit(ent)&&!["pause","disable_widget","lead_history","update_lead"].includes(action))return json(402,{error:"Your trial has ended. Subscribe to continue.",access:access(ent)});
   if(action==="save_store"){
    const i=data.store||{};
    const name=str(i.name,150);
@@ -42,6 +44,45 @@ export async function handler(event){
    return json(200,{store});
   }
   if(!store)return json(400,{error:"Save your business details first"});
+  if(action==="save_chat_settings"){
+   const count=Number(data.chatMaxMessages),minutes=Number(data.chatMaxMinutes);
+   if(!Number.isInteger(count)||count<5||count>30||!Number.isInteger(minutes)||minutes<5||minutes>30)return json(400,{error:"Choose 5–30 messages and 5–30 minutes"});
+   const rows=await db(c,"nx_stores?id=eq."+encodeURIComponent(store.id)+"&owner_id=eq."+encodeURIComponent(user.id),
+    {method:"PATCH",body:{chat_max_messages:count,chat_max_minutes:minutes,appointments_enabled:data.appointmentsEnabled===true,updated_at:iso()},prefer:"return=representation"});
+   return json(200,{store:rows[0]});
+  }
+  if(action==="create_qr"){
+   if(!store.published)return json(400,{error:"Publish your SmartStore before creating QR codes"});
+   const label=str(data.label,80);
+   if(label.length<2)return json(400,{error:"Enter a QR label (at least 2 characters)"});
+   const existing=await db(c,"nx_qr_sources?store_id=eq."+encodeURIComponent(store.id)+"&select=id&limit=101");
+   if(existing.length>=100)return json(403,{error:"Maximum 100 tracked QR codes per store"});
+   const offeringId=data.offeringId&&/^[0-9a-f-]{36}$/i.test(data.offeringId)?data.offeringId:null;
+   if(offeringId){const match=await db(c,"nx_offerings?id=eq."+encodeURIComponent(offeringId)+"&store_id=eq."+encodeURIComponent(store.id)+"&select=id");if(!match?.length)return json(400,{error:"Offering does not belong to this business"})}
+   const rows=await db(c,"nx_qr_sources",{method:"POST",body:{store_id:store.id,label,offering_id:offeringId,enabled:true},prefer:"return=representation"});
+   return json(201,{source:rows[0]});
+  }
+  if(action==="set_qr_enabled"){
+   if(!/^[0-9a-f-]{36}$/i.test(data.id||""))return json(400,{error:"Invalid QR code"});
+   const rows=await db(c,"nx_qr_sources?id=eq."+encodeURIComponent(data.id)+"&store_id=eq."+encodeURIComponent(store.id),
+    {method:"PATCH",body:{enabled:data.enabled===true},prefer:"return=representation"});
+   if(!rows?.length)return json(404,{error:"QR code not found"});
+   return json(200,{source:rows[0]});
+  }
+  if(action==="lead_history"){
+   if(!/^[0-9a-f-]{36}$/i.test(data.id||""))return json(400,{error:"Invalid lead"});
+   const leads=await db(c,"nx_leads?id=eq."+encodeURIComponent(data.id)+"&store_id=eq."+encodeURIComponent(store.id)+"&select=id,session_id");
+   const found=leads?.[0];if(!found)return json(404,{error:"Lead not found"});
+   const messages=found.session_id?await db(c,"nx_chat_messages?session_id=eq."+encodeURIComponent(found.session_id)+"&store_id=eq."+encodeURIComponent(store.id)+"&select=role,content,created_at&order=id.asc&limit=80"):[];
+   return json(200,{messages});
+  }
+  if(action==="update_lead"){
+   if(!/^[0-9a-f-]{36}$/i.test(data.id||"")||!leadStatuses.includes(data.status))return json(400,{error:"Invalid lead status"});
+   const rows=await db(c,"nx_leads?id=eq."+encodeURIComponent(data.id)+"&store_id=eq."+encodeURIComponent(store.id),
+    {method:"PATCH",body:{status:data.status,updated_at:iso()},prefer:"return=representation"});
+   if(!rows?.length)return json(404,{error:"Lead not found"});
+   return json(200,{lead:rows[0]});
+  }
   if(action==="save_offering"){
    const p=data.offering||{},name=str(p.name,130);
    if(!name)return json(400,{error:"Product or service name is required"});
