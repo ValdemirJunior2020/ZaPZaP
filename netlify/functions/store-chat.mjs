@@ -35,6 +35,8 @@ export async function handler(event){
   if(used!==true)return json(429,{error:"Assistant message limit reached today"});
   if(req.sessionId&&!uuid.test(req.sessionId))return json(400,{error:"Invalid chat session"});
   const cap=Math.max(5,Math.min(30,Number(store.chat_max_messages)||10));
+  // Cross-session daily budget; clearing local storage never grants unlimited Ollama use.
+  if(!await allow(c,"customer_daily",store.id+":"+clientIp(event),Math.max(30,cap*2),86400))return json(429,{code:"DAILY_LIMIT",limitReached:true,error:"The daily chat limit has been reached. Please leave your phone number or email for the business."});
   const minutes=Math.max(5,Math.min(30,Number(store.chat_max_minutes)||10));
   const claim=await db(c,"rpc/nx_claim_chat_message",{method:"POST",body:{
    p_store_id:store.id,p_session_id:req.sessionId||null,
