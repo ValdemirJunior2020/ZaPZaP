@@ -17,6 +17,14 @@
 <form id="contactForm"><div class="contact-grid"><label>Your name<input id="customerName" maxlength="100" autocomplete="name" required></label><label>Email address<input id="customerEmail" maxlength="180" type="email" autocomplete="email"></label></div>
 <label>Phone number (or email above)<input id="customerPhone" maxlength="35" type="tel" autocomplete="tel"></label>
 <label>Request type<select id="requestType"><option value="information">Information</option><option value="appointment">Appointment request</option><option value="callback">Call me back</option><option value="quote">Request quote</option></select></label>
+<div id="calendarPicker" class="hidden" style="border:1px solid #d6ebdd;background:#f5fcf8;padding:15px;border-radius:14px;margin:14px 0">
+<h3 style="margin:0 0 8px;color:#126b49">Choose an available appointment</h3>
+<p id="calendarNotice" style="font-size:12px;color:#557e66">Select a service, team member and date to see available time slots. Appointments are requested until the business confirms, unless instant confirmation is enabled.</p>
+<div class="contact-grid"><label>Service<select id="calPublicService"><option value="">Select service</option></select></label><label>Team member<select id="calPublicStaff"><option value="">Select staff</option></select></label></div>
+<label>Preferred date<input id="calPublicDay" type="date"></label>
+<label>Available time<select id="calPublicSlot"><option value="">Select a date first</option></select></label>
+<p id="calPublicMessage" role="status" aria-live="polite" style="color:#406f57;font-size:12px"></p>
+</div>
 <label id="preferredTimeWrap" class="hidden">Preferred appointment date/time<input id="preferredTime" maxlength="120" placeholder="Friday at 2 PM"></label>
 <label>What can we help with?<textarea id="customerMessage" maxlength="1500" required></textarea></label>
 <label class="hidden">Leave this blank<input id="hp" tabindex="-1" autocomplete="off"></label>
