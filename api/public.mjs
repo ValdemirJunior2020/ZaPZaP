@@ -11,11 +11,14 @@ const handlers=Object.freeze({
  "public-store":publicStore,
  "widget-config":widgetConfig
 });
-export default async function handler(request){
- const url=new URL(request.url);
+export default async function handler(request,response){
+ const url=new URL(request.url,"https://vercel.internal");
  // Explicit allowlist. Never dynamic-import arbitrary tenant/user-supplied modules.
  const route=url.searchParams.get("route")||url.pathname.split("/").pop();
  const delegated=Object.hasOwn(handlers,route)?handlers[route]:null;
- if(!delegated)return Response.json({error:"Unknown endpoint"},{status:404});
- return adapt(request,delegated);
+ if(!delegated){
+  if(response){response.writeHead(404,{"Content-Type":"application/json"});response.end(JSON.stringify({error:"Unknown endpoint"}));return}
+  return Response.json({error:"Unknown endpoint"},{status:404});
+ }
+ return adapt(request,delegated,response);
 }
