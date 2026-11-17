@@ -105,13 +105,14 @@ function render(){
  const titles={overview:["BUSINESS OVERVIEW","Your business command center","Set up and publish your SmartStore."],
  store:["BUSINESS SETTINGS","Set up your SmartStore","Teach the AI what your company does."],
  offerings:["PRODUCTS & SERVICES","What you sell","Enter your actual offerings, prices and details."],
+ testbot:["TEST MY AI","Talk to your own AI salesperson","Preview real answers from your business catalog before publishing."],
  links:["CUSTOMER SMARTLINKS","One link. Every customer.","Share your storefront via email, text and QR code."],
  leads:["YOUR INQUIRIES","Customer leads","People interested in your products and services."],
  billing:["48-HOUR TRIAL & BILLING","Your subscription","Core $149/month, website widget +$79/month."]};
  const t=titles[viewName]||titles.overview;
  text("workspaceEyebrow",t[0]);text("workspaceHeading",t[1]);text("workspaceSubtitle",t[2]);text("trialBadge",statusText());
  document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===viewName));
- const views={overview:renderOverview,store:renderStore,offerings:renderOfferings,links:renderLinks,leads:renderLeads,billing:renderBilling};
+ const views={overview:renderOverview,store:renderStore,offerings:renderOfferings,testbot:renderTestBot,links:renderLinks,leads:renderLeads,billing:renderBilling};
  $("viewContent").innerHTML=(views[viewName]||views.overview)();
  bindView();
 }
@@ -147,6 +148,63 @@ function renderOfferings(){
  '<p class="hint">Only publish accurate prices, services, and availability. The AI is instructed not to invent missing details.</p>';
 }
 function smartUrl(){return workspace?.store?.slug?location.origin+"/s/"+workspace.store.slug:""}
+
+function renderTestBot(){
+ const st=workspace?.store,items=workspace?.offerings||[];
+ const ready=Boolean(st&&items.length&&isEditable());
+ const intro=st?("Hi! I am "+(st.agent_name||"your business assistant")+". Ask me about "+st.name+"'s products and services."):"Save your business profile first to begin.";
+ return '<div class="testbot-wrap"><div class="testbot-setup card"><span class="tag">PRIVATE PREVIEW • ONLY YOU</span><h2>Your own AI. Your real business information.</h2><p>This is a private testing space. Your assistant uses the products, prices, description and hours you saved. Test it before publishing.</p>'+
+ '<div class="testbot-status">'+(st?'✓ Business saved':'○ Save business details')+'</div>'+
+ '<div class="testbot-status">'+(items.length?'✓ '+items.length+' product(s) or service(s) loaded':'○ Add at least one offering')+'</div>'+
+ '<div class="testbot-status">✓ Testing never publishes the store or starts your 48-hour trial.</div>'+
+ '<p class="testbot-help">20 private test questions per day. Answers come directly from Ollama Qwen3, not example responses.</p>'+
+ '<div class="actions"><button type="button" class="button" data-jump="store">Business details</button><button type="button" class="button" data-jump="offerings">Edit offerings</button><button type="button" class="button" data-jump="links">Publish when ready</button></div></div>'+
+ '<div class="testbot-chat card"><div class="testbot-chat-head"><div class="testbot-ai-icon">✦</div><div><strong>'+htmlEsc(st?.agent_name||"My AI Assistant")+'</strong><small>'+htmlEsc(st?.name||"Your business")+' • PRIVATE TEST CHAT</small></div></div>'+
+ '<div class="testbot-messages" id="testBotMessages" role="log" aria-live="polite"><div class="testbot-bubble assistant">'+htmlEsc(intro)+'</div></div>'+
+ '<div class="testbot-controls"><div class="testbot-hints">Try: “What do you offer?” · “How much does it cost?” · “When are you open?”</div>'+
+ '<form id="testBotForm" class="testbot-form"><label class="sr-only" for="testBotQuestion">Ask your own AI a question</label><input id="testBotQuestion" maxlength="500" autocomplete="off" placeholder="'+(ready?"Ask about your products or services…":"Add your business and an offering first")+'" '+(!ready?'disabled':'')+' required><button type="submit" class="primary" id="testBotSend" '+(!ready?'disabled':'')+'>Send ↗</button></form><p id="testBotStatus" role="status" class="testbot-meta">'+(ready?"Ready to test your saved catalog. Your trial remains untouched.":"Complete your business details and offerings to enable testing.")+'</p></div></div></div>';
+}
+let testBotHistory=[];
+function testBotMessage(role,content){
+ const log=$("testBotMessages");if(!log)return;
+ const node=document.createElement("div");node.className="testbot-bubble "+role;node.textContent=content;log.appendChild(node);log.scrollTop=log.scrollHeight;return node;
+}
+async function submitTestBot(event,retry=true){
+ event.preventDefault();
+ const field=$("testBotQuestion"),button=$("testBotSend");
+ if(!field||!button||button.disabled)return;
+ const message=field.value.trim();if(!message||message.length>500)return;
+ const header=await authHeader();if(!header){toast("Please sign in again");return}
+ button.disabled=true;field.disabled=true;
+ testBotMessage("user",message);field.value="";
+ const pending=testBotMessage("assistant","Asking your real AI…");
+ text("testBotStatus","Connecting securely to Ollama Qwen3…");
+ try{
+  const r=await fetch("/.netlify/functions/owner-test-chat",{method:"POST",headers:header,body:JSON.stringify({message,history:testBotHistory.slice(-6)}),cache:"no-store",signal:AbortSignal.timeout(27000)});
+  const data=await r.json().catch(()=>({}));
+  if(r.status===401&&retry&&await refreshAuth()){
+   const newHeader=await authHeader();
+   if(!newHeader)throw Error("Your session expired. Please sign in again.");
+   const again=await fetch("/.netlify/functions/owner-test-chat",{method:"POST",headers:newHeader,body:JSON.stringify({message,history:testBotHistory.slice(-6)}),cache:"no-store",signal:AbortSignal.timeout(27000)});
+   const againData=await again.json().catch(()=>({}));
+   if(!again.ok)throw Error(againData.error||"AI testing failed");
+   if(!againData.reply||againData.source!=="ollama")throw Error("AI did not return a verified response");
+   pending.textContent=againData.reply;
+   testBotHistory.push({role:"user",content:message},{role:"assistant",content:againData.reply});
+  }else{
+   if(!r.ok)throw Error(data.error||"AI testing failed");
+   if(!data.reply||data.source!=="ollama")throw Error("AI did not return a verified response");
+   pending.textContent=data.reply;
+   testBotHistory.push({role:"user",content:message},{role:"assistant",content:data.reply});
+  }
+  testBotHistory=testBotHistory.slice(-6);
+  text("testBotStatus","Answered by Ollama Qwen3. Your 48-hour trial has not started.");
+ }catch(error){
+  pending.textContent=error?.name==="TimeoutError"?"Your AI did not answer in time. Try again.":error.message;
+  text("testBotStatus","No fake answers were used. Your trial remains unchanged.");
+ }finally{button.disabled=false;field.disabled=false;field.focus()}
+}
+
 function renderLinks(){
  const s=workspace.store,url=smartUrl();
  if(!s)return'<div class="empty">Save your business first to reserve a SmartLink.</div>';
@@ -179,6 +237,7 @@ function renderBilling(){
 }
 function bindView(){
  document.querySelectorAll("[data-jump]").forEach(e=>e.onclick=()=>{viewName=e.dataset.jump;render()});
+ if(viewName==="testbot"){$("testBotForm").onsubmit=submitTestBot;}
  if(viewName==="store")$("storeForm").onsubmit=saveStore;
  if(viewName==="offerings"){
   $("addOffering").onclick=()=>editOffering();
