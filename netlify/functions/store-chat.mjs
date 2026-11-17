@@ -1,13 +1,8 @@
+import{allow,clientIp}from"../lib/abuse.mjs";
 import{businessMessages}from"../lib/business-ai.mjs";
 import{query as ollamaQuery}from"../lib/ollama.mjs";
 import{env,json,str,parse,postOrigin,publishedStore,aiReady,db,entitlement,access}from "../lib/tenant.mjs";
 import{widgetEnabled}from"../lib/billing.mjs";
-const hits=new Map();
-function throttle(ip){
- const now=Date.now(),a=(hits.get(ip)||[]).filter(t=>now-t<60000);a.push(now);hits.set(ip,a);
- if(hits.size>2000)for(const[k,v]of hits)if(v.at(-1)<now-60000)hits.delete(k);
- return a.length<=10;
-}
 export async function handler(event){
  if(event.httpMethod==="GET")return json(200,{online:aiReady()});
  if(event.httpMethod!=="POST")return json(405,{error:"Method not allowed"});
@@ -16,9 +11,9 @@ export async function handler(event){
  try{
   const req=parse(event,12500),message=str(req.message,700);
   if(!message)return json(400,{error:"Question is required"});
-  const ip=event.headers["x-nf-client-connection-ip"]||"unknown";
-  if(!throttle(ip))return json(429,{error:"Too many requests. Try again later"});
-  const c=env();let slug=str(req.slug,50);
+  const c=env();
+  if(!await allow(c,"store_chat",clientIp(event),10,60))return json(429,{error:"Too many requests. Try again later"});
+  let slug=str(req.slug,50);
   if(req.botId){
    const botId=str(req.botId,80);
    if(!/^bot_[a-z0-9]{20,50}$/.test(botId))return json(404,{error:"Assistant unavailable"});
