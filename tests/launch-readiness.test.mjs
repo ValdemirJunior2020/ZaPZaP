@@ -34,6 +34,7 @@ test("Public SmartStore and enabled widget resolve only published eligible tenan
   const widgetResponse=await widgetConfig({httpMethod:"GET",queryStringParameters:{botId:bid},headers:{}});
   assert.equal(widgetResponse.statusCode,200);
   assert.equal(JSON.parse(widgetResponse.body).available,true);
+  assert.equal(JSON.parse(widgetResponse.body).chatReady,true);
  }finally{globalThis.fetch=original}
 });
 test("Public lead is accepted only for a published store and can be persisted for owner dashboard",async()=>{
@@ -118,4 +119,36 @@ test("PayPal webhook verifies signature via Sandbox before changing subscription
   const spoof=event({event_type:"BILLING.SUBSCRIPTION.ACTIVATED",resource:{id:"I-TEST123456"}});
   assert.equal((await webhook(spoof)).statusCode,401);
  }finally{globalThis.fetch=original;for(const[k,v]of Object.entries(prev)){if(v===undefined)delete process.env[k];else process.env[k]=v}}
+});
+
+
+test("Website widget includes a lead form that persists through the protected inquiry endpoint",async()=>{
+ const{readFile}=await import("node:fs/promises");
+ const{fileURLToPath}=await import("node:url");
+ const{dirname,resolve}=await import("node:path");
+ const root=resolve(dirname(fileURLToPath(import.meta.url)),"..");
+ const html=await readFile(resolve(root,"widget-chat.html"),"utf8");
+ assert.match(html,/id="leadForm"/);
+ assert.match(html,/id="leadName"/);
+ assert.match(html,/id="leadEmail"/);
+ assert.match(html,/id="leadInterest"/);
+ assert.match(html,/\/api\/store-inquiry/);
+ assert.match(html,/chatReady===true/,"Chat may be offline while inquiries stay available");
+});
+test("Disabled live AI does not disable the published widget contact form",async()=>{
+ setup();const old=process.env.NEXUS_LIVE_CHAT_ENABLED;process.env.NEXUS_LIVE_CHAT_ENABLED="false";
+ const original=globalThis.fetch;
+ globalThis.fetch=async(url)=>{
+  const u=String(url);
+  if(u.includes("/nx_bots"))return response([{bot_id:bid,store_id:sid,greeting:"Welcome"}]);
+  if(u.includes("/nx_stores"))return response([validStore]);
+  if(u.includes("/nx_entitlements"))return response([ent]);
+  throw Error("Unexpected read "+u);
+ };
+ try{
+  const r=await widgetConfig({httpMethod:"GET",queryStringParameters:{botId:bid},headers:{}});
+  assert.equal(r.statusCode,200);
+  assert.equal(JSON.parse(r.body).available,true);
+  assert.equal(JSON.parse(r.body).chatReady,false);
+ }finally{globalThis.fetch=original;if(old===undefined)delete process.env.NEXUS_LIVE_CHAT_ENABLED;else process.env.NEXUS_LIVE_CHAT_ENABLED=old}
 });
