@@ -1,3 +1,4 @@
+import{ready as ollamaReady,verify as verifyOllama}from"./ollama.mjs";
 import{env,db,authenticate,entitlement,access,json}from "./billing.mjs";
 const iso=()=>new Date().toISOString();
 const slug=s=>String(s||"").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9-]/g,"-").replace(/-+/g,"-").replace(/^-|-$/g,"").slice(0,48);
@@ -27,17 +28,7 @@ function postOrigin(e){
 }
 function parse(event,max=16000){if(!event.body||event.body.length>max)throw Object.assign(new Error("Invalid request"),{status:400});try{return JSON.parse(event.body)}catch{throw Object.assign(new Error("Invalid JSON"),{status:400})}}
 function safeError(e){return json(e.status||503,{error:e.status===401?"Sign in to continue":e.status===400?e.message:e.status===409?"That store link is already taken. Choose a different name.":"Service temporarily unavailable"})}
-function aiReady(){return process.env.NEXUS_LIVE_CHAT_ENABLED==="true"&&Boolean(process.env.OPENAI_API_KEY)}
-async function verifyHostedAI(){
- if(!aiReady())return false;
- try{
-  const r=await fetch("https://api.openai.com/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+process.env.OPENAI_API_KEY},
-   body:JSON.stringify({model:process.env.NEXUS_CHAT_MODEL||"gpt-6-luna",messages:[{role:"user",content:"Reply with OK"}],max_completion_tokens:30,reasoning_effort:"none"}),
-   signal:AbortSignal.timeout(13000)});
-  if(!r.ok){console.error("Hosted AI verification failed, status:",r.status);return false}
-  const j=await r.json();
-  return Boolean(j?.choices?.[0]?.message?.content);
- }catch(e){console.error("Hosted AI health check:",e.message);return false}
-}
+function aiReady(){return ollamaReady()}
+async function verifyHostedAI(){return verifyOllama()}
 
 export{env,db,authenticate,entitlement,access,json,iso,slug,str,domainUrl,only,userFrom,ownStore,offerings,ownerProfile,publishedStore,postOrigin,parse,safeError,aiReady,verifyHostedAI};
