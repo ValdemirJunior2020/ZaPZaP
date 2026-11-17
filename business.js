@@ -22,7 +22,7 @@ function authFields(){
 }
 async function loadConfig(){
  try{
-  const r=await fetch("/.netlify/functions/public-config",{cache:"no-store"});
+  const r=await fetch("/api/public-config",{cache:"no-store"});
   if(!r.ok)throw Error("Account service is not connected yet");
   const j=await r.json();
   if(!j.configured||!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(j.supabaseUrl))throw Error("Account service unavailable");
