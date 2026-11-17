@@ -1,18 +1,39 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>Private Administration | NexusSales</title><style>
-:root{font-family:system-ui,sans-serif;background:#0b2825;color:#173b32}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:22px}.panel{width:min(100%,410px);padding:32px;background:#fff;border-radius:19px;box-shadow:0 18px 60px #0005}.mark{font-size:28px;color:#09b680}h1{font-size:26px;letter-spacing:-.7px;margin:17px 0 8px}p{color:#748f83;font-size:13px;line-height:1.6}label{display:block;font-weight:650;font-size:12px;margin:23px 0 9px}input{width:100%;border:1px solid #ccdfd4;border-radius:9px;padding:14px;font-size:21px;letter-spacing:5px}button{width:100%;border:0;background:#06a978;color:white;padding:13px;border-radius:9px;font-weight:750;margin-top:17px;cursor:pointer}button:disabled{opacity:.5}.msg{font-size:12px;min-height:23px;color:#af413c;margin-top:12px}.footer{margin-top:15px;text-align:center;font-size:11px;color:#91a79d}.footer a{color:#087e5e;text-decoration:none}</style></head><body>
-<main class="panel"><div class="mark">✳</div><h1>Private administration</h1><p>Administrator-only access. Enter your PIN to continue. Business owners use the public dashboard separately.</p><form id="authForm" autocomplete="off"><label for="pin">Administrator PIN</label><input type="password" inputmode="numeric" pattern="[0-9]{4,12}" minlength="4" maxlength="12" id="pin" name="pin" autocomplete="off" required autofocus><button id="submitBtn" type="submit">Unlock admin console</button><div class="msg" id="message" role="alert" aria-live="polite"></div></form><div class="footer">NexusSales AI · Private access<br><a href="/">Back to business demo</a></div></main>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>NexusSales | Secure Admin</title>
+<style>:root{font:14px system-ui,sans-serif;background:#0b2722;color:#183c31}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px}.panel{width:min(440px,100%);background:#fff;border-radius:18px;padding:30px;box-shadow:0 18px 60px #0005}.mark{color:#05a979;font-size:32px}h1{font-size:25px;margin:12px 0}p{font-size:12px;line-height:1.65;color:#758f80}label{font-size:12px;font-weight:750;display:block;margin:15px 0 6px}input{width:100%;padding:12px;border-radius:9px;border:1px solid #c9ded3;font:inherit}button{background:#069b71;color:white;border:0;border-radius:9px;padding:12px 15px;font-weight:750;margin-top:15px;width:100%;cursor:pointer}button:disabled{opacity:.5}.hidden{display:none!important}.notice{padding:13px;border-radius:9px;background:#fff6e6;border:1px solid #eeddb6;color:#7d612d;font-size:12px;line-height:1.5;margin:15px 0}.footer{margin-top:22px;text-align:center;font-size:12px}.footer a{color:#078c63;text-decoration:none}</style></head><body>
+<main class="panel"><div class="mark">✳</div><h1>Secure administration</h1><p>Admin-only access requires a verified NexusSales account with administrator privileges and authenticator-app MFA. The old PIN is no longer accepted.</p><div class="notice" id="status">Checking authentication service…</div>
+<form id="login" class="hidden"><label>Email<input id="email" type="email" required autocomplete="username"></label><label>Password<input id="password" type="password" required autocomplete="current-password"></label><button type="submit">Sign in securely</button></form>
+<form id="mfa" class="hidden"><label>6-digit authenticator code<input id="otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="one-time-code"></label><button type="submit">Verify MFA</button></form>
+<div id="logged" class="hidden"><p>Administrator identity verified with MFA. Administrative operations require the same server-side authorization.</p><button id="signout">Sign out</button></div>
+<div class="footer"><a href="/">Return to NexusSales</a></div></main>
 <script>
-const form=document.getElementById('authForm'),btn=document.getElementById('submitBtn'),msg=document.getElementById('message');
-form.onsubmit=async e=>{
- e.preventDefault();btn.disabled=true;msg.textContent='Checking…';
- const pin=document.getElementById('pin').value;
- try{
-  const r=await fetch('/.netlify/functions/admin-auth',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'login',pin})});
-  const data=await r.json();document.getElementById('pin').value='';
-  if(!r.ok||data.authenticated!==true){msg.textContent=data.error||'Access denied';return}
-  location.replace('/?admin=1');
- }catch{msg.textContent='Unable to connect to the administrator service.'}
- finally{btn.disabled=false}
-};
-(async()=>{try{const r=await fetch('/.netlify/functions/admin-auth',{cache:'no-store',credentials:'same-origin'});const data=await r.json();if(data.authenticated===true)location.replace('/?admin=1')}catch{}})();
+const $=id=>document.getElementById(id);let config=null,session=null,factor=null,challenge=null;
+const report=t=>$("status").textContent=t;
+function pane(name){for(const id of ["login","mfa","logged"])$(id).classList.toggle("hidden",id!==name)}
+async function api(path,method="GET",body=null,token=null){
+ const r=await fetch(config.supabaseUrl+path,{method,headers:{"Content-Type":"application/json",apikey:config.publishableKey,...(token?{Authorization:"Bearer "+token}:{})},body:body?JSON.stringify(body):undefined});
+ const j=await r.json().catch(()=>({}));if(!r.ok)throw Error(j.msg||j.error_description||j.message||"Authentication request rejected");return j;
+}
+async function adminCheck(){
+ const r=await fetch("/.netlify/functions/admin-auth",{headers:{Authorization:"Bearer "+session.access_token},cache:"no-store"});
+ const data=await r.json().catch(()=>({}));
+ if(!r.ok||data.authenticated!==true)throw Error(data.error||"Not authorized as a verified administrator");
+ pane("logged");report("Administrator identity and MFA verified");
+}
+async function beginMfa(){
+ const user=await api("/auth/v1/user","GET",null,session.access_token);
+ factor=(user.factors||[]).find(x=>x.factor_type==="totp"&&x.status==="verified");
+ if(!factor)throw Error("An administrator must first enroll a TOTP authenticator in their secured account. PIN-only access has been disabled.");
+ const result=await api("/auth/v1/factors/"+encodeURIComponent(factor.id)+"/challenge","POST",{},session.access_token);
+ challenge=result.id;pane("mfa");report("Enter the current authenticator code to continue.");
+}
+$("login").onsubmit=async e=>{e.preventDefault();report("Verifying account…");try{
+ const j=await api("/auth/v1/token?grant_type=password","POST",{email:$("email").value.trim(),password:$("password").value});
+ if(!j.access_token)throw Error("Sign in failed");session=j;$("password").value="";await beginMfa();
+ }catch(e){report(e.message)}};
+$("mfa").onsubmit=async e=>{e.preventDefault();report("Verifying second factor…");try{
+ const result=await api("/auth/v1/factors/"+encodeURIComponent(factor.id)+"/verify","POST",{challenge_id:challenge,code:$("otp").value},session.access_token);
+ if(!result.access_token)throw Error("MFA verification failed");session=result;$("otp").value="";await adminCheck();
+ }catch(e){report(e.message)}};
+$("signout").onclick=()=>{session=null;factor=null;challenge=null;pane("login");report("Signed out.")};
+(async()=>{try{const r=await fetch("/.netlify/functions/public-config",{cache:"no-store"});if(!r.ok)throw Error("Dedicated NexusSales Auth is not connected");config=await r.json();if(!config.configured)throw Error("Account service unavailable");pane("login");report("Sign in with your verified administrator identity.")}catch(e){report(e.message)}})();
 </script></body></html>
