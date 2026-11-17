@@ -122,7 +122,7 @@ function renderOverview(){
  if(!workspace.aiConfigured)html+='<div class="alert">Live AI is not yet connected to NexusSales. Your trial will NOT start, and your public store cannot be published until the hosted AI service is configured.</div>';
  else if(!s?.published)html+='<div class="alert success">Your AI service is available. Save your store and offerings, then publish to start the 48-hour trial.</div>';
  if(workspace.access.reason==="TRIAL_EXPIRED")html+='<div class="alert">Your 48-hour trial has ended. A verified PayPal subscription is required to resume your store and AI assistant.</div>';
- html+='<div class="card"><h2>Get ready to sell</h2><p>Tell the assistant what you offer, include real prices and hours, then publish a permanent SmartLink. Customers can ask questions without creating an account.</p><div class="actions"><button class="primary" data-jump="store">Configure business</button><button class="button" data-jump="offerings">Add products or services</button><button class="button" data-jump="links">View SmartLink</button></div></div>';
+ html+='<div class="card"><h2>Get ready to sell</h2><p>Tell the assistant what you offer, include real prices and hours, then publish a permanent SmartLink. Customers can ask questions without creating an account.</p><div class="actions"><button class="primary" data-jump="store">Configure business</button><button class="button" data-jump="offerings">Add products or services</button><button class="button" data-jump="testbot">✦ Test My AI</button><button class="button" data-jump="links">View SmartLink</button></div></div>';
  return html;
 }
 function renderStore(){
