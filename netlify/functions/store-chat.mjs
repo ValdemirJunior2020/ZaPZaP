@@ -45,7 +45,12 @@ export async function handler(event){
   if(!claim?.allowed)return json(429,{code:"SESSION_LIMIT",limitReached:true,error:"This conversation has ended. Please leave your contact details so the business can follow up."});
   const previous=await db(c,"nx_chat_messages?session_id=eq."+encodeURIComponent(claim.sessionId)+"&store_id=eq."+encodeURIComponent(store.id)+"&select=role,content&order=id.desc&limit=8");
   const history=(previous||[]).reverse().map(x=>({role:x.role,content:x.content}));
-  const messages=businessMessages(store,items,message,history);
+  // Resolve QR facts exclusively from this published store; never trust visitor-supplied product details.
+  const sourceCode=str(req.sourceCode,80);
+  const qrRows=sourceCode?await db(c,"nx_qr_sources?store_id=eq."+encodeURIComponent(store.id)+"&code=eq."+encodeURIComponent(sourceCode)+"&enabled=eq.true&select=label,offering_id"):[];
+  const qrSource=qrRows?.[0]||null;
+  const linkedOffering=qrSource?.offering_id?items.find(item=>item.id===qrSource.offering_id)||null:null;
+  const messages=businessMessages(store,items,message,history,qrSource?{label:qrSource.label,offering:linkedOffering}:null);
   // Persist only actual visitor/AI messages, never browser-provided transcripts.
   await db(c,"nx_chat_messages",{method:"POST",body:{session_id:claim.sessionId,store_id:store.id,role:"user",content:message},prefer:"return=minimal"});
   const answer=await ollamaQuery(messages,{maxTokens:450,timeoutMs:50000});

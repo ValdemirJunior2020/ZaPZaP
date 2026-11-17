@@ -20,7 +20,8 @@ test("Visitor chat claims an atomic session, persists role messages and never tr
   if(u.includes("nx_consume_abuse_budget")||u.includes("nx_consume_chat_quota"))return res(true);
   if(u.includes("/nx_stores"))return res([store]);
   if(u.includes("/nx_entitlements"))return res([entitlement]);
-  if(u.includes("/nx_offerings"))return res([{name:"Test drive",type:"Service",description:"Inquire for price"}]);
+  if(u.includes("/nx_offerings"))return res([{id:"77777777-7777-4777-8777-777777777777",name:"Camry 2023",type:"Product",description:"Ask about the car",price_label:"$24,000",status:"In stock"}]);
+  if(u.includes("/nx_qr_sources"))return res([{label:"Camry Window",offering_id:"77777777-7777-4777-8777-777777777777"}]);
   if(u.includes("rpc/nx_claim_chat_message")){claim=data;return res({allowed:true,sessionId,remaining:9,used:1,max:10})}
   if(u.includes("/nx_chat_messages")&&options.method==="POST"){persisted.push(data);return res(null,201)}
   if(u.includes("/nx_chat_messages"))return res([]);
@@ -35,6 +36,8 @@ test("Visitor chat claims an atomic session, persists role messages and never tr
   assert.equal(claim.p_limit,10);
   assert.deepEqual(persisted.map(m=>m.role),["user","assistant"]);
   assert.doesNotMatch(JSON.stringify(ai),/IGNORE YOUR RULES/);
+  assert.match(JSON.stringify(ai),/Camry Window/);
+  assert.match(JSON.stringify(ai),/Camry 2023/);
  }finally{globalThis.fetch=old}
 });
 test("An exhausted session returns callback prompt without invoking AI",async()=>{
