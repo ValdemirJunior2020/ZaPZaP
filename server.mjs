@@ -12,21 +12,22 @@ let active=0;const hits=new Map();
 function limit(ip){const now=Date.now(),recent=(hits.get(ip)||[]).filter(t=>now-t<60000);recent.push(now);hits.set(ip,recent);if(hits.size>3000){for(const [key,val] of hits){if(!val.length||now-val.at(-1)>60000)hits.delete(key)}}return recent.length<=20}
 async function payload(req){let bytes=0,chunks=[];for await(const ch of req){bytes+=ch.length;if(bytes>16000)throw new Error('Request too large');chunks.push(ch)}return Buffer.concat(chunks).toString('utf8')}
 function safeSettings(s){const trim=(x,n=1000)=>String(x||'').slice(0,n);return{business:trim(s.business,100),agent:trim(s.agent,80),description:trim(s.description),products:trim(s.products,3000),hours:trim(s.hours,100),tone:trim(s.tone,60),humanPhone:trim(s.humanPhone,35),sharePhone:s.sharePhone===true,allowCallbacks:s.allowCallbacks===true}}
-async function generate(message,settings,history){const model=process.env.AI_PROVIDER||'ollama';
+async function generate(message,settings,history){
 const system='You are '+settings.agent+', a business-specific sales and support assistant for '+settings.business+'. Be truthful, polite, concise, and reply in the customer\'s language. Never invent prices, appointments, discounts or availability. Ask one useful question at a time. You can explain products or collect leads but do not pretend a booking or payment succeeded. If uncertain, offer human assistance. Business: '+settings.description+'\nProducts: '+settings.products+'\nHours: '+settings.hours+'\nTone: '+settings.tone+'\nHuman contact: '+(settings.sharePhone&&/^\\+?[\\d\\s().-]{7,35}$/.test(settings.humanPhone)?settings.humanPhone:'Do not share a direct phone number')+'\nCallbacks: '+(settings.allowCallbacks?'Ask for name and callback number, but never claim the callback is scheduled.':'Do not offer callbacks.')+'\nThe virtual demo number is never a dialable phone number.';
 const inventory=Array.isArray(settings.catalog)?settings.catalog:[];
 const verified=inventory.map(p=>({name:String(p.name||'').slice(0,130),type:String(p.type||'').slice(0,40),price:String(p.price||'').slice(0,70),description:String(p.description||'').slice(0,300),availability:String(p.availability||'').slice(0,50)}));
 const groundedSystem=system+'\\nCATALOG OF BUSINESS-ENTERED OFFERINGS (not independently verified): '+JSON.stringify(verified).slice(0,10000)+'\\nCritical rules: Never assert a specific item/service is unavailable just because it is not listed. If not listed, say availability and pricing are unconfirmed and offer to request a quote or human follow-up. For items listed, relay the listed price and status without inventing details. Services, appointments, hourly work, subscriptions and quote-based offerings are all supported. Do not imply a real appointment or callback was booked. Never mention internal infrastructure.';
 const messages=[{role:'system',content:groundedSystem},...history.filter(x=>x.role==='user'||x.role==='bot').slice(-8).map(x=>({role:x.role==='bot'?'assistant':'user',content:String(x.text||'').slice(0,1000)})),{role:'user',content:message}];
-let base,headers,body;
-if(model==='openai'){if(!process.env.OPENAI_API_KEY)throw new Error('OpenAI not configured');base='https://api.openai.com/v1/chat/completions';headers={'Content-Type':'application/json',Authorization:'Bearer '+process.env.OPENAI_API_KEY};body={model:process.env.OPENAI_MODEL||'gpt-4.1-mini',messages,temperature:0.35,max_tokens:350}}
-else{base=(process.env.OLLAMA_BASE_URL||'http://127.0.0.1:11434').replace(/\/$/,'')+'/api/chat';headers={'Content-Type':'application/json'};if(process.env.OLLAMA_AUTH_TOKEN)headers.Authorization='Bearer '+process.env.OLLAMA_AUTH_TOKEN;body={model:process.env.OLLAMA_MODEL||'qwen3:8b',messages,stream:false,think:false,options:{temperature:0.3,num_predict:280}}}
+const base=(process.env.OLLAMA_BASE_URL||'http://127.0.0.1:11434').replace(/\/$/,'')+'/api/chat';
+const headers={'Content-Type':'application/json'};
+if(process.env.OLLAMA_AUTH_TOKEN)headers.Authorization='Bearer '+process.env.OLLAMA_AUTH_TOKEN;
+const body={model:process.env.OLLAMA_MODEL||'qwen3:8b',messages,stream:false,think:false,options:{temperature:0.3,num_predict:280}};
 const res=await fetch(base,{method:'POST',headers,body:JSON.stringify(body),signal:AbortSignal.timeout(90000)});
 if(!res.ok)throw new Error('Model API returned HTTP '+res.status);
 const data=await res.json();
-const answer=model==='openai'?data?.choices?.[0]?.message?.content:data?.message?.content;
+const answer=data?.message?.content;
 if(typeof answer==='string'&&answer.trim())return answer.trim().slice(0,2200);
-if(model==='openai')throw new Error('Empty OpenAI response');
+
 // A Qwen chat response can be successful but contain only thinking tokens.
 console.warn('Empty Ollama chat content; retrying without thinking. Thinking length:',String(data?.message?.thinking||'').length);
 const prompt=groundedSystem+'\n\n'+history.slice(-4).map(x=>(x.role==='user'?'Customer: ':'Assistant: ')+String(x.text||'').slice(0,500)).join('\n')+'\nCustomer: '+message+'\nAssistant: /no_think\n';
@@ -44,15 +45,14 @@ const server=http.createServer(async(req,res)=>{try{
 const url=new URL(req.url,'http://localhost');
 if(url.pathname==='/api/health'){
  const enabled=process.env.ENABLE_LOCAL_AI==='true'||process.env.ENABLE_PUBLIC_AI_DEMO==='true';
- const provider=process.env.AI_PROVIDER||'ollama';
+ const provider='ollama';
  let aiReady=false, error=null;
- if(provider==='openai'){aiReady=Boolean(process.env.OPENAI_API_KEY);if(!aiReady)error='OpenAI API key not configured';}
- else{try{
+ try{
  const api=(process.env.OLLAMA_BASE_URL||'http://127.0.0.1:11434')+'/api/tags';
  const response=await fetch(api,{signal:AbortSignal.timeout(2500)});
  if(response.ok){const data=await response.json();const selected=process.env.OLLAMA_MODEL||'qwen3:8b';aiReady=(data.models||[]).some(m=>m.name===selected||m.name.startsWith(selected+':'));if(!aiReady)error='Model '+selected+' is not installed';}
  else error='Ollama API returned '+response.status;
- }catch{error='Ollama is not responding on this computer';}}
+ }catch{error='Ollama is not responding on this computer';}
  return result(res,200,{ok:true,mode:'local',aiProvider:provider,enabled,aiReady:aiReady&&enabled,model:process.env.OLLAMA_MODEL||'qwen3:8b',error});
 }
 if(url.pathname==='/api/chat'&&req.method==='POST'){const ip=req.socket.remoteAddress||'unknown';let j;try{j=JSON.parse(await payload(req))}catch{return result(res,400,{error:'Invalid JSON or oversized request'})}const message=String(j.message||'').trim().slice(0,1000);if(!message)return result(res,400,{error:'Message required'});const wait=fallback[language(message)];if(!limit(ip)||active>=Math.max(1,Math.min(4,Number(process.env.MAX_AI_CONCURRENCY||2))))return result(res,200,{reply:wait,busy:true});if(process.env.ENABLE_LOCAL_AI!=='true'&&process.env.ENABLE_PUBLIC_AI_DEMO!=='true')return result(res,503,{error:'AI demo disabled',reply:wait});const settings=safeSettings(j.settings&&typeof j.settings==='object'?j.settings:{});
