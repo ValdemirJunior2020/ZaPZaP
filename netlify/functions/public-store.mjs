@@ -1,3 +1,4 @@
+import{calendarPublic}from"../lib/calendar.mjs";
 import{env,db,json,str,publishedStore,aiReady}from "../lib/tenant.mjs";
 import{allow,clientIp}from "../lib/abuse.mjs";
 export async function handler(event){
@@ -18,9 +19,10 @@ export async function handler(event){
    }
   }catch(error){console.error("QR scan counter:",error.message)}}
 
-  return json(200,{store:{slug:store.slug,name:store.name,industry:store.industry,headline:store.headline,description:store.description,hours:store.hours,agent_name:store.agent_name,color:store.color,store_image_url:store.store_image_url,chatMaxMessages:store.chat_max_messages||10,chatMaxMinutes:store.chat_max_minutes||10,appointmentsEnabled:store.appointments_enabled!==false},
+  const calendar=await calendarPublic(c,store,event.queryStringParameters||{});
+  return json(200,{calendar,store:{slug:store.slug,name:store.name,industry:store.industry,headline:store.headline,description:store.description,hours:store.hours,agent_name:store.agent_name,color:store.color,store_image_url:store.store_image_url,chatMaxMessages:store.chat_max_messages||10,chatMaxMinutes:store.chat_max_minutes||10,appointmentsEnabled:store.appointments_enabled!==false},
    qrSource:source?{code:source.code,label:source.label,offeringId:source.offering_id}:null,
    offerings:items.map(x=>({id:x.id,name:x.name,type:x.type,description:x.description,price_label:x.price_label,status:x.status,image_url:x.image_url})),
    chatReady:aiReady()});
- }catch(e){console.error("Public store load",e.message);return json(503,{error:"Store temporarily unavailable"})}
+ }catch(e){console.error("Public store load",e.message);return json(e.status||503,{error:e.status===400?e.message:"Store temporarily unavailable"})}
 }
