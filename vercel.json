@@ -51,6 +51,10 @@
       "destination": "/admin.html"
     },
     {
+      "source": "/assistant",
+      "destination": "/junior.html"
+    },
+    {
       "source": "/junior",
       "destination": "/junior.html"
     },
