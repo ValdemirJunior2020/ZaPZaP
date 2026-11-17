@@ -29,7 +29,7 @@ export async function handler(event){
   const published=await publishedStore(c,slug);
   if(!published)return json(404,{error:"Store not available"});
   const {store,items,ent}=published;
-  const dailyLimit=ent.subscription_status==="ACTIVE"?1000:100;
+  const dailyLimit=ent.is_complimentary===true?1000:ent.subscription_status==="ACTIVE"?1000:100;
   const used=await db(c,"rpc/nx_consume_chat_quota",{method:"POST",body:{p_store_id:store.id,p_cap:dailyLimit}});
   if(used!==true)return json(429,{error:"Assistant message limit reached today"});
   const messages=businessMessages(store,items,message,req.history);
