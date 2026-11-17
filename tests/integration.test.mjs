@@ -103,3 +103,52 @@ test("Public chat rejects unconfigured Ollama and forged origin",async()=>{
   assert.equal((await chat({...bad,headers:{origin:"https://zapzap-bot.netlify.app",host:"zapzap-bot.netlify.app"}})).statusCode,503);
  }finally{globalThis.fetch=original}
 });
+
+test("Publishing starts trial only after responsive Ollama and preserves tenant ownership",async()=>{
+ configure();
+ const{handler:ownerHandler}=await import("../netlify/functions/owner-workspace.mjs");
+ const original=globalThis.fetch;let activated=0,published=0;
+ const event={httpMethod:"POST",headers:{origin:"https://zapzap-bot.netlify.app",host:"zapzap-bot.netlify.app",authorization:"Bearer verified.jwt.token"},body:JSON.stringify({action:"publish"})};
+ globalThis.fetch=async(input,opts={})=>{
+  const u=String(input);
+  if(u.includes("/auth/v1/user"))return response({id:owner,email:"owner@example.test"});
+  if(u.includes("/rest/v1/nx_entitlements")&&opts.method==="PATCH"){activated++;return response([{user_id:owner,subscription_status:"TRIAL",trial_started_at:new Date().toISOString()}])}
+  if(u.includes("/rest/v1/nx_entitlements"))return response([{user_id:owner,subscription_status:"TRIAL",trial_started_at:null}]);
+  if(u.includes("/rest/v1/nx_stores")&&opts.method==="PATCH"){published++;return response([{...tenant,published:true}])}
+  if(u.includes("/rest/v1/nx_stores"))return response([{...tenant,published:false}]);
+  if(u.includes("/rest/v1/nx_offerings"))return response([product]);
+  if(u==="https://qwen.example.com/api/chat")return response({message:{content:"OK"}});
+  throw Error("Unexpected "+u);
+ };
+ try{
+  assert.equal((await ownerHandler(event)).statusCode,200);
+  assert.equal(activated,1);assert.equal(published,1);
+  activated=0;published=0;
+  globalThis.fetch=async(input,opts={})=>{
+   if(String(input)==="https://qwen.example.com/api/chat")return response({error:"offline"},503);
+   return (await (async()=>{const u=String(input);if(u.includes("/auth/v1/user"))return response({id:owner,email:"owner@example.test"});
+   if(u.includes("/rest/v1/nx_entitlements"))return response([{user_id:owner,subscription_status:"TRIAL",trial_started_at:null}]);
+   if(u.includes("/rest/v1/nx_stores"))return response([{...tenant,published:false}]);
+   if(u.includes("/rest/v1/nx_offerings"))return response([product]);
+   throw Error("Unexpected "+u)})());
+  };
+  const denied=await ownerHandler(event);
+  assert.equal(denied.statusCode,503);assert.equal(activated,0);assert.equal(published,0);
+ }finally{globalThis.fetch=original}
+});
+test("Public store chat uses only the tenant catalog fetched on the server",async()=>{
+ configure();const original=globalThis.fetch;let payload;
+ globalThis.fetch=fakeFetch({capture:x=>payload=x});
+ try{
+  const e={httpMethod:"POST",headers:{origin:"https://zapzap-bot.netlify.app",host:"zapzap-bot.netlify.app","x-nf-client-connection-ip":"198.51.100.7"},body:JSON.stringify({slug:tenant.slug,message:"How much is drain cleaning?",business:{name:"Hacked Other Tenant"},catalog:[{name:"Fake $1 product"}]})};
+  const out=await chat(e);assert.equal(out.statusCode,200);
+  assert.match(JSON.stringify(payload),/Alpha Plumbing/);
+  assert.doesNotMatch(JSON.stringify(payload),/Hacked Other Tenant|Fake \$1 product/);
+ }finally{globalThis.fetch=original}
+});
+test("PayPal checkout remains disabled until explicitly enabled",async()=>{
+ configure();delete process.env.NEXUS_BILLING_ENABLED;
+ const{handler}=await import("../netlify/functions/billing-checkout.mjs");
+ const r=await handler({httpMethod:"POST",headers:{origin:"https://zapzap-bot.netlify.app",host:"zapzap-bot.netlify.app"},body:JSON.stringify({tier:"core"})});
+ assert.equal(r.statusCode,503);
+});
