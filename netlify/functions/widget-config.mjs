@@ -11,7 +11,7 @@ export async function handler(event){
   const stores=await db(c,"nx_stores?id=eq."+encodeURIComponent(bot.store_id)+"&published=eq.true&select=id,owner_id,slug,name");
   const store=stores?.[0];if(!store)return json(404,{available:false});
   const ent=await entitlement(c,store.owner_id);
-  if(!access(ent).allowed||!widgetEnabled(c,ent)||!aiReady())return json(403,{available:false});
-  return json(200,{available:true,botId:bot.bot_id,slug:store.slug,businessName:store.name,greeting:bot.greeting});
+  if(!access(ent).allowed||!widgetEnabled(c,ent))return json(403,{available:false});
+  return json(200,{available:true,chatReady:aiReady(),botId:bot.bot_id,slug:store.slug,businessName:store.name,greeting:bot.greeting});
  }catch(e){console.error("Widget status:",e.message);return json(503,{available:false})}
 }
