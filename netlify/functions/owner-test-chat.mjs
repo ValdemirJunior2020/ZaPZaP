@@ -15,7 +15,7 @@ export async function handler(event){
   const c=env();
   const {user,ent}=await userFrom(event,c);
   if(!ent)return json(403,{error:"Business account not initialized."});
-  if(ent.trial_started_at&&!access(ent).allowed)return json(402,{error:"Your trial has ended. Subscription required to continue testing."});
+  if(!ent.is_complimentary&&ent.trial_started_at&&!access(ent).allowed)return json(402,{error:"Your trial has ended. Subscription required to continue testing."});
   const store=await ownStore(c,user.id);
   if(!store)return json(400,{error:"Save your business details first."});
   const items=await offerings(c,store.id);
