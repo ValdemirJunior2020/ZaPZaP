@@ -107,8 +107,8 @@ function render(){
  store:["BUSINESS SETTINGS","Set up your SmartStore","Teach the AI what your company does."],
  offerings:["PRODUCTS & SERVICES","What you sell","Enter your actual offerings, prices and details."],
  testbot:["TEST MY AI","Talk to your own AI salesperson","Preview real answers from your business catalog before publishing."],
- links:["CUSTOMER SMARTLINKS","One link. Every customer.","Share your storefront via email, text and QR code."],
- leads:["YOUR INQUIRIES","Customer leads","People interested in your products and services."],
+ links:["TRACKED QR CODES","Turn foot traffic into leads","Create trackable QR codes for storefronts, vehicles, services and products."],
+ leads:["LEAD CENTER","Leads & conversations","Every inquiry, appointment request and captured conversation."],
  billing:["48-HOUR TRIAL & BILLING","Your subscription","Core $149/month, website widget +$79/month."]};
  const t=titles[viewName]||titles.overview;
  text("workspaceEyebrow",t[0]);text("workspaceHeading",t[1]);text("workspaceSubtitle",t[2]);text("trialBadge",statusText());
@@ -224,13 +224,49 @@ function renderLinks(){
  workspace.bot?.enabled?'<label>Install script (add before the closing body tag)<textarea id="widgetCode" rows="3" readonly>'+htmlEsc('<script src="'+location.origin+'/widget.js" data-bot-id="'+workspace.bot.bot_id+'" async></'+'script>')+'</textarea></label><div class="actions"><button class="button" id="copyWidgetCode">Copy widget code</button><button class="button danger" id="disableWidget">Disable widget</button></div>':
  '<div class="actions"><button class="button" id="enableWidget" '+(!workspace.widgetAllowed||!s.published?'disabled':'')+'>Generate my website widget</button></div>'
  )+(!workspace.widgetAllowed?'<p class="hint">The website widget requires an active bundled subscription after the trial.</p>':'')+'</div>';
- return body;
+ return body+renderQrSources()+renderChatSettings();
 }
 function renderLeads(){
- const leads=workspace.leads||[];
- if(!leads.length)return'<div class="empty">No customer inquiries yet. Leads from your published store will appear here.</div>';
- return '<div class="card"><div style="overflow:auto"><table class="data-table"><thead><tr><th>Customer</th><th>Contact</th><th>Interest</th><th>Date</th></tr></thead><tbody>'+
- leads.map(l=>'<tr><td><b>'+htmlEsc(l.customer_name)+'</b></td><td>'+htmlEsc(l.customer_email)+'<br>'+htmlEsc(l.customer_phone||"")+'</td><td>'+htmlEsc(l.interest)+'</td><td>'+htmlEsc(new Date(l.created_at).toLocaleDateString())+'</td></tr>').join("")+'</tbody></table></div></div>';
+ const leads=workspace.leads||[],sources=workspace.qrSources||[];
+ const newCount=leads.filter(l=>l.status==="New").length;
+ const appointments=leads.filter(l=>l.request_type==="appointment").length;
+ const qrLeads=leads.filter(l=>l.source_id).length;
+ const metric=(label,num,caption)=>'<div class="lead-metric"><small>'+label+'</small><strong>'+num+'</strong><span>'+caption+'</span></div>';
+ return '<div class="lead-metrics">'+metric('Total leads',leads.length,'People to follow up')+
+ metric('New inquiries',newCount,'Awaiting response')+metric('Appointment requests',appointments,'Require confirmation')+
+ metric('QR-sourced leads',qrLeads,'Attributed to printed codes')+'</div>'+
+ '<div class="card lead-center"><div class="lead-bar"><div><h2>Lead Center</h2><p>Every customer request, follow-up and linked AI transcript in one place.</p></div>'+
+ '<select id="leadFilter" aria-label="Filter leads"><option value="all">All leads</option><option value="New">New</option><option value="Contacted">Contacted</option><option value="Appointment Requested">Appointment requested</option><option value="Booked">Booked</option><option value="Won">Won</option><option value="Lost">Lost</option></select></div>'+
+ (leads.length?'<div class="lead-list">'+leads.map(l=>{
+ const source=sources.find(s=>s.id===l.source_id);
+ const date=new Date(l.created_at).toLocaleString();
+ return '<button class="lead-row" type="button" data-lead="'+htmlEsc(l.id)+'" data-status="'+htmlEsc(l.status)+'">'+
+ '<span class="lead-avatar">'+htmlEsc((l.customer_name||'?').slice(0,1).toUpperCase())+'</span><span class="lead-main"><strong>'+htmlEsc(l.customer_name)+'</strong><small>'+htmlEsc(l.interest.slice(0,100))+'</small><small>'+htmlEsc(source?.label||'SmartStore / website')+' • '+htmlEsc(date)+'</small></span>'+
+ '<span class="lead-right"><span class="lead-status">'+htmlEsc(l.status)+'</span><small>'+htmlEsc(l.customer_phone||l.customer_email||'No contact')+'</small></span></button>'
+ }).join('')+'</div>':'<div class="empty">No leads yet. Publish a QR code and ask a customer to submit an inquiry.</div>')+
+ '</div><div class="card lead-detail hidden" id="leadDetail" aria-live="polite"></div>';
+}
+function qrSourceUrl(code){return smartUrl()+'?src='+encodeURIComponent(code)}
+function renderQrSources(){
+ const sources=workspace.qrSources||[];
+ return '<div class="card"><h2>Tracked QR codes</h2><p>Create one QR for each storefront window, vehicle, reception desk or product. Each lead is attributed to its QR.</p>'+
+ '<form id="qrForm" class="qr-create"><input id="qrLabel" placeholder="e.g. Front door, Ford F-150, Reception" maxlength="80" required minlength="2">'+
+ '<select id="qrOffering"><option value="">General business</option>'+(workspace.offerings||[]).map(p=>'<option value="'+htmlEsc(p.id)+'">'+htmlEsc(p.name)+'</option>').join('')+'</select>'+
+ '<button class="primary" type="submit" '+(!workspace.store?.published?'disabled':'')+'>Create QR</button></form>'+
+ (!workspace.store?.published?'<p class="hint">Publish your SmartStore to generate tracked QR codes.</p>':'')+
+ '<div class="qr-list">'+sources.map(s=>{
+ const url=qrSourceUrl(s.code),qr='https://api.qrserver.com/v1/create-qr-code/?size=250x250&data='+encodeURIComponent(url);
+ const count=(workspace.leads||[]).filter(l=>l.source_id===s.id).length;
+ return '<div class="qr-item"><img src="'+htmlEsc(qr)+'" alt="QR code for '+htmlEsc(s.label)+'" loading="lazy"><div><strong>'+htmlEsc(s.label)+'</strong><small>'+count+' lead(s) • '+(s.enabled?'Active':'Disabled')+'</small><a href="'+htmlEsc(url)+'" target="_blank" rel="noopener">Open QR link</a><div class="actions"><button type="button" class="button" data-copy-qr="'+htmlEsc(s.code)+'">Copy URL</button><button type="button" class="button" data-print-qr="'+htmlEsc(s.id)+'">Print sign</button><button type="button" class="button" data-toggle-qr="'+htmlEsc(s.id)+'">'+(s.enabled?'Disable':'Enable')+'</button></div></div></div>'
+ }).join('')+'</div></div>';
+}
+function renderChatSettings(){
+ const s=workspace.store||{};
+ return '<div class="card"><h2>Customer conversation settings</h2><p>Visitors can chat for a limited number of messages and minutes, then request a callback or appointment.</p>'+
+ '<form id="chatSettingsForm" class="qr-create"><label>Visitor messages<input id="chatMaxMessages" type="number" min="5" max="30" required value="'+Number(s.chat_max_messages||10)+'"></label>'+
+ '<label>Minutes per session<input id="chatMaxMinutes" type="number" min="5" max="30" required value="'+Number(s.chat_max_minutes||10)+'"></label>'+
+ '<label class="lead-check"><input id="appointmentsEnabled" type="checkbox" '+(s.appointments_enabled!==false?'checked':'')+'> Allow appointment requests</label>'+
+ '<button class="primary" type="submit">Save settings</button></form></div>';
 }
 function renderBilling(){
  const a=workspace.access||{},url="/account.html";
