@@ -35,5 +35,5 @@ $("mfa").onsubmit=async e=>{e.preventDefault();report("Verifying second factorâ€
  if(!result.access_token)throw Error("MFA verification failed");session=result;$("otp").value="";await adminCheck();
  }catch(e){report(e.message)}};
 $("signout").onclick=()=>{session=null;factor=null;challenge=null;pane("login");report("Signed out.")};
-(async()=>{try{const r=await fetch("/.netlify/functions/public-config",{cache:"no-store"});if(!r.ok)throw Error("Dedicated NexusSales Auth is not connected");config=await r.json();if(!config.configured)throw Error("Account service unavailable");pane("login");report("Sign in with your verified administrator identity.")}catch(e){report(e.message)}})();
+(async()=>{try{const r=await fetch("/api/public-config",{cache:"no-store"});if(!r.ok)throw Error("Dedicated NexusSales Auth is not connected");config=await r.json();if(!config.configured)throw Error("Account service unavailable");pane("login");report("Sign in with your verified administrator identity.")}catch(e){report(e.message)}})();
 </script></body></html>
