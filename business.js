@@ -72,6 +72,13 @@ async function loadWorkspace(){
   render();
  }catch(e){toast(e.message);if(/sign in|session|invalid login|unauthorized/i.test(e.message)){saveSession(null);setVisible(false)}else{setVisible(true);$("viewContent").innerHTML='<div class="alert">Business data is temporarily unavailable. Your account has not been logged out. Refresh the page to retry.</div>'}}
 }
+function showConfirmationEmail(email){
+ const node=$("authMsg");node.textContent="";
+ const lead=document.createElement("span");lead.textContent="We've sent a verification link. Please check: ";node.append(lead);
+ const address=document.createElement("strong");address.textContent=email;address.style.cssText="display:inline-block;background:#e1fbec;color:#075d45;border:1px solid #7fdab5;padding:5px 9px;border-radius:8px;font-weight:850";node.append(address);
+ const instruction=document.createElement("span");instruction.textContent=" Check Inbox, Spam/Junk, and Promotions. Click Confirm Email, then return and sign in. Your trial starts only when your SmartStore goes live.";node.append(instruction);
+ node.setAttribute("role","status");
+}
 async function submitAuth(e){
  e.preventDefault();if(busy||!cfg)return;
  const email=$("authEmail").value.trim(),password=$("authPassword").value;
@@ -82,7 +89,7 @@ async function submitAuth(e){
   const j=await authRequest(signingUp?"/auth/v1/signup":"/auth/v1/token?grant_type=password",
    {email,password,...(signingUp?{data:{business_name:name,phone}}:{})});
   if(!j.access_token){
-   text("authMsg","Account created. Check your email for a confirmation link, then sign in. Your trial hasn't started yet.");
+   showConfirmationEmail(email);
    return;
   }
   saveSession({...j,email,expires_at:j.expires_at||Math.floor(Date.now()/1000)+Number(j.expires_in||3600)});
@@ -107,8 +114,8 @@ function render(){
  store:["BUSINESS SETTINGS","Set up your SmartStore","Teach the AI what your company does."],
  offerings:["PRODUCTS & SERVICES","What you sell","Enter your actual offerings, prices and details."],
  testbot:["TEST MY AI","Talk to your own AI salesperson","Preview real answers from your business catalog before publishing."],
- links:["CUSTOMER SMARTLINKS","One link. Every customer.","Share your storefront via email, text and QR code."],
- leads:["YOUR INQUIRIES","Customer leads","People interested in your products and services."],
+ links:["TRACKED QR CODES","Turn foot traffic into leads","Create trackable QR codes for storefronts, vehicles, services and products."],
+ leads:["LEAD CENTER","Leads & conversations","Every inquiry, appointment request and captured conversation."],
  billing:["48-HOUR TRIAL & BILLING","Your subscription","Core $149/month, website widget +$79/month."]};
  const t=titles[viewName]||titles.overview;
  text("workspaceEyebrow",t[0]);text("workspaceHeading",t[1]);text("workspaceSubtitle",t[2]);text("trialBadge",statusText());
@@ -224,13 +231,49 @@ function renderLinks(){
  workspace.bot?.enabled?'<label>Install script (add before the closing body tag)<textarea id="widgetCode" rows="3" readonly>'+htmlEsc('<script src="'+location.origin+'/widget.js" data-bot-id="'+workspace.bot.bot_id+'" async></'+'script>')+'</textarea></label><div class="actions"><button class="button" id="copyWidgetCode">Copy widget code</button><button class="button danger" id="disableWidget">Disable widget</button></div>':
  '<div class="actions"><button class="button" id="enableWidget" '+(!workspace.widgetAllowed||!s.published?'disabled':'')+'>Generate my website widget</button></div>'
  )+(!workspace.widgetAllowed?'<p class="hint">The website widget requires an active bundled subscription after the trial.</p>':'')+'</div>';
- return body;
+ return body+renderQrSources()+renderChatSettings();
 }
 function renderLeads(){
- const leads=workspace.leads||[];
- if(!leads.length)return'<div class="empty">No customer inquiries yet. Leads from your published store will appear here.</div>';
- return '<div class="card"><div style="overflow:auto"><table class="data-table"><thead><tr><th>Customer</th><th>Contact</th><th>Interest</th><th>Date</th></tr></thead><tbody>'+
- leads.map(l=>'<tr><td><b>'+htmlEsc(l.customer_name)+'</b></td><td>'+htmlEsc(l.customer_email)+'<br>'+htmlEsc(l.customer_phone||"")+'</td><td>'+htmlEsc(l.interest)+'</td><td>'+htmlEsc(new Date(l.created_at).toLocaleDateString())+'</td></tr>').join("")+'</tbody></table></div></div>';
+ const leads=workspace.leads||[],sources=workspace.qrSources||[];
+ const newCount=leads.filter(l=>l.status==="New").length;
+ const appointments=leads.filter(l=>l.request_type==="appointment").length;
+ const qrLeads=leads.filter(l=>l.source_id).length;
+ const metric=(label,num,caption)=>'<div class="lead-metric"><small>'+label+'</small><strong>'+num+'</strong><span>'+caption+'</span></div>';
+ return '<div class="lead-metrics">'+metric('Total leads',leads.length,'People to follow up')+
+ metric('New inquiries',newCount,'Awaiting response')+metric('Appointment requests',appointments,'Require confirmation')+
+ metric('QR-sourced leads',qrLeads,'Attributed to printed codes')+'</div>'+
+ '<div class="card lead-center"><div class="lead-bar"><div><h2>Lead Center</h2><p>Every customer request, follow-up and linked AI transcript in one place.</p></div>'+
+ '<select id="leadFilter" aria-label="Filter leads"><option value="all">All leads</option><option value="New">New</option><option value="Contacted">Contacted</option><option value="Appointment Requested">Appointment requested</option><option value="Booked">Booked</option><option value="Won">Won</option><option value="Lost">Lost</option></select></div>'+
+ (leads.length?'<div class="lead-list">'+leads.map(l=>{
+ const source=sources.find(s=>s.id===l.source_id);
+ const date=new Date(l.created_at).toLocaleString();
+ return '<button class="lead-row" type="button" data-lead="'+htmlEsc(l.id)+'" data-status="'+htmlEsc(l.status)+'">'+
+ '<span class="lead-avatar">'+htmlEsc((l.customer_name||'?').slice(0,1).toUpperCase())+'</span><span class="lead-main"><strong>'+htmlEsc(l.customer_name)+'</strong><small>'+htmlEsc(l.interest.slice(0,100))+'</small><small>'+htmlEsc(source?.label||'SmartStore / website')+' • '+htmlEsc(date)+'</small></span>'+
+ '<span class="lead-right"><span class="lead-status">'+htmlEsc(l.status)+'</span><small>'+htmlEsc(l.customer_phone||l.customer_email||'No contact')+'</small></span></button>'
+ }).join('')+'</div>':'<div class="empty">No leads yet. Publish a QR code and ask a customer to submit an inquiry.</div>')+
+ '</div><div class="card lead-detail hidden" id="leadDetail" aria-live="polite"></div>';
+}
+function qrSourceUrl(code){return smartUrl()+'?src='+encodeURIComponent(code)}
+function renderQrSources(){
+ const sources=workspace.qrSources||[];
+ return '<div class="card"><h2>Tracked QR codes</h2><p>Create one QR for each storefront window, vehicle, reception desk or product. Each lead is attributed to its QR.</p>'+
+ '<form id="qrForm" class="qr-create"><input id="qrLabel" placeholder="e.g. Front door, Ford F-150, Reception" maxlength="80" required minlength="2">'+
+ '<select id="qrOffering"><option value="">General business</option>'+(workspace.offerings||[]).map(p=>'<option value="'+htmlEsc(p.id)+'">'+htmlEsc(p.name)+'</option>').join('')+'</select>'+
+ '<button class="primary" type="submit" '+(!workspace.store?.published?'disabled':'')+'>Create QR</button></form>'+
+ (!workspace.store?.published?'<p class="hint">Publish your SmartStore to generate tracked QR codes.</p>':'')+
+ '<div class="qr-list">'+sources.map(s=>{
+ const url=qrSourceUrl(s.code),qr='https://api.qrserver.com/v1/create-qr-code/?size=250x250&data='+encodeURIComponent(url);
+ const count=(workspace.leads||[]).filter(l=>l.source_id===s.id).length,scans=Number(s.scan_count||0);
+ return '<div class="qr-item"><img src="'+htmlEsc(qr)+'" alt="QR code for '+htmlEsc(s.label)+'" loading="lazy"><div><strong>'+htmlEsc(s.label)+'</strong><small>'+count+' lead(s) • '+(s.enabled?'Active':'Disabled')+'</small><a href="'+htmlEsc(url)+'" target="_blank" rel="noopener">Open QR link</a><div class="actions"><button type="button" class="button" data-copy-qr="'+htmlEsc(s.code)+'">Copy URL</button><button type="button" class="button" data-print-qr="'+htmlEsc(s.id)+'">Print sign</button><button type="button" class="button" data-toggle-qr="'+htmlEsc(s.id)+'">'+(s.enabled?'Disable':'Enable')+'</button></div></div></div>'
+ }).join('')+'</div></div>';
+}
+function renderChatSettings(){
+ const s=workspace.store||{};
+ return '<div class="card"><h2>Customer conversation settings</h2><p>Visitors can chat for a limited number of messages and minutes, then request a callback or appointment.</p>'+
+ '<form id="chatSettingsForm" class="qr-create"><label>Visitor messages<input id="chatMaxMessages" type="number" min="5" max="30" required value="'+Number(s.chat_max_messages||10)+'"></label>'+
+ '<label>Minutes per session<input id="chatMaxMinutes" type="number" min="5" max="30" required value="'+Number(s.chat_max_minutes||10)+'"></label>'+
+ '<label class="lead-check"><input id="appointmentsEnabled" type="checkbox" '+(s.appointments_enabled!==false?'checked':'')+'> Allow appointment requests</label>'+
+ '<button class="primary" type="submit">Save settings</button></form></div>';
 }
 function renderBilling(){
  const a=workspace.access||{},url="/account.html";
@@ -239,6 +282,57 @@ function renderBilling(){
 }
 function bindView(){
  document.querySelectorAll("[data-jump]").forEach(e=>e.onclick=()=>{viewName=e.dataset.jump;render()});
+ if(viewName==="leads"){
+  const filter=$("leadFilter");
+  filter.onchange=()=>document.querySelectorAll("[data-lead]").forEach(row=>{row.classList.toggle("hidden",filter.value!=="all"&&row.dataset.status!==filter.value)});
+  document.querySelectorAll("[data-lead]").forEach(row=>row.onclick=async()=>{
+   const lead=(workspace.leads||[]).find(l=>l.id===row.dataset.lead);if(!lead)return;
+   const panel=$("leadDetail");panel.classList.remove("hidden");panel.textContent="Loading customer history…";
+   try{
+    const result=await ownerApi("lead_history",{id:lead.id});
+    const sources=workspace.qrSources||[],src=sources.find(s=>s.id===lead.source_id);
+    panel.innerHTML='<div class="lead-bar"><h2>'+htmlEsc(lead.customer_name)+'</h2><button type="button" id="closeLeadDetail" class="button">Close</button></div>'+
+     '<div class="lead-detail-grid"><div><small>CONTACT</small><p>'+htmlEsc(lead.customer_email||"—")+'<br>'+htmlEsc(lead.customer_phone||"—")+'</p></div>'+
+     '<div><small>REQUEST TYPE</small><p>'+htmlEsc(lead.request_type||"information")+'</p></div>'+
+     '<div><small>QR SOURCE</small><p>'+htmlEsc(src?.label||"SmartStore / widget")+'</p></div>'+
+     '<div><small>PREFERRED TIME</small><p>'+htmlEsc(lead.preferred_time||"Not supplied")+'</p></div></div>'+
+     '<p><strong>Customer request</strong><br>'+htmlEsc(lead.interest)+'</p>'+
+     '<label>Follow-up status <select id="leadStatusSelect">'+["New","Contacted","Appointment Requested","Booked","Won","Lost"].map(s=>'<option value="'+s+'" '+(s===lead.status?'selected':'')+'>'+s+'</option>').join("")+'</select></label>'+
+     '<button type="button" class="primary" id="saveLeadStatus">Save status</button>'+
+     '<h3>AI conversation history</h3><div class="lead-transcript">'+((result.messages||[]).length?result.messages.map(m=>'<div class="lead-msg '+(m.role==="user"?'visitor':'assistant')+'"><small>'+htmlEsc(m.role==="user"?"Visitor":"AI Assistant")+'</small><p>'+htmlEsc(m.content)+'</p></div>').join(""):'<p class="hint">No conversation was linked to this inquiry.</p>')+'</div>';
+    $("closeLeadDetail").onclick=()=>panel.classList.add("hidden");
+    $("saveLeadStatus").onclick=async()=>{try{await ownerApi("update_lead",{id:lead.id,status:$("leadStatusSelect").value});await loadWorkspace();toast("Lead status updated")}catch(e){toast(e.message)}};
+   }catch(e){panel.textContent=e.message}
+   panel.scrollIntoView({behavior:"smooth",block:"nearest"});
+  });
+ }
+ if(viewName==="links"&&workspace.store){
+  const qrForm=$("qrForm");if(qrForm)qrForm.onsubmit=async event=>{
+   event.preventDefault();try{await ownerApi("create_qr",{label:$("qrLabel").value,offeringId:$("qrOffering").value});await loadWorkspace();toast("Tracked QR created")}catch(e){toast(e.message)}
+  };
+  const settings=$("chatSettingsForm");if(settings)settings.onsubmit=async event=>{
+   event.preventDefault();try{await ownerApi("save_chat_settings",{chatMaxMessages:Number($("chatMaxMessages").value),chatMaxMinutes:Number($("chatMaxMinutes").value),appointmentsEnabled:$("appointmentsEnabled").checked});await loadWorkspace();toast("Customer chat limits saved")}catch(e){toast(e.message)}
+  };
+  document.querySelectorAll("[data-copy-qr]").forEach(button=>button.onclick=()=>navigator.clipboard.writeText(qrSourceUrl(button.dataset.copyQr)).then(()=>toast("QR link copied")).catch(()=>toast("Copy failed")));
+  document.querySelectorAll("[data-toggle-qr]").forEach(button=>button.onclick=async()=>{
+   const source=(workspace.qrSources||[]).find(s=>s.id===button.dataset.toggleQr);if(!source)return;
+   try{await ownerApi("set_qr_enabled",{id:source.id,enabled:!source.enabled});await loadWorkspace();toast("QR code updated")}catch(e){toast(e.message)}
+  });
+  document.querySelectorAll("[data-print-qr]").forEach(button=>button.onclick=()=>{
+   const source=(workspace.qrSources||[]).find(s=>s.id===button.dataset.printQr);if(!source)return;
+   const url=qrSourceUrl(source.code);
+   const popup=window.open("","_blank","width=550,height=720");
+   if(!popup){toast("Allow popups to print QR");return}
+   const doc=popup.document;doc.title="NexusSales QR • "+source.label;
+   const style=doc.createElement("style");style.textContent="body{font:18px system-ui,sans-serif;text-align:center;color:#174836;padding:32px}h1{font-size:28px}img{width:320px;height:320px}p{overflow-wrap:anywhere}.brand{color:#06a978;font-weight:800}@media print{button{display:none}}";doc.head.append(style);
+   const brand=doc.createElement("p");brand.className="brand";brand.textContent="NEXUSSALES AI";doc.body.append(brand);
+   const h=doc.createElement("h1");h.textContent=source.label;doc.body.append(h);
+   const p=doc.createElement("p");p.textContent="Scan to ask a question or request a callback";doc.body.append(p);
+   const img=doc.createElement("img");img.alt="Scan QR";img.src="https://api.qrserver.com/v1/create-qr-code/?size=500x500&data="+encodeURIComponent(url);doc.body.append(img);
+   const small=doc.createElement("p");small.textContent=url;doc.body.append(small);
+   const print=doc.createElement("button");print.textContent="Print sign";print.onclick=()=>popup.print();doc.body.append(print);
+  });
+ }
  if(viewName==="testbot"){$("testBotForm").onsubmit=submitTestBot;}
  if(viewName==="store")$("storeForm").onsubmit=saveStore;
  if(viewName==="offerings"){

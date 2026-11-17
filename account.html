@@ -17,6 +17,12 @@
 <script>
 const el=id=>document.getElementById(id);let cfg=null,signup=true,accessToken=null,selectedTier="core";
 const status=t=>el("configAlert").textContent=t;const authmsg=t=>el("authMessage").textContent=t;
+function showConfirmationEmail(email){
+ const node=el("authMessage");node.textContent="";
+ const label=document.createElement("span");label.textContent="Confirmation email requested for: ";node.append(label);
+ const highlight=document.createElement("strong");highlight.textContent=email;highlight.style.cssText="display:inline-block;background:#dff8e9;color:#075c41;padding:6px 10px;border:1px solid #8ad9b5;border-radius:9px;margin:5px 0;font-weight:800";node.append(highlight);
+ const help=document.createElement("p");help.textContent="Check Inbox, Spam/Junk and Promotions. Open the verification link, then return and sign in. Your 48-hour trial begins when you publish your SmartStore.";node.append(help);
+}
 function show(id,yes){el(id).classList.toggle('hidden',!yes)}
 function token(){try{return JSON.parse(sessionStorage.getItem("nexus_owner_v1")||"null")?.access_token||sessionStorage.getItem("nexus_account_access_token")||""}catch{return sessionStorage.getItem("nexus_account_access_token")||""}}
 function bearer(){return{"Authorization":"Bearer "+token(),"Content-Type":"application/json"}}
@@ -53,7 +59,7 @@ el("authForm").onsubmit=async e=>{e.preventDefault();if(!cfg)return;const email=
   const endpoint=signup?"/auth/v1/signup":"/auth/v1/token?grant_type=password";
   const r=await fetch(cfg.supabaseUrl+endpoint,{method:"POST",headers:{"apikey":cfg.publishableKey,"Content-Type":"application/json"},body:JSON.stringify({email,password,...(signup?{data:{business_name:businessName,phone}}:{})})});
   const j=await r.json();if(!r.ok)throw Error(j.msg||j.error_description||j.message||"Account request failed");
-  if(!j.access_token){authmsg("Account request sent. Check your email to verify your address, then sign in. Your trial begins when the live AI-powered store is activated.");return}
+  if(!j.access_token){showConfirmationEmail(email);return}
   sessionStorage.setItem("nexus_account_access_token",j.access_token);sessionStorage.setItem("nexus_account_email",email);sessionStorage.setItem("nexus_owner_v1",JSON.stringify({...j,email}));el("password").value="";await refresh();
  }catch(err){authmsg(err.message)}finally{el("authButton").disabled=false}
 };

@@ -32,6 +32,8 @@ function fakeNetwork({claim=[job],enqueue=true,active=true,role="super_admin",ol
   if(u.includes("/rest/v1/nx_stores"))return res([{...store}]);
   if(u.includes("/rest/v1/nx_offerings"))return res([item]);
   if(u.includes("/rest/v1/nx_entitlements"))return res([{user_id:uid,trial_started_at:active?new Date().toISOString():new Date(Date.now()-49*3600000).toISOString(),subscription_status:"TRIAL"}]);
+  if(u.includes("rpc/nx_claim_chat_message"))return res({allowed:true,sessionId:"44444444-4444-4444-8444-444444444444",used:1,max:10,remaining:9});
+  if(u.includes("nx_chat_messages"))return options.method==="POST"?res(null,201):res([]);
   if(u.includes("rpc/nx_enqueue_whatsapp"))return failEnqueue?res({error:"db"},503):res(enqueue);
   if(u.includes("rpc/nx_claim_next_whatsapp"))return res(claim);
   if(u.includes("rpc/nx_finish_whatsapp"))return res(true);

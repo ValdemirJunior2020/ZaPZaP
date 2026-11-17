@@ -8,10 +8,10 @@ export async function handler(event){
   const c=env();
   const bots=await db(c,"nx_bots?bot_id=eq."+encodeURIComponent(botId)+"&enabled=eq.true&select=bot_id,store_id,greeting");
   const bot=bots?.[0];if(!bot)return json(404,{available:false});
-  const stores=await db(c,"nx_stores?id=eq."+encodeURIComponent(bot.store_id)+"&published=eq.true&select=id,owner_id,slug,name");
+  const stores=await db(c,"nx_stores?id=eq."+encodeURIComponent(bot.store_id)+"&published=eq.true&select=id,owner_id,slug,name,chat_max_messages,chat_max_minutes,appointments_enabled");
   const store=stores?.[0];if(!store)return json(404,{available:false});
   const ent=await entitlement(c,store.owner_id);
   if(!access(ent).allowed||!widgetEnabled(c,ent))return json(403,{available:false});
-  return json(200,{available:true,chatReady:aiReady(),botId:bot.bot_id,slug:store.slug,businessName:store.name,greeting:bot.greeting});
+  return json(200,{available:true,chatReady:aiReady(),botId:bot.bot_id,slug:store.slug,businessName:store.name,greeting:bot.greeting,chatMaxMessages:store.chat_max_messages||10,chatMaxMinutes:store.chat_max_minutes||10,appointmentsEnabled:store.appointments_enabled!==false});
  }catch(e){console.error("Widget status:",e.message);return json(503,{available:false})}
 }
