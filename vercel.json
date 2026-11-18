@@ -51,6 +51,10 @@
       "destination": "/admin.html"
     },
     {
+      "source": "/assistant/:handle",
+      "destination": "/personal-chat.html"
+    },
+    {
       "source": "/assistant",
       "destination": "/junior.html"
     },
@@ -117,7 +121,7 @@
       ]
     },
     {
-      "source": "/(index.html|business.html|account.html|store.html|junior.html)",
+      "source": "/(index.html|business.html|account.html|store.html|junior.html|personal-chat.html)",
       "headers": [
         {
           "key": "Content-Security-Policy",
