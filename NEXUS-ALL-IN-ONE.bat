@@ -5,7 +5,7 @@ color 0A
 set "ROOT=%~dp0"
 cd /d "%ROOT%"
 set "GITBRANCH=feat/exclusive-nexus-sales-expert-20261118"
-set "LOG=%ROOT%NEXUS-LOCAL-SETUP.log"
+set "LOG=%TEMP%\\NEXUS-LOCAL-SETUP.log"
 echo [NexusSales AI] %date% %time% > "%LOG%"
 echo.
 echo ===============================================================
@@ -82,7 +82,7 @@ for /f "delims=" %%B in ('git for-each-ref --format^="%%(refname:short)" refs/re
 )
 echo Results: merged !MERGED!, skipped conflicts !SKIPPED!, already present !PREVIOUS!.
 if not "!SKIPPED!"=="0" (
- echo Some branches could NOT be integrated safely. See NEXUS-LOCAL-SETUP.log.
+ echo Some branches could NOT be integrated safely. See %LOG%.
  echo You can continue testing the integration, but do NOT publish it.
 )
 :dependencies
