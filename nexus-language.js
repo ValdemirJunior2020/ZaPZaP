@@ -165,20 +165,27 @@ function apply(){
  });
 }
 function schedule(){if(scheduled)return;scheduled=true;queueMicrotask(()=>{scheduled=false;apply()})}
+// Browser preference applies immediately and survives refreshes, even during an API outage.
+// Server sync is best effort; a failed request must NEVER snap the UI back to English.
+const storageKey="nexus_platform_language";
+function browserLanguage(){
+ try{const saved=localStorage.getItem(storageKey);return saved&&["en","es","pt"].includes(saved)?saved:null}catch{return null}
+}
 function setLanguage(value,{persist=true}={}){
- const next=normalize(value),previous=locale;locale=next;
- try{localStorage.setItem('nexus_platform_language',locale)}catch{}
+ const next=normalize(value);
+ locale=next;
+ try{localStorage.setItem(storageKey,next)}catch{}
  schedule();
  window.dispatchEvent(new CustomEvent('nexus:language',{detail:{language:locale}}));
- if(!persist)return Promise.resolve();
- if(typeof save!=='function')return Promise.reject(new Error('Business language is not connected'));
- return Promise.resolve().then(()=>save(next)).catch(error=>{
-  locale=previous;
-  try{localStorage.setItem('nexus_platform_language',previous)}catch{}
-  schedule();
-  window.dispatchEvent(new CustomEvent('nexus:language',{detail:{language:locale}}));
-  throw error;
- });
+ if(!persist||typeof save!=='function')return Promise.resolve({local:true,synced:false});
+ return Promise.resolve().then(()=>save(next)).then(()=>({local:true,synced:true}))
+  .catch(error=>({local:true,synced:false,error:String(error?.message||"Account sync unavailable")}));
+}
+function restoreLanguage(serverLanguage){
+ // An explicit browser selection takes priority on this device.
+ // Server profile is the fallback on first login on another device.
+ const preferred=browserLanguage()||normalize(serverLanguage||"en");
+ return setLanguage(preferred,{persist:false});
 }
 function getLanguage(){return locale}
 function bindSave(callback){save=callback}
@@ -189,7 +196,7 @@ function start(){
  observer.observe(document.body,{subtree:true,childList:true,characterData:true});
  apply();
 }
-try{locale=normalize(localStorage.getItem('nexus_platform_language')||'en')}catch{}
-window.NexusLanguage={t,setLanguage,getLanguage,bindSave,apply,start,normalize,languages};
+locale=browserLanguage()||'en';
+window.NexusLanguage={t,setLanguage,restoreLanguage,browserLanguage,getLanguage,bindSave,apply,start,normalize,languages};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
