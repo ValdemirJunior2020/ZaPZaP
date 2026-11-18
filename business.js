@@ -191,20 +191,20 @@ function smartUrl(){return workspace?.store?.slug?location.origin+"/s/"+workspac
 
 function renderTestBot(){
  const st=workspace?.store,items=workspace?.offerings||[];
- const ready=Boolean(st&&items.length&&isEditable());
+ const ready=Boolean(st&&isEditable());
  const intro=st?("Hi! I am "+(st.agent_name||"your business assistant")+". Ask me about "+st.name+"'s products and services."):"Save your business profile first to begin.";
  const style=personalityOptions.find(p=>p.id===(st?.ai_personality||"professional"))||personalityOptions[0];
  return '<div class="testbot-wrap"><div class="testbot-setup card"><span class="tag">PRIVATE PREVIEW • ONLY YOU</span><h2>Your own AI. Your real business information.</h2><p>This is a private testing space. Your assistant uses the products, prices, description and hours you saved. Test it before publishing.</p>'+
  '<div class="testbot-status">'+(st?'✓ Business saved':'○ Save business details')+'</div>'+
- '<div class="testbot-status">'+(items.length?'✓ '+items.length+' product(s) or service(s) loaded':'○ Add at least one offering')+'</div>'+
+ '<div class="testbot-status">'+(items.length?'✓ '+items.length+' product(s) or service(s) loaded':'○ No offerings yet — you can still test your saved business description')+'</div>'+
  '<div class="testbot-status">✓ Testing never publishes the store or starts your 48-hour trial.</div>'+ 
  '<div class="testbot-status">✦ Personality: <strong>'+htmlEsc(style.title)+'</strong> — '+htmlEsc(style.desc)+'</div>'+
- '<p class="testbot-help">20 private test questions per day. Answers come directly from Ollama Qwen3, not example responses.</p>'+
+ '<p class="testbot-help">20 private test questions per day. Replies use your configured AI provider, never example responses.</p>'+
  '<div class="actions"><button type="button" class="button" data-jump="store">Business details</button><button type="button" class="button" data-jump="offerings">Edit offerings</button><button type="button" class="button" data-jump="links">Publish when ready</button></div></div>'+
  '<div class="testbot-chat card"><div class="testbot-chat-head"><div class="testbot-ai-icon">✦</div><div><strong>'+htmlEsc(st?.agent_name||"My AI Assistant")+'</strong><small>'+htmlEsc(st?.name||"Your business")+' • PRIVATE TEST CHAT</small></div></div>'+
  '<div class="testbot-messages" id="testBotMessages" role="log" aria-live="polite"><div class="testbot-bubble assistant">'+htmlEsc(intro)+'</div></div>'+
  '<div class="testbot-controls"><div class="testbot-hints">Try: “What do you offer?” · “How much does it cost?” · “When are you open?”</div>'+
- '<form id="testBotForm" class="testbot-form"><label class="sr-only" for="testBotQuestion">Ask your own AI a question</label><input id="testBotQuestion" maxlength="500" autocomplete="off" placeholder="'+(ready?"Ask about your products or services…":"Add your business and an offering first")+'" '+(!ready?'disabled':'')+' required><button type="submit" class="primary" id="testBotSend" '+(!ready?'disabled':'')+'>Send ↗</button></form><p id="testBotStatus" role="status" class="testbot-meta">'+(ready?"Ready to test your saved catalog. Your trial remains untouched.":"Complete your business details and offerings to enable testing.")+'</p></div></div></div>';
+ '<form id="testBotForm" class="testbot-form"><label class="sr-only" for="testBotQuestion">Ask your own AI a question</label><input id="testBotQuestion" maxlength="500" autocomplete="off" placeholder="'+(ready?"Ask about your products or services…":"Save your business details first")+'" '+(!ready?'disabled':'')+' required><button type="submit" class="primary" id="testBotSend" '+(!ready?'disabled':'')+'>Send ↗</button></form><p id="testBotStatus" role="status" class="testbot-meta">'+(ready?"Ready to test your saved catalog. Your trial remains untouched.":"Save your business details to enable testing. Product prices cannot be provided until you add offerings.")+'</p></div></div></div>';
 }
 let testBotHistory=[];
 function testBotMessage(role,content){
@@ -220,7 +220,7 @@ async function submitTestBot(event,retry=true){
  button.disabled=true;field.disabled=true;
  testBotMessage("user",message);field.value="";
  const pending=testBotMessage("assistant","Asking your real AI…");
- text("testBotStatus","Connecting securely to Ollama Qwen3…");
+ text("testBotStatus","Connecting securely to your AI…");
  try{
   const r=await fetch("/.netlify/functions/owner-test-chat",{method:"POST",headers:header,body:JSON.stringify({message,history:testBotHistory.slice(-6)}),cache:"no-store",signal:AbortSignal.timeout(27000)});
   const data=await r.json().catch(()=>({}));
@@ -230,17 +230,17 @@ async function submitTestBot(event,retry=true){
    const again=await fetch("/.netlify/functions/owner-test-chat",{method:"POST",headers:newHeader,body:JSON.stringify({message,history:testBotHistory.slice(-6)}),cache:"no-store",signal:AbortSignal.timeout(27000)});
    const againData=await again.json().catch(()=>({}));
    if(!again.ok)throw Error((againData.error||"AI testing failed")+(againData.code?" ["+againData.code+"]":""));
-   if(!againData.reply||againData.source!=="ollama")throw Error("AI did not return a verified response");
+   if(!againData.reply||!["ollama","ollama-lite","openai"].includes(againData.source))throw Error("AI did not return a verified response");
    pending.textContent=againData.reply;
    testBotHistory.push({role:"user",content:message},{role:"assistant",content:againData.reply});
   }else{
    if(!r.ok)throw Error((data.error||"AI testing failed")+(data.code?" ["+data.code+"]":""));
-   if(!data.reply||data.source!=="ollama")throw Error("AI did not return a verified response");
+   if(!data.reply||!["ollama","ollama-lite","openai"].includes(data.source))throw Error("AI did not return a verified response");
    pending.textContent=data.reply;
    testBotHistory.push({role:"user",content:message},{role:"assistant",content:data.reply});
   }
   testBotHistory=testBotHistory.slice(-6);
-  text("testBotStatus",workspace?.access?.reason==="COMPLIMENTARY"?"Answered by Qwen3. Your complimentary access stays active.":"Answered by Ollama Qwen3. Your 48-hour trial has not started.");
+  text("testBotStatus",workspace?.access?.reason==="COMPLIMENTARY"?"AI answered your question. Your complimentary access stays active.":"AI answered your question. Your 48-hour trial has not started.");
  }catch(error){
   pending.textContent=error?.name==="TimeoutError"?"Your AI did not answer in time. Try again.":error.message;
   text("testBotStatus","No fake answers were used. Your trial remains unchanged.");
