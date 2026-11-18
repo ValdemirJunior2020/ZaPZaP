@@ -38,17 +38,18 @@ async function ask(raw){
   const r=await fetch("/.netlify/functions/store-chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({experience:"personal",assistantHandle:handle,sessionId,message})});
   const data=await r.json().catch(()=>({}));
   if(!r.ok&&data.limitReached){pending.textContent=data.error||"Chat limit reached";end();return}
-  if(!r.ok||!data.reply)throw Error("Assistant unavailable");
+  if(!r.ok||!data.reply)throw Error(data.reference?"Assistant unavailable (reference "+data.reference+")":"Assistant unavailable");
   pending.textContent=data.reply;
   $("status").textContent="AI responding";
   if(data.sessionId){sessionId=data.sessionId;try{localStorage.setItem(key,sessionId)}catch{}}
   if(Number.isInteger(data.remaining))$("status").textContent=data.remaining+" messages left";
   if(data.limitReached)end();
-  }catch{
+  }catch(error){
   $("status").textContent="AI temporarily unavailable";
   pending.textContent=ownerWhatsAppUrl
    ?"I'm sorry—I couldn't connect just now. You can message the owner directly on WhatsApp using the button below, or leave a contact request."
    :"I'm sorry—I couldn't connect just now. Please leave a contact request below so the owner can follow up.";
+  if(/reference [0-9a-f-]{36}/i.test(error.message))pending.textContent+=" Diagnostic "+error.message.match(/reference [0-9a-f-]{36}/i)[0]+".";
   showWhatsApp();
   $("contact").classList.add("open");
   $("toggle").setAttribute("aria-expanded","true");

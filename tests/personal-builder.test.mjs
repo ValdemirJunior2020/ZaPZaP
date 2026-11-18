@@ -89,3 +89,21 @@ test("Personal sales assistant provides owner's direct WhatsApp link without exp
  assert.match(html,/id="ownerQuickWhatsApp"/);
  assert.doesNotThrow(()=>new Function(ui));
 });
+
+test("AI error diagnostics show safe reference IDs without logging private chat data",async()=>{
+ const [handler,logs,owner,ui,client,html]=await Promise.all([
+  "netlify/functions/store-chat.mjs","netlify/lib/ai-diagnostics.mjs",
+  "netlify/functions/owner-workspace.mjs","business.js","personal-chat.js","index.html"
+ ].map(path=>readFile(path,"utf8")));
+ assert.match(handler,/recordAiError/);
+ assert.match(handler,/reference:diag.id/);
+ assert.match(logs,/error_code:code/);
+ assert.doesNotMatch(logs,/content:message|token:|raw_exception:/);
+ assert.match(owner,/action==="ai_error_logs"/);
+ assert.match(owner,/user.id!==SPECIAL_OWNER/);
+ assert.match(ui,/AI Error Logs/);
+ assert.match(client,/Diagnostic /);
+ assert.match(html,/data-owner-only hidden/);
+ assert.doesNotThrow(()=>new Function(ui));
+ assert.doesNotThrow(()=>new Function(client));
+});

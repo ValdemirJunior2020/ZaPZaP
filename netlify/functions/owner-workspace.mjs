@@ -34,6 +34,12 @@ export async function handler(event){
   if(action==="cancel_subscription")return cancelSubscription(c,user,ent);
   if(action==="delete_account")return deleteAccount(c,user,ent,data);
 
+  if(action==="ai_error_logs"){
+   if(user.id!==SPECIAL_OWNER||ent.is_complimentary!==true)return json(403,{error:"Logs unavailable for this account"});
+   if(!store)return json(200,{logs:[]});
+   const logs=await db(c,"nx_ai_error_logs?owner_id=eq."+encodeURIComponent(user.id)+"&store_id=eq."+encodeURIComponent(store.id)+"&select=id,created_at,stage,error_code,elapsed_ms&order=created_at.desc&limit=100");
+   return json(200,{logs:logs||[]});
+  }
   if(!canEdit(ent)&&!["pause","disable_widget","lead_history","update_lead"].includes(action))return json(402,{error:"Your trial has ended. Subscribe to continue.",access:access(ent)});
   if(action==="save_store"){
    const i=data.store||{};

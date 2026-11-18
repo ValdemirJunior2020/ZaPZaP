@@ -70,6 +70,7 @@ async function loadWorkspace(){
   setVisible(true);
   text("accountLabel",workspace.email||"Account");
   text("sideName",workspace.store?.name||workspace.profile?.business_name||"Your business");
+  document.querySelectorAll("[data-owner-only]").forEach(el=>el.hidden=workspace?.personalAssistantSpecial!==true);
   render();
  }catch(e){toast(e.message);if(/sign in|session|invalid login|unauthorized/i.test(e.message)){saveSession(null);setVisible(false)}else{setVisible(true);$("viewContent").innerHTML='<div class="alert">Business data is temporarily unavailable. Your account has not been logged out. Refresh the page to retry.</div>'}}
 }
@@ -118,11 +119,12 @@ function render(){
  links:["TRACKED QR CODES","Turn foot traffic into leads","Create trackable QR codes for storefronts, vehicles, services and products."],
  leads:["LEAD CENTER","Leads & conversations","Every inquiry, appointment request and captured conversation."],
  personal:["PERSONAL AI BUILDER","Build Your Personal Assistant","Customize your named AI, personality, and personal contact link."],
+ logs:["AI DIAGNOSTICS","AI Error Logs","Recent chat failures, stages, and diagnostic reference IDs."],
  billing:["48-HOUR TRIAL & BILLING","Your subscription","Core $149/month, website widget +$79/month."]};
  const t=titles[viewName]||titles.overview;
  text("workspaceEyebrow",t[0]);text("workspaceHeading",t[1]);text("workspaceSubtitle",t[2]);text("trialBadge",statusText());
  document.querySelectorAll("[data-view]").forEach(b=>{b.classList.toggle("active",b.dataset.view===viewName)});
- const views={overview:renderOverview,store:renderStore,offerings:renderOfferings,testbot:renderTestBot,links:renderLinks,leads:renderLeads,personal:renderPersonalAssistant,billing:renderBilling};
+ const views={overview:renderOverview,store:renderStore,offerings:renderOfferings,testbot:renderTestBot,links:renderLinks,leads:renderLeads,personal:renderPersonalAssistant,logs:renderErrorLogs,billing:renderBilling};
  $("viewContent").innerHTML=(views[viewName]||views.overview)();
  bindView();
 }
@@ -279,6 +281,25 @@ function renderPersonalAssistant(){
  (saved?'<div class="personal-share"><h3>Share your personal AI</h3><div class="link-input"><input id="personalLink" readonly value="'+htmlEsc(url)+'"><button id="copyPersonalLink" class="button" type="button">Copy</button></div><div class="link-actions"><a class="button" href="'+htmlEsc(url)+'" target="_blank" rel="noopener">Open assistant</a><a class="button" href="https://wa.me/?text='+encodeURIComponent('Meet '+name+', my AI assistant: '+url)+'" target="_blank" rel="noopener">Share by WhatsApp link</a></div></div>':'')+
  '<p class="hint">Faithful Encourager is exclusive to your lifetime complimentary account. The assistant always identifies itself as AI. Opt-in leads appear in your existing Leads & Chats dashboard.</p></div>';
 }
+function renderErrorLogs(){
+ if(workspace?.personalAssistantSpecial!==true)return '<div class="card">Logs are restricted to the complimentary owner.</div>';
+ return '<div class="card"><h2>AI Error Logs</h2><p>Only technical status is saved. No visitor messages, tokens, passwords, or IP addresses are recorded here.</p>'+
+ '<div class="actions"><button class="button" id="refreshAiLogs" type="button">Refresh Logs</button></div>'+
+ '<div id="aiLogsResults" role="status">Loading recent errors…</div></div>';
+}
+async function fetchAiLogs(){
+ const target=$("aiLogsResults");if(!target)return;
+ target.textContent="Loading recent errors…";
+ try{
+  const result=await ownerApi("ai_error_logs",{});
+  const rows=result.logs||[];
+  target.innerHTML=rows.length?'<div class="lead-list">'+rows.map(x=>
+   '<div class="lead-row" style="display:block;text-align:left;cursor:auto"><strong>'+htmlEsc(x.error_code)+'</strong>'+
+   '<small style="display:block">'+htmlEsc(new Date(x.created_at).toLocaleString())+' • Stage: '+htmlEsc(x.stage)+' • '+Number(x.elapsed_ms)+' ms</small>'+
+   '<small style="display:block">Reference: '+htmlEsc(x.id)+'</small></div>').join('')+'</div>'
+   :'<p>No AI failures logged yet. Send a test message, then refresh.</p>';
+ }catch(e){target.textContent="Unable to load diagnostic logs: "+e.message}
+}
 function renderLeads(){
  const leads=workspace.leads||[],sources=workspace.qrSources||[];
  const newCount=leads.filter(l=>l.status==="New").length;
@@ -327,6 +348,7 @@ function renderBilling(){
  return '<div class="card"><h2>'+htmlEsc(statusText())+'</h2><p>'+htmlEsc(status)+'</p><div class="view-grid"><div><strong class="metric">$149<small>/mo</small></strong><p>Core store, AI salesperson, SmartLinks and leads.</p></div><div><strong class="metric">$228<small>/mo</small></strong><p>Core + embedded website widget ($79 add-on).</p></div></div><div class="actions">'+(a.reason==="COMPLIMENTARY"?'<span class="status-badge">✓ No payment required</span>':'<a class="primary" href="'+url+'">Manage PayPal subscription</a>')+'</div>'+(a.reason==="COMPLIMENTARY"?'<p class="hint">All NexusSales features are included with your complimentary access.</p>':'<p class="hint">Manage your subscription, security and account deletion in Account Settings.</p>')+'</div>';
 }
 function bindView(){
+ if(viewName==="logs"&&workspace?.personalAssistantSpecial===true){$("refreshAiLogs").onclick=fetchAiLogs;fetchAiLogs()}
  if(viewName==="personal"&&$("personalBuilderForm")){
   const preview=()=>{$("paPreviewName").textContent=$("paName").value.trim()||"Your assistant";$("paPreviewGreeting").textContent=$("paGreeting").value.trim()||"Hi! I'm "+$("paName").value.trim()+", your AI assistant."};
   $("paName").oninput=preview;$("paGreeting").oninput=preview;
