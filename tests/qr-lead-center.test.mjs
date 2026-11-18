@@ -68,6 +68,7 @@ test("Appointment requests can use phone-only contact and attach same-store QR/c
   if(u.includes("/nx_entitlements"))return res([entitlement]);
   if(u.includes("/nx_offerings"))return res([]);
   if(u.includes("/nx_chat_sessions"))return res([{id:sessionId,source_id:sourceId}]);
+  if(u.includes("/nx_employees"))return res([]);
   if(u.includes("/nx_leads")&&options.method==="POST"){saved=data;return res([{id:leadId}],201)}
   throw Error("Unexpected URL "+u);
  };

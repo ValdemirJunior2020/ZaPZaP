@@ -111,7 +111,7 @@ export async function handler(event){
   const sourceCode=str(req.sourceCode,80);
   const qrRows=sourceCode?await db(c,"nx_qr_sources?store_id=eq."+encodeURIComponent(store.id)+"&code=eq."+encodeURIComponent(sourceCode)+"&enabled=eq.true&select=id,label,offering_id"):[];
   const qrSource=qrRows?.[0]||null;
-  const assigned=qrSource?(await db(c,"nx_employees?store_id=eq."+encodeURIComponent(store.id)+"&qr_source_id=eq."+encodeURIComponent(qrSource.id)+"&enabled=eq.true&select=name,role,language"))?.[0]:null;
+  const assigned=qrSource?.id?(await db(c,"nx_employees?store_id=eq."+encodeURIComponent(store.id)+"&qr_source_id=eq."+encodeURIComponent(qrSource.id)+"&enabled=eq.true&select=name,role,language"))?.[0]:null;
   const linkedOffering=qrSource?.offering_id?items.find(item=>item.id===qrSource.offering_id)||null:null;
   const messages=personalMode?personalMessages(assistant,message,history):juniorMode?juniorMessages(message,history):businessMessages(store,items,message,history,qrSource?{label:qrSource.label,offering:linkedOffering}:null);
   if(assigned)messages[0].content+=" Assigned sales employee (not the owner): "+JSON.stringify(assigned)+". Reply in the visitor language, or the employee language if unclear. Do not claim to place calls.";
