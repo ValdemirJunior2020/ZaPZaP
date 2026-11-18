@@ -2,9 +2,16 @@ const $=id=>document.getElementById(id);
 const handle=decodeURIComponent(location.pathname.split("/").filter(Boolean).pop()||"");
 const valid=/^[a-z][a-z0-9-]{2,31}$/.test(handle)&&!/--|-$/.test(handle);
 const key="nexus_personal_session_"+handle;
-let sessionId=null,ready=false,closed=false,busy=false,assistant=null;
+let sessionId=null,ready=false,closed=false,busy=false,assistant=null,ownerWhatsAppUrl=null;
 try{sessionId=localStorage.getItem(key)||null}catch{}
 function bubble(type,text){const div=document.createElement("div");div.className="bubble "+type;div.textContent=String(text||"").slice(0,2500);$("feed").append(div);$("feed").scrollTop=$("feed").scrollHeight;return div}
+function showWhatsApp(){
+ if(!ownerWhatsAppUrl)return;
+ for(const id of ["ownerWhatsApp","ownerQuickWhatsApp"]){
+  const link=$(id);if(link){link.href=ownerWhatsAppUrl;link.hidden=false}
+ }
+ const quick=$("contactAsk");if(quick)quick.hidden=true;
+}
 function end(){closed=true;$("question").disabled=true;$("send").disabled=true;$("status").textContent="Chat finished";$("foot").textContent="Session limit reached. You may leave a contact request below.";$("contact").classList.add("open");$("toggle").setAttribute("aria-expanded","true")}
 async function init(){
  if(!valid){$("status").textContent="Invalid link";return}
@@ -13,11 +20,13 @@ async function init(){
   const data=await r.json().catch(()=>({}));
   if(!r.ok||!data.assistant)throw Error("Assistant unavailable");
   assistant=data.assistant;
+  ownerWhatsAppUrl=/^https:\/\/wa\.me\/15616445874$/.test(data.contactWhatsAppUrl||"")?data.contactWhatsAppUrl:null;
+  showWhatsApp();
   $("heroName").textContent=assistant.name;
   $("chatName").textContent=assistant.name+" · AI";
   $("chatStyle").textContent=assistant.style||"Personal assistant";
   $("welcome").textContent=assistant.greeting||"Hi! I'm "+assistant.name+", your AI assistant. How can I help?";
-  ready=data.online===true;$("status").textContent=ready?"Available":"AI offline";
+  ready=data.online===true;$("status").textContent=ready?"AI configured":"AI offline";
   $("question").disabled=!ready;$("send").disabled=!ready;
  }catch{$("status").textContent="Unavailable";$("foot").textContent="Assistant is currently unavailable. You can reach the owner another way."}
 }
@@ -31,10 +40,19 @@ async function ask(raw){
   if(!r.ok&&data.limitReached){pending.textContent=data.error||"Chat limit reached";end();return}
   if(!r.ok||!data.reply)throw Error("Assistant unavailable");
   pending.textContent=data.reply;
+  $("status").textContent="AI responding";
   if(data.sessionId){sessionId=data.sessionId;try{localStorage.setItem(key,sessionId)}catch{}}
   if(Number.isInteger(data.remaining))$("status").textContent=data.remaining+" messages left";
   if(data.limitReached)end();
- }catch{pending.textContent="Sorry, I can't answer right now. You can leave a message for the owner below."}
+  }catch{
+  $("status").textContent="AI temporarily unavailable";
+  pending.textContent=ownerWhatsAppUrl
+   ?"I'm sorry—I couldn't connect just now. You can message the owner directly on WhatsApp using the button below, or leave a contact request."
+   :"I'm sorry—I couldn't connect just now. Please leave a contact request below so the owner can follow up.";
+  showWhatsApp();
+  $("contact").classList.add("open");
+  $("toggle").setAttribute("aria-expanded","true");
+ }
  finally{busy=false;if(!closed){$("question").disabled=!ready;$("send").disabled=!ready} $("feed").scrollTop=$("feed").scrollHeight}
 }
 $("askForm").onsubmit=e=>{e.preventDefault();ask($("question").value)};

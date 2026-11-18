@@ -75,3 +75,17 @@ test("Sales Expert tile preloads copy while backend requires complimentary owner
  assert.match(ui,/NexusSales sales content loaded/);
  assert.match(api,/ent.is_complimentary!==true/);
 });
+
+test("Personal sales assistant provides owner's direct WhatsApp link without exposing it for other owners",async()=>{
+ const api=await readFile("netlify/functions/store-chat.mjs","utf8");
+ const ui=await readFile("personal-chat.js","utf8");
+ const html=await readFile("personal-chat.html","utf8");
+ assert.match(api,/a.owner_id===SPECIAL_OWNER&&ent.is_complimentary===true/);
+ assert.match(api,/wa.me\/15616445874/);
+ assert.match(ui,/ownerWhatsAppUrl/);
+ assert.match(ui,/AI configured/);
+ assert.match(ui,/AI temporarily unavailable/);
+ assert.match(html,/id="ownerWhatsApp"/);
+ assert.match(html,/id="ownerQuickWhatsApp"/);
+ assert.doesNotThrow(()=>new Function(ui));
+});
