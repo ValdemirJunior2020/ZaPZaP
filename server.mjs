@@ -4,6 +4,31 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import crypto from 'node:crypto';
 const root=path.dirname(fileURLToPath(import.meta.url)),port=Number(process.env.PORT||8788);
+// Local development only. .env.local is gitignored; never expose server keys to browsers.
+try{process.loadEnvFile(path.join(root,".env.local"))}catch(error){if(error?.code!=="ENOENT")console.warn("Local config:",error.message)}
+process.env.NEXUS_LOCAL_DEV="true";
+const localHandlers=Object.freeze({
+ "public-config":"./netlify/functions/public-config.mjs",
+ "owner-workspace":"./netlify/functions/owner-workspace.mjs",
+ "store-chat":"./netlify/functions/store-chat.mjs",
+ "store-inquiry":"./netlify/functions/store-inquiry.mjs",
+ "owner-test-chat":"./netlify/functions/owner-test-chat.mjs",
+ "public-store":"./netlify/functions/public-store.mjs",
+ "widget-config":"./netlify/functions/widget-config.mjs"
+});
+async function localFunction(req,res,url,name){
+ const modulePath=localHandlers[name];if(!modulePath)return result(res,404,{error:"Unknown local API route"});
+ if(!["GET","POST"].includes(req.method))return result(res,405,{error:"Method not allowed"});
+ const {handler}=await import(modulePath);
+ let body;
+ if(req.method==="POST")body=await payload(req);
+ const event={httpMethod:req.method,path:url.pathname,rawUrl:url.href,body,headers:req.headers,queryStringParameters:Object.fromEntries(url.searchParams)};
+ const answer=await handler(event);
+ if(!answer||typeof answer.statusCode!=="number")return result(res,503,{error:"API returned an invalid response"});
+ res.writeHead(answer.statusCode,{"Cache-Control":"no-store","X-Content-Type-Options":"nosniff",...(answer.headers||{})});
+ res.end(answer.body||"");
+}
+
 const TYPES={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.toml':'text/plain'};
 const language=(s)=>/[ãõçáéíóúâêôà]/i.test(s)||/\b(olá|oi|vocês|preço|quanto custa|obrigad[oa]|agendar|carro|hoje)\b/i.test(s)?'pt':/[¿¡ñ]/.test(s)||/\b(hola|precio|gracias|quiero|cita|mañana|cuánto|tienen|necesito)\b/i.test(s)?'es':'en';
 const fallback={en:"Thanks for messaging us! We're helping other customers right now. Someone will be with you shortly.",es:"¡Gracias por escribirnos! Estamos atendiendo a otros clientes. En breve estaremos contigo.",pt:"Obrigado por entrar em contato! Estamos atendendo outros clientes. Em breve vamos falar com você."};
@@ -61,9 +86,15 @@ const direct=/\b(phone|telephone|number|human|representative|call someone|telefo
 if(direct&&settings.sharePhone&&/^\+?[\d\s().-]{7,35}$/.test(settings.humanPhone))return result(res,200,{reply:({en:"The business contact number is ",pt:"O telefone de contato da empresa é ",es:"El teléfono de contacto de la empresa es "})[language(message)]+settings.humanPhone});
 active++;try{const answer=await generate(message,settings,Array.isArray(j.history)?j.history:[]);return result(res,200,{reply:answer,source:'ai'})}catch(e){console.warn('AI unavailable:',e.message);return result(res,503,{error:'AI temporarily unavailable',code:'AI_UNAVAILABLE'})}finally{active--}}
 if(url.pathname==='/api/whatsapp/webhook'&&req.method==='GET'){if(!process.env.WHATSAPP_VERIFY_TOKEN)return result(res,503,{error:'Not configured'});if(url.searchParams.get('hub.mode')==='subscribe'&&url.searchParams.get('hub.verify_token')===process.env.WHATSAPP_VERIFY_TOKEN){res.writeHead(200,{'Content-Type':'text/plain'});return res.end(url.searchParams.get('hub.challenge')||'')}return result(res,403,{error:'Verification failed'})}
+const fnMatch=url.pathname.match(/^\/\.netlify\/functions\/([a-z0-9-]+)$/);
+const localApiName=fnMatch?.[1]||(url.pathname.startsWith("/api/")?url.pathname.slice(5):null);
+if(localApiName&&Object.hasOwn(localHandlers,localApiName))return await localFunction(req,res,url,localApiName);
 if(url.pathname.startsWith('/api/'))return result(res,501,{error:'Integration not configured; no production messaging or billing occurs in this demo'});
 if(req.method!=='GET'&&req.method!=='HEAD')return result(res,405,{error:'Method not allowed'});
-const pathname=decodeURIComponent(url.pathname),file=path.resolve(root,'.'+(pathname==='/'?'/index.html':pathname));if(!file.startsWith(root+path.sep))return result(res,403,{error:'Forbidden'});if(file.includes(path.sep+'.')||/\.(env|sql|md|toml)$/i.test(file))return result(res,404,{error:'Not found'});let info;try{info=await stat(file)}catch{return result(res,404,{error:'Not found'})}if(!info.isFile())return result(res,404,{error:'Not found'});const content=await readFile(file);res.writeHead(200,{'Content-Type':TYPES[path.extname(file)]||'application/octet-stream','X-Content-Type-Options':'nosniff','Cache-Control':'public, max-age=120'});res.end(req.method==='HEAD'?undefined:content)
+let pathname=decodeURIComponent(url.pathname);
+if(pathname==="/assistant")pathname="/junior.html";
+else if(/^\/assistant\/[a-z][a-z0-9-]{2,31}$/.test(pathname))pathname="/personal-chat.html";
+const file=path.resolve(root,'.'+(pathname==='/'?'/index.html':pathname));if(!file.startsWith(root+path.sep))return result(res,403,{error:'Forbidden'});if(file.includes(path.sep+'.')||/\.(env|sql|md|toml)$/i.test(file))return result(res,404,{error:'Not found'});let info;try{info=await stat(file)}catch{return result(res,404,{error:'Not found'})}if(!info.isFile())return result(res,404,{error:'Not found'});const content=await readFile(file);res.writeHead(200,{'Content-Type':TYPES[path.extname(file)]||'application/octet-stream','X-Content-Type-Options':'nosniff','Cache-Control':'public, max-age=120'});res.end(req.method==='HEAD'?undefined:content)
 }catch(e){console.error('Request error:',e.message);if(!res.headersSent)result(res,500,{error:'Server error'})}});
 const host=process.env.HOST||'127.0.0.1';
 server.listen(port,host,()=>console.log('ZaPZaP demo listening at http://'+host+':'+port));

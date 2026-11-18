@@ -1,7 +1,7 @@
 const $=id=>document.getElementById(id);
 const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const cleanSlug=s=>String(s||"").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9-]/g,"-").replace(/-+/g,"-").replace(/^-|-$/g,"").slice(0,48);
-let cfg=null,signingUp=true,viewName="overview",workspace=null,busy=false;
+let cfg=null,signingUp=false,viewName="overview",workspace=null,busy=false;
 const sessionKey="nexus_owner_v1";
 const session=()=>{try{return JSON.parse(sessionStorage.getItem(sessionKey)||"null")}catch{return null}};
 const saveSession=s=>{if(s)sessionStorage.setItem(sessionKey,JSON.stringify(s));else sessionStorage.removeItem(sessionKey)};
@@ -18,7 +18,8 @@ function authFields(){
  text("authHeading",signingUp?"Create your business account":"Welcome back");
  text("authSub",signingUp?"Add your business details to get started. Your 48-hour trial begins when your AI store goes live.":"Sign in to your business workspace.");
  text("authSubmit",signingUp?"Create account":"Sign in");
- text("switchAuth",signingUp?"Already registered? Sign in":"Need an account? Sign up");
+ text("switchAuth",signingUp?"Already have an account? Log in":"New to NexusSales? Create an account");
+ $("authPassword").setAttribute("autocomplete",signingUp?"new-password":"current-password");
 }
 async function loadConfig(){
  try{
@@ -26,10 +27,10 @@ async function loadConfig(){
   if(!r.ok)throw Error("Account service is not connected yet");
   const j=await r.json();
   if(!j.configured||!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(j.supabaseUrl))throw Error("Account service unavailable");
-  cfg=j;text("configMessage","Secure account service is connected. Your 48-hour trial starts when your AI store goes live.");
+  cfg=j;text("configMessage",signingUp?"Secure account service connected. Your 48-hour trial starts when your AI store goes live.":"Account connection ready. Log in with your existing NexusSales email and password.");
   $("configMessage").classList.add("success");$("authSubmit").disabled=false;
  }catch{
-  cfg=null;text("configMessage","Account registration is not active yet. A dedicated NexusSales database must be connected before anyone can create a real account.");$("authSubmit").disabled=true;
+  cfg=null;text("configMessage",location.hostname==="localhost"||location.hostname==="127.0.0.1"?"Local account connection is missing. Add your Supabase development credentials to .env.local, restart npm start, and then log in with your existing NexusSales account.":"Account service is temporarily unavailable. Your existing account has not been removed.");$("configMessage").classList.remove("success");$("authSubmit").disabled=true;
  }
 }
 async function authRequest(endpoint,body){
@@ -116,11 +117,11 @@ function render(){
  testbot:["TEST MY AI","Talk to your own AI salesperson","Preview real answers from your business catalog before publishing."],
  links:["TRACKED QR CODES","Turn foot traffic into leads","Create trackable QR codes for storefronts, vehicles, services and products."],
  leads:["LEAD CENTER","Leads & conversations","Every inquiry, appointment request and captured conversation."],
- personal:["PERSONAL AI ASSISTANT","Your personal AI, one shareable link","Meet Hope: faith-inspired encouragement, everyday answers and business lead capture."],
+ personal:["PERSONAL AI BUILDER","Build Your Personal Assistant","Customize your named AI, personality, and personal contact link."],
  billing:["48-HOUR TRIAL & BILLING","Your subscription","Core $149/month, website widget +$79/month."]};
  const t=titles[viewName]||titles.overview;
  text("workspaceEyebrow",t[0]);text("workspaceHeading",t[1]);text("workspaceSubtitle",t[2]);text("trialBadge",statusText());
- document.querySelectorAll("[data-view]").forEach(b=>{if(b.dataset.view==="personal")b.classList.toggle("hidden",workspace?.personalAssistant?.enabled!==true);b.classList.toggle("active",b.dataset.view===viewName)});
+ document.querySelectorAll("[data-view]").forEach(b=>{b.classList.toggle("active",b.dataset.view===viewName)});
  const views={overview:renderOverview,store:renderStore,offerings:renderOfferings,testbot:renderTestBot,links:renderLinks,leads:renderLeads,personal:renderPersonalAssistant,billing:renderBilling};
  $("viewContent").innerHTML=(views[viewName]||views.overview)();
  bindView();
@@ -250,16 +251,30 @@ function renderLinks(){
  return body+renderQrSources()+renderChatSettings();
 }
 function renderPersonalAssistant(){
- const mine=workspace?.personalAssistant?.enabled===true;
- if(!mine)return '<div class="card"><h2>Personal AI Assistant</h2><p>This special edition is not enabled for your account yet.</p></div>';
- const link=location.origin+'/assistant';
- return '<div class="card"><div class="tag">YOUR SPECIAL AI EXPERIENCE</div><h2>Hope · Faithful Encourager</h2>'+
- '<p>Share your link anywhere, including WhatsApp. Visitors open a responsive NexusSales page and chat with Hope. No WhatsApp integration or Meta API is needed.</p>'+
- '<div class="link-input"><input id="personalLink" value="'+htmlEsc(link)+'" readonly><button class="button" id="copyPersonalLink">Copy link</button></div>'+
- '<div class="link-actions"><a class="button" href="'+htmlEsc(link)+'" target="_blank" rel="noopener">Open Hope</a>'+
- '<a class="button" target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent("Meet Hope, my AI assistant. Chat here: "+link)+'">Share on WhatsApp</a></div>'+
- '<div class="setup-alert success">Exclusive to your complimentary account. Conversations are saved securely; visitors who submit their contact details appear in Leads & Chats.</div>'+
- '<p class="hint">Hope explains that she is an AI, gives practical help and faith-based encouragement when welcomed, and only introduces NexusSales when relevant. You can view the opt-in leads in your existing Lead Center.</p></div>';
+ const a=workspace?.personalAssistant||{},saved=Boolean(a.id),special=workspace?.personalAssistantSpecial===true;
+ if(!workspace?.store)return '<div class="card"><h2>Build Your Personal Assistant</h2><p>Save your business profile in My Store first, then return here.</p></div>';
+ const name=a.display_name||(special?'Hope':'Alex');
+ const style=a.personality||(special?'faithful_encourager':'friendly');
+ const handle=a.handle||(special?'junior-ai':'my-assistant');
+ const url=saved?location.origin+'/assistant/'+encodeURIComponent(handle):'';
+ const personalities=[...personalityOptions,...(special?[{id:'faithful_encourager',icon:'✝',title:'Faithful Encourager',desc:'Christian-inspired kindness and encouragement, only when welcomed.',best:'Exclusive bonus'}]:[])];
+ return '<div class="card personal-builder"><div class="tag">BUILD YOUR PERSONAL ASSISTANT</div><h2>Your AI, your name, your personality</h2>'+
+ '<p>Build an assistant on NexusSales. Send a personal link by WhatsApp or anywhere else. Visitors open a mobile-first page and may choose to leave a contact request.</p>'+
+ (workspace.personalAssistantSchemaReady===false?'<div class="setup-alert">The personal assistant database migration has not been applied. This builder is in review mode and saving is disabled.</div>':'')+
+ '<form id="personalBuilderForm" class="personal-builder-form"><div class="personal-two">'+
+ '<label>Assistant name<input id="paName" required minlength="2" maxlength="50" value="'+htmlEsc(name)+'" placeholder="Hope, Maya, Oliver"></label>'+
+ '<label>Personal link ID<input id="paHandle" required minlength="3" maxlength="32" pattern="[a-z][a-z0-9-]{2,31}" '+(saved?'readonly':'')+' value="'+htmlEsc(handle)+'"></label></div>'+
+ '<fieldset class="personality-fieldset"><legend>Choose a personality</legend><div class="personality-grid">'+
+ personalities.map(p=>'<label class="personality-card"><input type="radio" name="paStyle" value="'+p.id+'" '+(style===p.id?'checked':'')+'><span class="personality-card-body"><span class="personality-icon">'+p.icon+'</span><strong>'+htmlEsc(p.title)+'</strong><small>'+htmlEsc(p.desc)+'</small><em>'+htmlEsc(p.best)+'</em></span></label>').join('')+'</div></fieldset>'+
+ '<label>Welcome message<textarea id="paGreeting" rows="3" maxlength="400" placeholder="Hi! I am an AI assistant. How can I help you?">'+htmlEsc(a.greeting||'')+'</textarea></label>'+
+ '<label>Public information the assistant may share<textarea id="paAbout" rows="3" maxlength="900" placeholder="Share public background only, never private information or passwords">'+htmlEsc(a.about||'')+'</textarea></label>'+
+ '<div class="personal-two"><label>Messages per session (5–30)<input id="paMessages" type="number" min="5" max="30" required value="'+Number(a.max_messages||10)+'"></label>'+
+ '<label>Session minutes (5–30)<input id="paMinutes" type="number" min="5" max="30" required value="'+Number(a.max_minutes||10)+'"></label></div>'+
+ '<label class="personal-check"><input type="checkbox" id="paEnabled" '+(a.enabled===true||!saved?'checked':'')+'> Enable assistant for visitors</label>'+
+ '<button class="primary" type="submit" id="paSave" '+(workspace.personalAssistantSchemaReady===false?'disabled':'')+'>'+(saved?'Save assistant':'Create assistant')+'</button></form>'+
+ '<div class="personal-live-preview"><strong id="paPreviewName">'+htmlEsc(name)+'</strong><p id="paPreviewGreeting">'+htmlEsc(a.greeting||('Hi! I am '+name+', your AI assistant.'))+'</p><small>Profile preview; live replies require your Ollama connection.</small></div>'+
+ (saved?'<div class="personal-share"><h3>Share your personal AI</h3><div class="link-input"><input id="personalLink" readonly value="'+htmlEsc(url)+'"><button id="copyPersonalLink" class="button" type="button">Copy</button></div><div class="link-actions"><a class="button" href="'+htmlEsc(url)+'" target="_blank" rel="noopener">Open assistant</a><a class="button" href="https://wa.me/?text='+encodeURIComponent('Meet '+name+', my AI assistant: '+url)+'" target="_blank" rel="noopener">Share by WhatsApp link</a></div></div>':'')+
+ '<p class="hint">Faithful Encourager is exclusive to your lifetime complimentary account. The assistant always identifies itself as AI. Opt-in leads appear in your existing Leads & Chats dashboard.</p></div>';
 }
 function renderLeads(){
  const leads=workspace.leads||[],sources=workspace.qrSources||[];
@@ -276,7 +291,7 @@ function renderLeads(){
  const source=sources.find(s=>s.id===l.source_id);
  const date=new Date(l.created_at).toLocaleString();
  return '<button class="lead-row" type="button" data-lead="'+htmlEsc(l.id)+'" data-status="'+htmlEsc(l.status)+'">'+
- '<span class="lead-avatar">'+htmlEsc((l.customer_name||'?').slice(0,1).toUpperCase())+'</span><span class="lead-main"><strong>'+htmlEsc(l.customer_name)+'</strong><small>'+htmlEsc(l.interest.slice(0,100))+'</small><small>'+htmlEsc(source?.label||'SmartStore / website')+' • '+htmlEsc(date)+'</small></span>'+
+ '<span class="lead-avatar">'+htmlEsc((l.customer_name||'?').slice(0,1).toUpperCase())+'</span><span class="lead-main"><strong>'+htmlEsc(l.customer_name)+'</strong><small>'+htmlEsc(l.interest.slice(0,100))+'</small><small>'+htmlEsc(l.personal_assistant_id?('Personal AI • '+(workspace.personalAssistant?.display_name||'Assistant')):(source?.label||'SmartStore / website'))+' • '+htmlEsc(date)+'</small></span>'+
  '<span class="lead-right"><span class="lead-status">'+htmlEsc(l.status)+'</span><small>'+htmlEsc(l.customer_phone||l.customer_email||'No contact')+'</small></span></button>'
  }).join('')+'</div>':'<div class="empty">No leads yet. Publish a QR code and ask a customer to submit an inquiry.</div>')+
  '</div><div class="card lead-detail hidden" id="leadDetail" aria-live="polite"></div>';
@@ -309,7 +324,18 @@ function renderBilling(){
  return '<div class="card"><h2>'+htmlEsc(statusText())+'</h2><p>'+htmlEsc(status)+'</p><div class="view-grid"><div><strong class="metric">$149<small>/mo</small></strong><p>Core store, AI salesperson, SmartLinks and leads.</p></div><div><strong class="metric">$228<small>/mo</small></strong><p>Core + embedded website widget ($79 add-on).</p></div></div><div class="actions">'+(a.reason==="COMPLIMENTARY"?'<span class="status-badge">✓ No payment required</span>':'<a class="primary" href="'+url+'">Manage PayPal subscription</a>')+'</div>'+(a.reason==="COMPLIMENTARY"?'<p class="hint">All NexusSales features are included with your complimentary access.</p>':'<p class="hint">Manage your subscription, security and account deletion in Account Settings.</p>')+'</div>';
 }
 function bindView(){
- if(viewName==="personal"&&$("copyPersonalLink"))$("copyPersonalLink").onclick=()=>navigator.clipboard.writeText($("personalLink").value).then(()=>toast("Hope link copied")).catch(()=>toast("Unable to copy"));
+ if(viewName==="personal"&&$("personalBuilderForm")){
+  const preview=()=>{$("paPreviewName").textContent=$("paName").value.trim()||"Your assistant";$("paPreviewGreeting").textContent=$("paGreeting").value.trim()||"Hi! I'm "+$("paName").value.trim()+", your AI assistant."};
+  $("paName").oninput=preview;$("paGreeting").oninput=preview;
+  $("personalBuilderForm").onsubmit=async e=>{
+   e.preventDefault();const button=$("paSave");button.disabled=true;
+   const assistant={name:$("paName").value.trim(),handle:$("paHandle").value.trim().toLowerCase(),personality:document.querySelector('input[name="paStyle"]:checked')?.value,
+    greeting:$("paGreeting").value.trim(),about:$("paAbout").value.trim(),maxMessages:Number($("paMessages").value),maxMinutes:Number($("paMinutes").value),enabled:$("paEnabled").checked};
+   try{await ownerApi("save_personal_assistant",{assistant});await loadWorkspace();viewName="personal";render();toast("Personal assistant saved")}
+   catch(error){toast(error.message);button.disabled=false}
+  };
+  if($("copyPersonalLink"))$("copyPersonalLink").onclick=()=>navigator.clipboard.writeText($("personalLink").value).then(()=>toast("Link copied")).catch(()=>toast("Unable to copy"));
+ }
  document.querySelectorAll("[data-jump]").forEach(e=>e.onclick=()=>{viewName=e.dataset.jump;render()});
  if(viewName==="leads"){
   const filter=$("leadFilter");
@@ -414,7 +440,7 @@ async function saveOffering(e){
 }
 async function init(){
  authFields();$("authSubmit").disabled=true;
- $("switchAuth").onclick=()=>{signingUp=!signingUp;authFields();text("authMsg","")};
+ $("switchAuth").onclick=()=>{signingUp=!signingUp;authFields();text("authMsg","");if(cfg)text("configMessage",signingUp?"Account service connected. Create a new account to begin.":"Account connection ready. Log in with your existing NexusSales email and password.")};
  $("signInTop").onclick=()=>{signingUp=false;authFields();$("signupArea").scrollIntoView({behavior:"smooth"})};
  $("authForm").onsubmit=submitAuth;$("logoutTop").onclick=signOut;$("logoutSide").onclick=signOut;
  $("dialogClose").onclick=closeDialog;$("offeringForm").onsubmit=saveOffering;

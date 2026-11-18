@@ -24,7 +24,11 @@ function headers(event){return{"Content-Type":"application/json","Cache-Control"
 function postOrigin(e){
  const o=e.headers.origin||e.headers.Origin||"";
  const h=e.headers.host||e.headers.Host||"";
- return o==="https://"+h || (process.env.CONTEXT!=="production"&&o==="http://localhost:8888");
+ return o==="https://"+h || (
+  process.env.NEXUS_LOCAL_DEV==="true" &&
+  /^(localhost|127\.0\.0\.1):(?:8788|8888)$/.test(h) &&
+  o==="http://"+h
+ );
 }
 function parse(event,max=16000){if(!event.body||event.body.length>max)throw Object.assign(new Error("Invalid request"),{status:400});try{return JSON.parse(event.body)}catch{throw Object.assign(new Error("Invalid JSON"),{status:400})}}
 function safeError(e){return json(e.status||503,{error:e.status===401?"Sign in to continue":e.status===400?e.message:e.status===409?"That store link is already taken. Choose a different name.":"Service temporarily unavailable"})}

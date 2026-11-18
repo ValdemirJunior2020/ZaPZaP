@@ -1,3 +1,4 @@
+import{validHandle,personalMessages,styleName}from"../lib/personal-assistant.mjs";
 import{JUNIOR_OWNER_ID,JUNIOR_EXPERIENCE,juniorMessages}from"../lib/junior-assistant.mjs";
 import{allow,clientIp}from"../lib/abuse.mjs";
 import{businessMessages}from"../lib/business-ai.mjs";
@@ -7,6 +8,17 @@ import{widgetEnabled}from"../lib/billing.mjs";
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export async function handler(event){
  if(event.httpMethod==="GET"){
+  if(event.queryStringParameters?.assistantHandle){
+   try{
+    const handle=String(event.queryStringParameters.assistantHandle||"");
+    if(!validHandle(handle))return json(404,{error:"Assistant unavailable"});
+    const c=env(),rows=await db(c,"nx_personal_assistants?handle=eq."+encodeURIComponent(handle)+"&enabled=eq.true&select=id,owner_id,store_id,display_name,personality,greeting,max_messages");
+    const a=rows?.[0];if(!a)return json(404,{error:"Assistant unavailable"});
+    const ent=await entitlement(c,a.owner_id);
+    if(!access(ent).allowed)return json(404,{error:"Assistant unavailable"});
+    return json(200,{online:aiReady(),assistant:{name:a.display_name,greeting:a.greeting,style:styleName(a.personality),limit:a.max_messages}});
+   }catch(e){console.error("Personal AI public config:",e.message);return json(503,{error:"Assistant temporarily unavailable"})}
+  }
   if(event.queryStringParameters?.experience!==JUNIOR_EXPERIENCE)return json(200,{online:aiReady()});
   try{
    const c=env();
@@ -24,6 +36,13 @@ export async function handler(event){
   if(!message)return json(400,{error:"Question is required"});
   const c=env();
   if(!await allow(c,"store_chat",clientIp(event),10,60))return json(429,{error:"Too many requests. Try again later"});
+  const personalMode=req.experience==="personal";
+  let assistant=null;
+  if(personalMode){
+   if(req.botId||!validHandle(req.assistantHandle))return json(400,{error:"Invalid assistant request"});
+   const assistants=await db(c,"nx_personal_assistants?handle=eq."+encodeURIComponent(req.assistantHandle)+"&enabled=eq.true&select=*");
+   assistant=assistants?.[0];if(!assistant)return json(404,{error:"Assistant unavailable"});
+  }
   const juniorMode=req.experience===JUNIOR_EXPERIENCE;
   let slug=str(req.slug,50);
   if(juniorMode){
@@ -42,23 +61,41 @@ export async function handler(event){
    if(!access(sub).allowed||!widgetEnabled(c,sub))return json(403,{error:"Website assistant requires an active subscription"});
    slug=st.slug;
   }
-  if(!slug)return json(400,{error:"Business link required"});
-  const published=await publishedStore(c,slug);
-  if(!published)return json(404,{error:"Store not available"});
-  const {store,items,ent}=published;
+  if(!personalMode&&!slug)return json(400,{error:"Business link required"});
+  let store,items,ent;
+  if(personalMode){
+   const stores=await db(c,"nx_stores?id=eq."+encodeURIComponent(assistant.store_id)+"&owner_id=eq."+encodeURIComponent(assistant.owner_id)+"&select=*");
+   store=stores?.[0];if(!store)return json(404,{error:"Assistant unavailable"});
+   ent=await entitlement(c,assistant.owner_id);
+   if(!access(ent).allowed)return json(403,{error:"Assistant unavailable"});
+   items=[];
+  }else{
+   const published=await publishedStore(c,slug);
+   if(!published)return json(404,{error:"Store not available"});
+   ({store,items,ent}=published);
+  }
   if(juniorMode&&(store.owner_id!==JUNIOR_OWNER_ID||ent.is_complimentary!==true))return json(403,{error:"This assistant belongs to a different business"});
   const dailyLimit=ent.is_complimentary===true?1000:ent.subscription_status==="ACTIVE"?1000:100;
   const used=await db(c,"rpc/nx_consume_chat_quota",{method:"POST",body:{p_store_id:store.id,p_cap:dailyLimit}});
   if(used!==true)return json(429,{error:"Assistant message limit reached today"});
   if(req.sessionId&&!uuid.test(req.sessionId))return json(400,{error:"Invalid chat session"});
-  const cap=Math.max(5,Math.min(30,Number(store.chat_max_messages)||10));
+  const cap=personalMode?assistant.max_messages:Math.max(5,Math.min(30,Number(store.chat_max_messages)||10));
   // Cross-session daily budget; clearing local storage never grants unlimited Ollama use.
   if(!await allow(c,"customer_daily",store.id+":"+clientIp(event),Math.max(30,cap*2),86400))return json(429,{code:"DAILY_LIMIT",limitReached:true,error:"The daily chat limit has been reached. Please leave your phone number or email for the business."});
-  const minutes=Math.max(5,Math.min(30,Number(store.chat_max_minutes)||10));
-  const claim=await db(c,"rpc/nx_claim_chat_message",{method:"POST",body:{
-   p_store_id:store.id,p_session_id:req.sessionId||null,
-   p_source_code:str(req.sourceCode,80),p_limit:cap,p_minutes:minutes
-  }});
+  const minutes=personalMode?assistant.max_minutes:Math.max(5,Math.min(30,Number(store.chat_max_minutes)||10));
+  if(!personalMode&&req.sessionId){
+   try{
+    const scope=await db(c,"nx_chat_sessions?id=eq."+encodeURIComponent(req.sessionId)+"&store_id=eq."+encodeURIComponent(store.id)+"&select=personal_assistant_id");
+    if(scope?.[0]?.personal_assistant_id)return json(400,{error:"Session belongs to a personal assistant"});
+   }catch(error){if(!/personal_assistant_id|42703|schema cache/i.test(error.message))throw error}
+
+  }
+  const claim=personalMode
+    ?await db(c,"rpc/nx_claim_personal_message",{method:"POST",body:{p_assistant:assistant.id,p_session:req.sessionId||null}})
+    :await db(c,"rpc/nx_claim_chat_message",{method:"POST",body:{
+      p_store_id:store.id,p_session_id:req.sessionId||null,
+      p_source_code:str(req.sourceCode,80),p_limit:cap,p_minutes:minutes
+    }});
   if(!claim?.allowed)return json(429,{code:"SESSION_LIMIT",limitReached:true,error:"This conversation has ended. Please leave your contact details so the business can follow up."});
   const previous=await db(c,"nx_chat_messages?session_id=eq."+encodeURIComponent(claim.sessionId)+"&store_id=eq."+encodeURIComponent(store.id)+"&select=role,content&order=id.desc&limit=8");
   const history=(previous||[]).reverse().map(x=>({role:x.role,content:x.content}));
@@ -67,7 +104,7 @@ export async function handler(event){
   const qrRows=sourceCode?await db(c,"nx_qr_sources?store_id=eq."+encodeURIComponent(store.id)+"&code=eq."+encodeURIComponent(sourceCode)+"&enabled=eq.true&select=label,offering_id"):[];
   const qrSource=qrRows?.[0]||null;
   const linkedOffering=qrSource?.offering_id?items.find(item=>item.id===qrSource.offering_id)||null:null;
-  const messages=juniorMode?juniorMessages(message,history):businessMessages(store,items,message,history,qrSource?{label:qrSource.label,offering:linkedOffering}:null);
+  const messages=personalMode?personalMessages(assistant,message,history):juniorMode?juniorMessages(message,history):businessMessages(store,items,message,history,qrSource?{label:qrSource.label,offering:linkedOffering}:null);
   // Persist only actual visitor/AI messages, never browser-provided transcripts.
   await db(c,"nx_chat_messages",{method:"POST",body:{session_id:claim.sessionId,store_id:store.id,role:"user",content:message},prefer:"return=minimal"});
   const answer=await ollamaQuery(messages,{maxTokens:450,timeoutMs:50000});

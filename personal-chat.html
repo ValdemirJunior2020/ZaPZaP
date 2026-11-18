@@ -1,0 +1,36 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0c4838"><meta name="description" content="Meet an AI assistant created with NexusSales AI."><title>Your Personal AI · NexusSales</title>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#234f3d;background:#f1f8f3}*{box-sizing:border-box}
+body{margin:0;min-height:100dvh;background:radial-gradient(ellipse at top left,#fff2db 0,transparent 33%),radial-gradient(ellipse at top right,#cff6dd 0,transparent 34%),#f4f9f5}
+main{max-width:770px;margin:auto;padding:0 12px 25px}.top{display:flex;justify-content:space-between;align-items:center;padding:20px 5px}.brand{font-size:13px;font-weight:850;color:#087653;text-decoration:none}.pill{background:#e3f6eb;border:1px solid #c3e8d3;border-radius:40px;font-size:11px;padding:8px 12px;color:#167452}
+.hero{text-align:center;padding:20px 6px 24px}.hero h1{font-size:clamp(31px,8vw,52px);line-height:1.1;margin:10px 0;color:#0c543d;letter-spacing:-1.8px}.hero p{font-size:13px;color:#638673;line-height:1.6;max-width:520px;margin:auto}
+.shell{background:white;border:1px solid #d7eadf;border-radius:22px;box-shadow:0 17px 60px #0a61401c;overflow:hidden}
+.chat-head{display:flex;align-items:center;gap:11px;background:#fafffc;padding:15px 17px;border-bottom:1px solid #e5f0e8}.avatar{height:43px;width:43px;display:grid;place-items:center;background:#d8f7e8;color:#097a56;border-radius:14px;font-size:23px}
+.chat-head strong{font-size:14px;display:block}.chat-head small{font-size:11px;color:#7d9987}#status{margin-left:auto;font-size:11px;color:#198b61;white-space:nowrap}
+.feed{height:clamp(300px,48dvh,475px);overflow:auto;display:flex;flex-direction:column;gap:10px;padding:17px;background:linear-gradient(#fff,#fbfefb)}
+.bubble{padding:13px 15px;border-radius:15px;max-width:90%;font-size:13px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}.bubble.bot{align-self:flex-start;background:#eff8f2;color:#315846;border-bottom-left-radius:3px}.bubble.visitor{align-self:flex-end;background:#0c8961;color:white;border-bottom-right-radius:3px}
+.prompts{display:flex;gap:8px;overflow:auto;padding:10px 14px 4px}.prompts button{border:1px solid #d6e9dc;background:#f8fdf9;color:#146a4b;border-radius:30px;white-space:nowrap;padding:10px 12px;font-size:11px}
+.chat-form{display:flex;gap:9px;padding:10px 14px 15px;align-items:end}.chat-form textarea{border:1px solid #cee6d6;border-radius:13px;resize:vertical;max-height:120px;min-height:46px;padding:13px;flex:1;min-width:0;font:inherit;font-size:13px}.chat-form button{background:#0b9166;color:white;border:0;border-radius:13px;width:47px;height:47px;font-size:20px;flex:none}.chat-form button:disabled{opacity:.5}
+.fine{font-size:10px;color:#789588;line-height:1.5;text-align:center;margin:0;padding:0 16px 14px}
+.contact{margin:15px 0;background:white;border:1px solid #d4e8dc;border-radius:19px;padding:19px}.contact h2{font-size:18px;margin:0 0 8px}.contact p{color:#6e8b77;font-size:12px;line-height:1.6}
+.contact>button,.contact form button{border:0;background:#0b8960;color:white;padding:12px 16px;border-radius:11px;font-size:13px;font-weight:750;min-height:45px;width:100%}
+.contact form{display:none;margin-top:14px;gap:12px}.contact.open form{display:grid}.contact label{display:block;color:#29664b;font-size:12px;font-weight:750}
+.contact input,.contact textarea{display:block;width:100%;padding:12px;margin-top:5px;border:1px solid #d0e3d8;border-radius:10px;font:inherit;color:#234f3d}.contact textarea{min-height:83px;resize:vertical}
+.notice{font-size:12px;color:#177952;min-height:16px;line-height:1.6}footer{text-align:center;color:#79958a;font-size:11px;padding:15px}
+@media(min-width:700px){main{padding:0 22px 28px}.hero{padding:25px 6px 30px}.feed{padding:23px}.bubble{font-size:14px}}
+</style></head><body><main>
+<header class="top"><a class="brand" href="/">✦ NEXUSSALES AI</a><span class="pill">Personal AI Assistant</span></header>
+<section class="hero"><span class="pill">A little help, anytime</span><h1 id="heroName">Your AI Assistant</h1><p id="heroDescription">Helpful conversations, thoughtful answers and a way to reach the owner.</p></section>
+<section class="shell" aria-label="Personal assistant chat"><div class="chat-head"><div class="avatar" aria-hidden="true">✧</div><div><strong id="chatName">AI Assistant</strong><small id="chatStyle">Powered by NexusSales</small></div><span id="status">Connecting…</span></div>
+<div id="feed" class="feed" role="log" aria-live="polite"><div class="bubble bot" id="welcome">Welcome! I'm an AI assistant, not the human owner. How can I help?</div></div>
+<div class="prompts"><button type="button" data-ask="Hello! Can you tell me about yourself?">👋 Say hello</button><button type="button" data-ask="Can you help me with a question?">💬 Ask a question</button><button type="button" data-ask="How can I contact the owner?">✉️ Contact owner</button></div>
+<form id="askForm" class="chat-form"><label for="question" style="position:absolute;clip:rect(0,0,0,0)">Your message</label><textarea id="question" maxlength="700" rows="1" placeholder="Write a message…" required disabled></textarea><button id="send" type="submit" aria-label="Send message" disabled>➤</button></form>
+<p id="foot" class="fine">An AI answers these messages. Conversations are stored to operate the service and may be linked to a contact request you submit. No payments or confirmed bookings in chat.</p></section>
+<section id="contact" class="contact"><h2>Want the owner to follow up?</h2><p>Leave a voluntary contact request and the owner can review it with any linked chat. Please don't include sensitive information.</p>
+<button id="toggle" type="button" aria-expanded="false">Leave a contact request</button>
+<form id="leadForm"><label>Your name<input id="leadName" minlength="2" maxlength="100" autocomplete="name" required></label><label>Email address (or phone)<input id="leadEmail" type="email" maxlength="180" autocomplete="email"></label><label>Phone number (or email)<input id="leadPhone" type="tel" maxlength="35" autocomplete="tel"></label>
+<label>Your message<textarea id="leadMessage" minlength="5" maxlength="1400" required placeholder="Tell the owner how they can help"></textarea></label>
+<input id="website" style="position:absolute;left:-9999px" autocomplete="off" tabindex="-1" aria-hidden="true"><button id="submitLead" type="submit">Send request</button><p class="notice" id="leadStatus" role="status"></p></form></section>
+<footer>Created with NexusSales AI · Everyone is welcome · Do not use this assistant for emergencies.</footer>
+</main><script src="/personal-chat.js" defer></script></body></html>
