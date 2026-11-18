@@ -3,14 +3,14 @@
 // Do not expose port 8789 via router/firewall, and never expose 11434 publicly.
 import http from "node:http";
 import crypto from "node:crypto";
-import {readFileSync} from "node:fs";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
 try{process.loadEnvFile(path.join(root,".env.local"))}catch(e){if(e?.code!=="ENOENT")console.error("Could not load private local environment");}
 const host="127.0.0.1";
-const port=8789;
+const configuredPort=Number(process.env.NEXUS_LOCAL_GATEWAY_PORT||8789);
+const port=Number.isSafeInteger(configuredPort)&&configuredPort>=1024&&configuredPort<=65535?configuredPort:8789;
 const secret=process.env.NEXUS_OLLAMA_GATEWAY_TOKEN||"";
 if(secret.length<24){
  console.error("Gateway not started: NEXUS_OLLAMA_GATEWAY_TOKEN must exist in private .env.local (min 24 characters).");
