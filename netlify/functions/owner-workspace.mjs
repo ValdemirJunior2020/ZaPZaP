@@ -19,16 +19,17 @@ export async function handler(event){
   if(event.httpMethod==="GET"){
    const profile=await ownerProfile(c,user.id);
    const items=store?await offerings(c,store.id):[];
-   let leads=store?await db(c,"nx_leads?store_id=eq."+encodeURIComponent(store.id)+"&select=id,customer_name,customer_email,customer_phone,interest,status,request_type,preferred_time,source_id,session_id,created_at,updated_at&order=created_at.desc&limit=100"):[];
+   let leads=store?await db(c,"nx_leads?store_id=eq."+encodeURIComponent(store.id)+"&select=id,customer_name,customer_email,customer_phone,interest,status,request_type,preferred_time,source_id,session_id,employee_id,created_at,updated_at&order=created_at.desc&limit=100"):[];
    const qrSources=store?await db(c,"nx_qr_sources?store_id=eq."+encodeURIComponent(store.id)+"&select=id,code,label,enabled,offering_id,scan_count,created_at&order=created_at.desc&limit=100"):[];
    let personalRows=[],personalSchemaReady=true;
    if(store){try{personalRows=await db(c,"nx_personal_assistants?owner_id=eq."+encodeURIComponent(user.id)+"&store_id=eq."+encodeURIComponent(store.id)+"&select=id,handle,display_name,personality,greeting,about,enabled,max_messages,max_minutes")}catch(error){personalSchemaReady=false}}
    if(store&&personalSchemaReady){try{
-    leads=await db(c,"nx_leads?store_id=eq."+encodeURIComponent(store.id)+"&select=id,customer_name,customer_email,customer_phone,interest,status,request_type,preferred_time,source_id,session_id,personal_assistant_id,created_at,updated_at&order=created_at.desc&limit=100");
+    leads=await db(c,"nx_leads?store_id=eq."+encodeURIComponent(store.id)+"&select=id,customer_name,customer_email,customer_phone,interest,status,request_type,preferred_time,source_id,session_id,employee_id,personal_assistant_id,created_at,updated_at&order=created_at.desc&limit=100");
    }catch(error){console.error("Personal lead fields unavailable:",error.message)}}
+   const employees=store?await db(c,"nx_employees?store_id=eq."+encodeURIComponent(store.id)+"&select=id,name,role,whatsapp,language,enabled,qr_source_id,created_at&order=created_at.asc"):[];
    let bot=null;
    if(store){try{const found=await db(c,"nx_bots?store_id=eq."+encodeURIComponent(store.id)+"&select=bot_id,enabled,greeting,primary_color");bot=found?.[0]||null}catch{}}
-   return json(200,{email:user.email,profile,store,offerings:items,leads,qrSources,bot,personalAssistant:personalRows[0]||null,personalAssistantSchemaReady:personalSchemaReady,personalAssistantSpecial:user.id===SPECIAL_OWNER&&ent.is_complimentary===true,widgetAllowed:widgetEnabled(c,ent),access:access(ent),aiConfigured:aiReady()});
+   return json(200,{email:user.email,profile,store,offerings:items,leads,qrSources,employees,bot,personalAssistant:personalRows[0]||null,personalAssistantSchemaReady:personalSchemaReady,personalAssistantSpecial:user.id===SPECIAL_OWNER&&ent.is_complimentary===true,widgetAllowed:widgetEnabled(c,ent),access:access(ent),aiConfigured:aiReady()});
   }
   const data=parse(event,30000),action=str(data.action,40);
   if(action==="cancel_subscription")return cancelSubscription(c,user,ent);
@@ -63,6 +64,45 @@ export async function handler(event){
    return json(200,{store});
   }
   if(!store)return json(400,{error:"Save your business details first"});
+
+  if(action==="save_employee"){
+   const d=data.employee||{},name=str(d.name,80),role=str(d.role,80)||"Vendedor";
+   const whatsapp=String(d.whatsapp||"").replace(/\D/g,"");
+   if(name.length<2||role.length<2||!/^[1-9][0-9]{9,14}$/.test(whatsapp))return json(400,{error:"Nome, cargo e WhatsApp com DDI são obrigatórios"});
+   if(!["pt_BR","en_US","es_ES"].includes(d.language))return json(400,{error:"Idioma inválido"});
+   const employees=await db(c,"nx_employees?store_id=eq."+encodeURIComponent(store.id)+"&select=id,qr_source_id");
+   if(d.id){
+    if(!employees.some(x=>x.id===d.id))return json(404,{error:"Funcionário não pertence a esta loja"});
+    const rows=await db(c,"nx_employees?id=eq."+encodeURIComponent(d.id)+"&store_id=eq."+encodeURIComponent(store.id),{method:"PATCH",body:{name,role,whatsapp,language:d.language,updated_at:iso()},prefer:"return=representation"});
+    return json(200,{employee:rows[0]});
+   }
+   const limit=user.id===SPECIAL_OWNER&&ent.is_complimentary===true?20:3;
+   if(employees.length>=limit)return json(402,{error:"Os três funcionários incluídos estão completos. Cobrança de funcionários extras ainda não está ativada."});
+   const sources=await db(c,"nx_qr_sources?store_id=eq."+encodeURIComponent(store.id)+"&select=id&limit=101");
+   if(sources.length>=100)return json(403,{error:"Limite de QR Codes atingido"});
+   const qr=await db(c,"nx_qr_sources",{method:"POST",body:{store_id:store.id,label:"Vendedor: "+name,enabled:true},prefer:"return=representation"});
+   try{
+    const rows=await db(c,"nx_employees",{method:"POST",body:{store_id:store.id,qr_source_id:qr[0].id,name,role,whatsapp,language:d.language},prefer:"return=representation"});
+    return json(201,{employee:rows[0],qrSource:qr[0]});
+   }catch(error){
+    await db(c,"nx_qr_sources?id=eq."+qr[0].id+"&store_id=eq."+encodeURIComponent(store.id),{method:"DELETE",prefer:"return=minimal"}).catch(()=>{});
+    throw error;
+   }
+  }
+  if(action==="set_employee_enabled"||action==="delete_employee"){
+   const id=str(data.id,40);
+   if(!/^[0-9a-f-]{36}$/i.test(id))return json(400,{error:"Funcionário inválido"});
+   const rows=await db(c,"nx_employees?id=eq."+encodeURIComponent(id)+"&store_id=eq."+encodeURIComponent(store.id)+"&select=id,qr_source_id");
+   if(!rows.length)return json(404,{error:"Funcionário não encontrado"});
+   const employee=rows[0],enabled=data.enabled===true;
+   if(action==="delete_employee"){
+    await db(c,"nx_employees?id=eq."+encodeURIComponent(id)+"&store_id=eq."+encodeURIComponent(store.id),{method:"DELETE",prefer:"return=minimal"});
+   }else{
+    await db(c,"nx_employees?id=eq."+encodeURIComponent(id)+"&store_id=eq."+encodeURIComponent(store.id),{method:"PATCH",body:{enabled,updated_at:iso()},prefer:"return=minimal"});
+   }
+   if(employee.qr_source_id)await db(c,"nx_qr_sources?id=eq."+encodeURIComponent(employee.qr_source_id)+"&store_id=eq."+encodeURIComponent(store.id),{method:"PATCH",body:{enabled:action==="delete_employee"?false:enabled},prefer:"return=minimal"});
+   return json(200,{updated:true});
+  }
   if(action==="save_personal_assistant"){
    const a=data.assistant||{},name=str(a.name,50),handle=String(a.handle||"").trim().toLowerCase();
    if(name.length<2)return json(400,{error:"Enter an assistant name of at least two characters"});

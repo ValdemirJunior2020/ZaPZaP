@@ -109,10 +109,12 @@ export async function handler(event){
   const history=(previous||[]).reverse().map(x=>({role:x.role,content:x.content}));
   // Resolve QR facts exclusively from this published store; never trust visitor-supplied product details.
   const sourceCode=str(req.sourceCode,80);
-  const qrRows=sourceCode?await db(c,"nx_qr_sources?store_id=eq."+encodeURIComponent(store.id)+"&code=eq."+encodeURIComponent(sourceCode)+"&enabled=eq.true&select=label,offering_id"):[];
+  const qrRows=sourceCode?await db(c,"nx_qr_sources?store_id=eq."+encodeURIComponent(store.id)+"&code=eq."+encodeURIComponent(sourceCode)+"&enabled=eq.true&select=id,label,offering_id"):[];
   const qrSource=qrRows?.[0]||null;
+  const assigned=qrSource?(await db(c,"nx_employees?store_id=eq."+encodeURIComponent(store.id)+"&qr_source_id=eq."+encodeURIComponent(qrSource.id)+"&enabled=eq.true&select=name,role,language"))?.[0]:null;
   const linkedOffering=qrSource?.offering_id?items.find(item=>item.id===qrSource.offering_id)||null:null;
   const messages=personalMode?personalMessages(assistant,message,history):juniorMode?juniorMessages(message,history):businessMessages(store,items,message,history,qrSource?{label:qrSource.label,offering:linkedOffering}:null);
+  if(assigned)messages[0].content+=" Assigned sales employee (not the owner): "+JSON.stringify(assigned)+". Reply in the visitor language, or the employee language if unclear. Do not claim to place calls.";
   // Persist only actual visitor/AI messages, never browser-provided transcripts.
   diagStage="message_save";
   await db(c,"nx_chat_messages",{method:"POST",body:{session_id:claim.sessionId,store_id:store.id,role:"user",content:message},prefer:"return=minimal"});

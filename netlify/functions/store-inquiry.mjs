@@ -50,8 +50,9 @@ export async function handler(event){
    const sources=await db(c,"nx_qr_sources?code=eq."+encodeURIComponent(str(p.sourceCode,80))+"&store_id=eq."+encodeURIComponent(found.store.id)+"&enabled=eq.true&select=id");
    sourceId=sources?.[0]?.id||null;
   }
+  const employee=sourceId?(await db(c,"nx_employees?store_id=eq."+encodeURIComponent(found.store.id)+"&qr_source_id=eq."+encodeURIComponent(sourceId)+"&enabled=eq.true&select=id"))?.[0]:null;
   const rows=await db(c,"nx_leads",{method:"POST",body:{
-   store_id:found.store.id,session_id:sessionId,source_id:sourceId,...(personalMode?{personal_assistant_id:assistant.id}:{}),
+   store_id:found.store.id,session_id:sessionId,source_id:sourceId,employee_id:employee?.id||null,...(personalMode?{personal_assistant_id:assistant.id}:{}),
    customer_name:name,customer_email:email,customer_phone:phone,interest:personalMode?"Personal AI ("+assistant.display_name+"): "+interest:juniorMode?"Hope personal assistant: "+interest:interest,status:kind==="appointment"?"Appointment Requested":"New",
    request_type:kind,preferred_time:kind==="appointment"?preferred:""
   },prefer:"return=representation"});
