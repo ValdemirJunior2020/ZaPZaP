@@ -25,9 +25,12 @@ function render(){
   if(button.getAttribute("aria-pressed")==="true")return;
   root.querySelectorAll("button[data-locale]").forEach(b=>b.disabled=true);
   try{
-   await window.NexusLanguage.setLanguage(code);
+   const result=await window.NexusLanguage.setLanguage(code);
    render();
-   const message=document.getElementById("nxLocaleStatus");if(message)message.textContent=status[code];
+   const message=document.getElementById("nxLocaleStatus");
+   if(message)message.textContent=result?.synced===false?
+    (code==="pt"?"Idioma salvo neste navegador. Sincronização com a conta pendente.":code==="es"?"Idioma guardado en este navegador. Sincronización con la cuenta pendiente.":"Language saved in this browser. Account sync pending."):
+    status[code];
   }catch(e){
    render();
    const message=document.getElementById("nxLocaleStatus");
