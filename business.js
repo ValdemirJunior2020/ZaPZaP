@@ -308,6 +308,7 @@ function updateMarketPreview(){
 }
 
 function renderTeam(){
+ if(workspace.teamAllowed!==true)return '<div class="card"><h2>Equipe de vendas</h2><p>O plano Empresarial começa em US$ 500/mês, incluindo 3 funcionários. Este recurso ainda não faz parte do seu plano atual. A cobrança de novas assinaturas não está ativada.</p></div>';
  const people=workspace.employees||[],sources=workspace.qrSources||[];
  const cards=people.map(p=>{
   const qr=sources.find(s=>s.id===p.qr_source_id);
@@ -425,7 +426,7 @@ function renderBilling(){
  return '<div class="card"><h2>'+htmlEsc(statusText())+'</h2><p>'+htmlEsc(status)+'</p><div class="view-grid"><div><strong class="metric">$149<small>/mo</small></strong><p>Core store, AI salesperson, SmartLinks and leads.</p></div><div><strong class="metric">$228<small>/mo</small></strong><p>Core + embedded website widget ($79 add-on).</p></div></div><div class="actions">'+(a.reason==="COMPLIMENTARY"?'<span class="status-badge">✓ No payment required</span>':'<a class="primary" href="'+url+'">Manage PayPal subscription</a>')+'</div>'+(a.reason==="COMPLIMENTARY"?'<p class="hint">All NexusSales features are included with your complimentary access.</p>':'<p class="hint">Manage your subscription, security and account deletion in Account Settings.</p>')+'</div>';
 }
 function bindView(){
- if(viewName==="team")bindTeam();
+ if(viewName==="team"&&workspace?.teamAllowed===true)bindTeam();
  if(viewName==="brazil"&&workspace?.personalAssistantSpecial===true){$("marketCountry").onchange=updateMarketPreview;$("marketEmployees").oninput=updateMarketPreview;updateMarketPreview()}
  if(viewName==="logs"&&workspace?.personalAssistantSpecial===true){$("refreshAiLogs").onclick=fetchAiLogs;fetchAiLogs()}
  if(viewName==="personal"&&$("personalBuilderForm")){

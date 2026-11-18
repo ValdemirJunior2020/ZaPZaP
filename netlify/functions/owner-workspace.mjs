@@ -4,6 +4,7 @@ import{normalizePersonality,PERSONALITIES}from"../lib/ai-personalities.mjs";
 import{cancelSubscription,deleteAccount}from"../lib/account-lifecycle.mjs";
 import{widgetEnabled}from"../lib/billing.mjs";
 import{env,db,json,str,slug,domainUrl,userFrom,ownStore,offerings,ownerProfile,access,postOrigin,parse,safeError,aiReady,verifyHostedAI,iso}from "../lib/tenant.mjs";
+const teamEntitled=(user,ent)=>Boolean(user.id===SPECIAL_OWNER&&ent?.is_complimentary===true||(ent?.subscription_status==="ACTIVE"&&[process.env.NEXUS_PAYPAL_ENTERPRISE_BR_PLAN_ID,process.env.NEXUS_PAYPAL_ENTERPRISE_GLOBAL_PLAN_ID].filter(Boolean).includes(ent?.paypal_plan_id)));
 const canEdit=ent=>Boolean(ent?.is_complimentary)||!ent?.trial_started_at||access(ent).allowed;
 const opts=["Product","Service","Package","Consultation","Custom quote"];
 const avail=["Available","Booking required","Request a quote","In stock","Out of stock","Contact for availability"];
@@ -26,10 +27,10 @@ export async function handler(event){
    if(store&&personalSchemaReady){try{
     leads=await db(c,"nx_leads?store_id=eq."+encodeURIComponent(store.id)+"&select=id,customer_name,customer_email,customer_phone,interest,status,request_type,preferred_time,source_id,session_id,employee_id,personal_assistant_id,created_at,updated_at&order=created_at.desc&limit=100");
    }catch(error){console.error("Personal lead fields unavailable:",error.message)}}
-   const employees=store?await db(c,"nx_employees?store_id=eq."+encodeURIComponent(store.id)+"&archived=eq.false&select=id,name,role,whatsapp,language,enabled,qr_source_id,created_at&order=created_at.asc"):[];
+   const employees=store&&teamEntitled(user,ent)?await db(c,"nx_employees?store_id=eq."+encodeURIComponent(store.id)+"&archived=eq.false&select=id,name,role,whatsapp,language,enabled,qr_source_id,created_at&order=created_at.asc"):[];
    let bot=null;
    if(store){try{const found=await db(c,"nx_bots?store_id=eq."+encodeURIComponent(store.id)+"&select=bot_id,enabled,greeting,primary_color");bot=found?.[0]||null}catch{}}
-   return json(200,{email:user.email,profile,store,offerings:items,leads,qrSources,employees,bot,personalAssistant:personalRows[0]||null,personalAssistantSchemaReady:personalSchemaReady,personalAssistantSpecial:user.id===SPECIAL_OWNER&&ent.is_complimentary===true,widgetAllowed:widgetEnabled(c,ent),access:access(ent),aiConfigured:aiReady()});
+   return json(200,{email:user.email,profile,store,offerings:items,leads,qrSources,employees,teamAllowed:teamEntitled(user,ent),bot,personalAssistant:personalRows[0]||null,personalAssistantSchemaReady:personalSchemaReady,personalAssistantSpecial:user.id===SPECIAL_OWNER&&ent.is_complimentary===true,widgetAllowed:widgetEnabled(c,ent),access:access(ent),aiConfigured:aiReady()});
   }
   const data=parse(event,30000),action=str(data.action,40);
   if(action==="cancel_subscription")return cancelSubscription(c,user,ent);
@@ -41,6 +42,7 @@ export async function handler(event){
    const logs=await db(c,"nx_ai_error_logs?owner_id=eq."+encodeURIComponent(user.id)+"&store_id=eq."+encodeURIComponent(store.id)+"&select=id,created_at,stage,error_code,elapsed_ms&order=created_at.desc&limit=100");
    return json(200,{logs:logs||[]});
   }
+  if(["save_employee","set_employee_enabled","delete_employee"].includes(action)&&!teamEntitled(user,ent))return json(403,{error:"A gestão de equipe requer o novo plano Empresarial confirmado. Os planos antigos permanecem inalterados."});
   if(!canEdit(ent)&&!["pause","disable_widget","lead_history","update_lead"].includes(action))return json(402,{error:"Your trial has ended. Subscribe to continue.",access:access(ent)});
   if(action==="save_store"){
    const i=data.store||{};

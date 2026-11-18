@@ -6,3 +6,10 @@ assert.match(o,/action==="save_employee"/);assert.match(o,/existing.length|emplo
 });
 test("Browser team controls and storefront employee contact",async()=>{const a=await readFile("business.js","utf8"),s=await readFile("store-live.js","utf8"),h=await readFile("store.html","utf8");
 assert.match(a,/function renderTeam/);assert.match(s,/employee.whatsappUrl/);assert.match(h,/employeeContact/);assert.doesNotThrow(()=>new Function(a));assert.doesNotThrow(()=>new Function(s));});
+
+test("Legacy subscriptions do not get free enterprise seats",async()=>{
+ const owner=await readFile("netlify/functions/owner-workspace.mjs","utf8");
+ assert.match(owner,/function_not_used_dummy|teamEntitled/);
+ assert.match(owner,/NEXUS_PAYPAL_ENTERPRISE_BR_PLAN_ID/);
+ assert.match(owner,/teamAllowed:teamEntitled/);
+});
