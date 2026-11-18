@@ -19,7 +19,9 @@ export async function handler(event){
   const store=await ownStore(c,user.id);
   if(!store)return json(400,{error:"Save your business details first."});
   const items=await offerings(c,store.id);
-  if(!items.length)return json(400,{error:"Add at least one product or service to test your AI."});
+  // Owner preview can test business knowledge before adding offerings.
+  // Missing catalog entries never authorize invented prices or availability.
+  // Public storefront publishing rules remain unchanged.
   if(!aiReady())return json(503,{code:readiness().code,error:"The AI gateway is not configured or is offline. Your trial has not started."});
   // Database-backed, cross-instance budgets. No client-provided tenant ID.
   if(!await allow(c,"owner_test_global","all",500,86400))return json(429,{error:"Testing capacity reached for today."});
