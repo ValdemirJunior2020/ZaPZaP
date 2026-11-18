@@ -1,3 +1,4 @@
+import{SPECIAL_OWNER,validHandle,validStyle}from"../lib/personal-assistant.mjs";
 import{JUNIOR_OWNER_ID}from"../lib/junior-assistant.mjs";
 import{normalizePersonality,PERSONALITIES}from"../lib/ai-personalities.mjs";
 import{cancelSubscription,deleteAccount}from"../lib/account-lifecycle.mjs";
@@ -18,11 +19,13 @@ export async function handler(event){
   if(event.httpMethod==="GET"){
    const profile=await ownerProfile(c,user.id);
    const items=store?await offerings(c,store.id):[];
-   const leads=store?await db(c,"nx_leads?store_id=eq."+encodeURIComponent(store.id)+"&select=id,customer_name,customer_email,customer_phone,interest,status,request_type,preferred_time,source_id,session_id,created_at,updated_at&order=created_at.desc&limit=100"):[];
+   const leads=store?await db(c,"nx_leads?store_id=eq."+encodeURIComponent(store.id)+"&select=id,customer_name,customer_email,customer_phone,interest,status,request_type,preferred_time,source_id,session_id,personal_assistant_id,created_at,updated_at&order=created_at.desc&limit=100"):[];
    const qrSources=store?await db(c,"nx_qr_sources?store_id=eq."+encodeURIComponent(store.id)+"&select=id,code,label,enabled,offering_id,scan_count,created_at&order=created_at.desc&limit=100"):[];
+   let personalRows=[],personalSchemaReady=true;
+   if(store){try{personalRows=await db(c,"nx_personal_assistants?owner_id=eq."+encodeURIComponent(user.id)+"&store_id=eq."+encodeURIComponent(store.id)+"&select=id,handle,display_name,personality,greeting,about,enabled,max_messages,max_minutes")}catch(error){personalSchemaReady=false}}
    let bot=null;
    if(store){try{const found=await db(c,"nx_bots?store_id=eq."+encodeURIComponent(store.id)+"&select=bot_id,enabled,greeting,primary_color");bot=found?.[0]||null}catch{}}
-   return json(200,{email:user.email,profile,store,offerings:items,leads,qrSources,bot,personalAssistant:{enabled:user.id===JUNIOR_OWNER_ID&&ent.is_complimentary===true},widgetAllowed:widgetEnabled(c,ent),access:access(ent),aiConfigured:aiReady()});
+   return json(200,{email:user.email,profile,store,offerings:items,leads,qrSources,bot,personalAssistant:personalRows[0]||null,personalAssistantSchemaReady:personalSchemaReady,personalAssistantSpecial:user.id===SPECIAL_OWNER&&ent.is_complimentary===true,widgetAllowed:widgetEnabled(c,ent),access:access(ent),aiConfigured:aiReady()});
   }
   const data=parse(event,30000),action=str(data.action,40);
   if(action==="cancel_subscription")return cancelSubscription(c,user,ent);
@@ -51,6 +54,22 @@ export async function handler(event){
    return json(200,{store});
   }
   if(!store)return json(400,{error:"Save your business details first"});
+  if(action==="save_personal_assistant"){
+   const a=data.assistant||{},name=str(a.name,50),handle=String(a.handle||"").trim().toLowerCase();
+   if(name.length<2)return json(400,{error:"Enter an assistant name of at least two characters"});
+   if(!validHandle(handle))return json(400,{error:"Public link ID must be 3–32 characters, start with a letter and use letters, numbers or single hyphens"});
+   if(!validStyle(a.personality,user.id))return json(403,{error:"Personality unavailable for this account"});
+   const maxMessages=Number(a.maxMessages),maxMinutes=Number(a.maxMinutes);
+   if(!Number.isInteger(maxMessages)||maxMessages<5||maxMessages>30||!Number.isInteger(maxMinutes)||maxMinutes<5||maxMinutes>30)return json(400,{error:"Limits must be 5–30 messages and 5–30 minutes"});
+   const current=await db(c,"nx_personal_assistants?owner_id=eq."+encodeURIComponent(user.id)+"&select=id,handle");
+   if(current[0]&&current[0].handle!==handle)return json(409,{error:"Public link cannot be changed after creation"});
+   const row={owner_id:user.id,store_id:store.id,handle,display_name:name,personality:a.personality,
+    greeting:str(a.greeting,400),about:str(a.about,900),enabled:a.enabled===true,max_messages:maxMessages,max_minutes:maxMinutes,updated_at:iso()};
+   try{
+    const result=await db(c,"nx_personal_assistants?on_conflict=owner_id",{method:"POST",body:row,prefer:"resolution=merge-duplicates,return=representation"});
+    return json(200,{assistant:result?.[0]});
+   }catch(error){if(/23505|duplicate|unique/i.test(error.message))return json(409,{error:"Link already in use"});throw error}
+  }
   if(action==="save_chat_settings"){
    const count=Number(data.chatMaxMessages),minutes=Number(data.chatMaxMinutes);
    if(!Number.isInteger(count)||count<5||count>30||!Number.isInteger(minutes)||minutes<5||minutes>30)return json(400,{error:"Choose 5–30 messages and 5–30 minutes"});
