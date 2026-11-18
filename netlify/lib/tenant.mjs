@@ -26,7 +26,7 @@ function postOrigin(e){
  const h=e.headers.host||e.headers.Host||"";
  return o==="https://"+h || (
   process.env.NEXUS_LOCAL_DEV==="true" &&
-  /^(localhost|127\\.0\\.0\\.1):(?:8788|8888)$/.test(h) &&
+  /^(localhost|127\.0\.0\.1):(?:8788|8888)$/.test(h) &&
   o==="http://"+h
  );
 }
