@@ -1,4 +1,5 @@
 import{validHandle}from"../lib/personal-assistant.mjs";
+import{checkSlot}from"../lib/nexus-slot-availability.mjs";
 import{entitlement,access}from"../lib/tenant.mjs";
 import{JUNIOR_OWNER_ID,JUNIOR_EXPERIENCE}from"../lib/junior-assistant.mjs";
 import{allow,clientIp}from"../lib/abuse.mjs";
@@ -7,6 +8,7 @@ const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]
 export async function handler(event){
  if(event.httpMethod!=="POST")return json(405,{error:"Method not allowed"});
  if(!postOrigin(event))return json(403,{error:"Origin rejected"});
+ if(event.body&&event.body.includes("check_slot")){try{const p=parse(event,2000);if(p.action==="check_slot")return checkSlot(event)}catch(e){return json(400,{error:"Invalid slot request"})}}
  try{
   const p=parse(event,6000);
   if(p.honeypot)return json(200,{accepted:true});
