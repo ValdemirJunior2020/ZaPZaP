@@ -84,8 +84,11 @@ export async function handler(event){
   if(!await allow(c,"customer_daily",store.id+":"+clientIp(event),Math.max(30,cap*2),86400))return json(429,{code:"DAILY_LIMIT",limitReached:true,error:"The daily chat limit has been reached. Please leave your phone number or email for the business."});
   const minutes=personalMode?assistant.max_minutes:Math.max(5,Math.min(30,Number(store.chat_max_minutes)||10));
   if(!personalMode&&req.sessionId){
-   const scope=await db(c,"nx_chat_sessions?id=eq."+encodeURIComponent(req.sessionId)+"&store_id=eq."+encodeURIComponent(store.id)+"&select=personal_assistant_id");
-   if(scope?.[0]?.personal_assistant_id)return json(400,{error:"Session belongs to a personal assistant"});
+   try{
+    const scope=await db(c,"nx_chat_sessions?id=eq."+encodeURIComponent(req.sessionId)+"&store_id=eq."+encodeURIComponent(store.id)+"&select=personal_assistant_id");
+    if(scope?.[0]?.personal_assistant_id)return json(400,{error:"Session belongs to a personal assistant"});
+   }catch(error){if(!/personal_assistant_id|42703|schema cache/i.test(error.message))throw error}
+
   }
   const claim=personalMode
     ?await db(c,"rpc/nx_claim_personal_message",{method:"POST",body:{p_assistant:assistant.id,p_session:req.sessionId||null}})
