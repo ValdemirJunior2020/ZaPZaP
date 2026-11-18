@@ -86,14 +86,14 @@ const direct=/\b(phone|telephone|number|human|representative|call someone|telefo
 if(direct&&settings.sharePhone&&/^\+?[\d\s().-]{7,35}$/.test(settings.humanPhone))return result(res,200,{reply:({en:"The business contact number is ",pt:"O telefone de contato da empresa é ",es:"El teléfono de contacto de la empresa es "})[language(message)]+settings.humanPhone});
 active++;try{const answer=await generate(message,settings,Array.isArray(j.history)?j.history:[]);return result(res,200,{reply:answer,source:'ai'})}catch(e){console.warn('AI unavailable:',e.message);return result(res,503,{error:'AI temporarily unavailable',code:'AI_UNAVAILABLE'})}finally{active--}}
 if(url.pathname==='/api/whatsapp/webhook'&&req.method==='GET'){if(!process.env.WHATSAPP_VERIFY_TOKEN)return result(res,503,{error:'Not configured'});if(url.searchParams.get('hub.mode')==='subscribe'&&url.searchParams.get('hub.verify_token')===process.env.WHATSAPP_VERIFY_TOKEN){res.writeHead(200,{'Content-Type':'text/plain'});return res.end(url.searchParams.get('hub.challenge')||'')}return result(res,403,{error:'Verification failed'})}
-const fnMatch=url.pathname.match(/^\\/\\.netlify\\/functions\\/([a-z0-9-]+)$/);
+const fnMatch=url.pathname.match(/^\/\.netlify\/functions\/([a-z0-9-]+)$/);
 const localApiName=fnMatch?.[1]||(url.pathname.startsWith("/api/")?url.pathname.slice(5):null);
 if(localApiName&&Object.hasOwn(localHandlers,localApiName))return await localFunction(req,res,url,localApiName);
 if(url.pathname.startsWith('/api/'))return result(res,501,{error:'Integration not configured; no production messaging or billing occurs in this demo'});
 if(req.method!=='GET'&&req.method!=='HEAD')return result(res,405,{error:'Method not allowed'});
 let pathname=decodeURIComponent(url.pathname);
 if(pathname==="/assistant")pathname="/junior.html";
-else if(/^\\/assistant\\/[a-z][a-z0-9-]{2,31}$/.test(pathname))pathname="/personal-chat.html";
+else if(/^\/assistant\/[a-z][a-z0-9-]{2,31}$/.test(pathname))pathname="/personal-chat.html";
 const file=path.resolve(root,'.'+(pathname==='/'?'/index.html':pathname));if(!file.startsWith(root+path.sep))return result(res,403,{error:'Forbidden'});if(file.includes(path.sep+'.')||/\.(env|sql|md|toml)$/i.test(file))return result(res,404,{error:'Not found'});let info;try{info=await stat(file)}catch{return result(res,404,{error:'Not found'})}if(!info.isFile())return result(res,404,{error:'Not found'});const content=await readFile(file);res.writeHead(200,{'Content-Type':TYPES[path.extname(file)]||'application/octet-stream','X-Content-Type-Options':'nosniff','Cache-Control':'public, max-age=120'});res.end(req.method==='HEAD'?undefined:content)
 }catch(e){console.error('Request error:',e.message);if(!res.headersSent)result(res,500,{error:'Server error'})}});
 const host=process.env.HOST||'127.0.0.1';
