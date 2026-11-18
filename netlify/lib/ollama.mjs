@@ -47,15 +47,19 @@ async function queryWithMeta(messages,{maxTokens=380,timeoutMs=75000,allowFallba
  const secondary=c?secondaryModel():null;
  const fallbackModel=secondary&&secondary!==c.model?secondary:null;
  const durations=localTimeouts(timeoutMs,Boolean(fallbackModel),hasOpenAI);
- let error;
+ let error,primaryError;
  try{
   if(!c)throw Error("Ollama gateway not configured");
   return{text:await localChat(c,messages,{model:c.model,maxTokens,timeoutMs:durations.primary}),source:"ollama"};
- }catch(e){error=e}
+ }catch(e){error=e;primaryError=e}
  // Only retry genuine model/network issues; never bypass authentication or client errors.
  if(fallbackModel&&localRetryable(error)){
   try{return{text:await localChat(c,messages,{model:fallbackModel,maxTokens,timeoutMs:durations.secondary}),source:"ollama-lite"}}
-  catch(e){error=e}
+  catch(e){
+   // A missing optional local model (404) is not an authentication failure.
+   // The original 8b provider outage remains eligible for emergency OpenAI.
+   error=/^Ollama gateway status 404$/.test(String(e.message))?primaryError:e;
+  }
  }
  if(!hasOpenAI)throw error;
  return openaiFallback(messages,{allowFallback:true,tenantKey,originalError:error,maxTokens,
