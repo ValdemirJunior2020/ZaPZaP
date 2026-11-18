@@ -1,7 +1,7 @@
 const $=id=>document.getElementById(id);
 const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const cleanSlug=s=>String(s||"").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9-]/g,"-").replace(/-+/g,"-").replace(/^-|-$/g,"").slice(0,48);
-let cfg=null,signingUp=true,viewName="overview",workspace=null,busy=false;
+let cfg=null,signingUp=false,viewName="overview",workspace=null,busy=false;
 const sessionKey="nexus_owner_v1";
 const session=()=>{try{return JSON.parse(sessionStorage.getItem(sessionKey)||"null")}catch{return null}};
 const saveSession=s=>{if(s)sessionStorage.setItem(sessionKey,JSON.stringify(s));else sessionStorage.removeItem(sessionKey)};
@@ -18,7 +18,8 @@ function authFields(){
  text("authHeading",signingUp?"Create your business account":"Welcome back");
  text("authSub",signingUp?"Add your business details to get started. Your 48-hour trial begins when your AI store goes live.":"Sign in to your business workspace.");
  text("authSubmit",signingUp?"Create account":"Sign in");
- text("switchAuth",signingUp?"Already registered? Sign in":"Need an account? Sign up");
+ text("switchAuth",signingUp?"Already have an account? Log in":"New to NexusSales? Create an account");
+ $("authPassword").setAttribute("autocomplete",signingUp?"new-password":"current-password");
 }
 async function loadConfig(){
  try{
@@ -26,10 +27,10 @@ async function loadConfig(){
   if(!r.ok)throw Error("Account service is not connected yet");
   const j=await r.json();
   if(!j.configured||!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(j.supabaseUrl))throw Error("Account service unavailable");
-  cfg=j;text("configMessage","Secure account service is connected. Your 48-hour trial starts when your AI store goes live.");
+  cfg=j;text("configMessage",signingUp?"Secure account service connected. Your 48-hour trial starts when your AI store goes live.":"Account connection ready. Log in with your existing NexusSales email and password.");
   $("configMessage").classList.add("success");$("authSubmit").disabled=false;
  }catch{
-  cfg=null;text("configMessage","Account registration is not active yet. A dedicated NexusSales database must be connected before anyone can create a real account.");$("authSubmit").disabled=true;
+  cfg=null;text("configMessage",location.hostname==="localhost"||location.hostname==="127.0.0.1"?"Local account connection is missing. Add your Supabase development credentials to .env.local, restart npm start, and then log in with your existing NexusSales account.":"Account service is temporarily unavailable. Your existing account has not been removed.");$("configMessage").classList.remove("success");$("authSubmit").disabled=true;
  }
 }
 async function authRequest(endpoint,body){
@@ -439,7 +440,7 @@ async function saveOffering(e){
 }
 async function init(){
  authFields();$("authSubmit").disabled=true;
- $("switchAuth").onclick=()=>{signingUp=!signingUp;authFields();text("authMsg","")};
+ $("switchAuth").onclick=()=>{signingUp=!signingUp;authFields();text("authMsg","");if(cfg)text("configMessage",signingUp?"Account service connected. Create a new account to begin.":"Account connection ready. Log in with your existing NexusSales email and password.")};
  $("signInTop").onclick=()=>{signingUp=false;authFields();$("signupArea").scrollIntoView({behavior:"smooth"})};
  $("authForm").onsubmit=submitAuth;$("logoutTop").onclick=signOut;$("logoutSide").onclick=signOut;
  $("dialogClose").onclick=closeDialog;$("offeringForm").onsubmit=saveOffering;
