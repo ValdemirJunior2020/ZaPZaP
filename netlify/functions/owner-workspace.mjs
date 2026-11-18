@@ -1,6 +1,7 @@
 import{SPECIAL_OWNER,NEXUS_STYLE,validHandle,validStyle}from"../lib/personal-assistant.mjs";
 import{JUNIOR_OWNER_ID}from"../lib/junior-assistant.mjs";
 import{normalizePersonality,PERSONALITIES}from"../lib/ai-personalities.mjs";
+import{normalizeProfile}from"../lib/nexus-business-profile.mjs";
 import{cancelSubscription,deleteAccount}from"../lib/account-lifecycle.mjs";
 import{widgetEnabled}from"../lib/billing.mjs";
 import{env,db,json,str,slug,domainUrl,userFrom,ownStore,offerings,ownerProfile,access,postOrigin,parse,safeError,aiReady,verifyHostedAI,iso}from "../lib/tenant.mjs";
@@ -31,7 +32,9 @@ export async function handler(event){
    const appointments=store?await db(c,"nx_appointments?store_id=eq."+encodeURIComponent(store.id)+"&select=id,store_id,lead_id,employee_id,staff_id,service_id,customer_name,customer_email,customer_phone,notes,start_at,end_at,status,created_at,updated_at&order=start_at.desc&limit=500"):[];
    let bot=null;
    if(store){try{const found=await db(c,"nx_bots?store_id=eq."+encodeURIComponent(store.id)+"&select=bot_id,enabled,greeting,primary_color");bot=found?.[0]||null}catch{}}
-   return json(200,{email:user.email,profile,store,offerings:items,leads,qrSources,employees,appointments,teamAllowed:teamEntitled(user,ent),bot,personalAssistant:personalRows[0]||null,personalAssistantSchemaReady:personalSchemaReady,personalAssistantSpecial:user.id===SPECIAL_OWNER&&ent.is_complimentary===true,widgetAllowed:widgetEnabled(c,ent),access:access(ent),aiConfigured:aiReady()});
+   let businessProfile=null;
+   if(store){try{businessProfile=(await db(c,"nx_business_profiles?store_id=eq."+encodeURIComponent(store.id)+"&select=*"))?.[0]||null}catch(e){console.warn("Business profile unavailable:",e.message)}}
+   return json(200,{email:user.email,profile,store,businessProfile,offerings:items,leads,qrSources,employees,appointments,teamAllowed:teamEntitled(user,ent),bot,personalAssistant:personalRows[0]||null,personalAssistantSchemaReady:personalSchemaReady,personalAssistantSpecial:user.id===SPECIAL_OWNER&&ent.is_complimentary===true,widgetAllowed:widgetEnabled(c,ent),access:access(ent),aiConfigured:aiReady()});
   }
   const data=parse(event,30000),action=str(data.action,40);
   if(action==="cancel_subscription")return cancelSubscription(c,user,ent);
@@ -45,6 +48,13 @@ export async function handler(event){
   }
   if(["save_employee","set_employee_enabled","delete_employee"].includes(action)&&!teamEntitled(user,ent))return json(403,{error:"A gestão de equipe requer o novo plano Empresarial confirmado. Os planos antigos permanecem inalterados."});
   if(!canEdit(ent)&&!["pause","disable_widget","lead_history","update_lead"].includes(action))return json(402,{error:"Your trial has ended. Subscribe to continue.",access:access(ent)});
+  if(action==="save_business_profile"){
+   if(!store)return json(400,{error:"Save your SmartStore before setting business hours"});
+   let profile;
+   try{profile=normalizeProfile(data.profile)}catch(e){return json(400,{error:e.message})}
+   const rows=await db(c,"nx_business_profiles?on_conflict=store_id",{method:"POST",body:{store_id:store.id,...profile,updated_at:iso()},prefer:"resolution=merge-duplicates,return=representation"});
+   return json(200,{businessProfile:rows?.[0]||null});
+  }
   if(action==="save_store"){
    const i=data.store||{};
    const name=str(i.name,150);
