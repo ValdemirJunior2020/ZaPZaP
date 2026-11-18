@@ -2,7 +2,7 @@ import{SPECIAL_OWNER,validHandle,personalMessages,styleName}from"../lib/personal
 import{JUNIOR_OWNER_ID,JUNIOR_EXPERIENCE,juniorMessages}from"../lib/junior-assistant.mjs";
 import{allow,clientIp}from"../lib/abuse.mjs";
 import{businessMessages}from"../lib/business-ai.mjs";
-import{query as ollamaQuery}from"../lib/ollama.mjs";
+import{queryWithMeta as aiQuery}from"../lib/ollama.mjs";
 import{env,json,str,parse,postOrigin,publishedStore,aiReady,db,entitlement,access}from"../lib/tenant.mjs";
 import{widgetEnabled}from"../lib/billing.mjs";
 import{recordAiError}from"../lib/ai-diagnostics.mjs";
@@ -130,10 +130,11 @@ export async function handler(event){
   diagStage="message_save";
   await db(c,"nx_chat_messages",{method:"POST",body:{session_id:claim.sessionId,store_id:store.id,role:"user",content:message},prefer:"return=minimal"});
   diagStage="ai_gateway";
-  const answer=await ollamaQuery(messages,{maxTokens:450,timeoutMs:50000});
+  const ai=await aiQuery(messages,{maxTokens:450,timeoutMs:50000,allowFallback:true,tenantKey:store.id});
+  const answer=ai.text;
   diagStage="reply_save";
   await db(c,"nx_chat_messages",{method:"POST",body:{session_id:claim.sessionId,store_id:store.id,role:"assistant",content:answer},prefer:"return=minimal"});
-  return json(200,{reply:answer,source:"ai",sessionId:claim.sessionId,remaining:claim.remaining,limitReached:claim.remaining===0,expiresAt:claim.expiresAt});
+  return json(200,{reply:answer,source:"ai",provider:ai.source,sessionId:claim.sessionId,remaining:claim.remaining,limitReached:claim.remaining===0,expiresAt:claim.expiresAt});
  }catch(e){
   const diag=await recordAiError(diagCfg||env(),{ownerId:diagOwnerId,storeId:diagStoreId,stage:diagStage,error:e,elapsedMs:Date.now()-diagStart});
   return json(e.status||503,{error:"The business assistant is temporarily unavailable. Please leave an inquiry.",reference:diag.id});
