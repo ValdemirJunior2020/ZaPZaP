@@ -274,7 +274,7 @@ function renderPersonalAssistant(){
  '<button class="primary" type="submit" id="paSave" '+(workspace.personalAssistantSchemaReady===false?'disabled':'')+'>'+(saved?'Save assistant':'Create assistant')+'</button></form>'+
  '<div class="personal-live-preview"><strong id="paPreviewName">'+htmlEsc(name)+'</strong><p id="paPreviewGreeting">'+htmlEsc(a.greeting||('Hi! I am '+name+', your AI assistant.'))+'</p><small>Profile preview; live replies require your Ollama connection.</small></div>'+
  (saved?'<div class="personal-share"><h3>Share your personal AI</h3><div class="link-input"><input id="personalLink" readonly value="'+htmlEsc(url)+'"><button id="copyPersonalLink" class="button" type="button">Copy</button></div><div class="link-actions"><a class="button" href="'+htmlEsc(url)+'" target="_blank" rel="noopener">Open assistant</a><a class="button" href="https://wa.me/?text='+encodeURIComponent('Meet '+name+', my AI assistant: '+url)+'" target="_blank" rel="noopener">Share by WhatsApp link</a></div></div>':'')+
- '<p class="hint">Faithful Encourager is exclusive to your lifetime complimentary account. The assistant always identifies itself as AI. Opt-in leads appear in your existing Lead Center.</p></div>';
+ '<p class="hint">Faithful Encourager is exclusive to your lifetime complimentary account. The assistant always identifies itself as AI. Opt-in leads appear in your existing Leads & Chats dashboard.</p></div>';
 }
 function renderLeads(){
  const leads=workspace.leads||[],sources=workspace.qrSources||[];
