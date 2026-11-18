@@ -68,6 +68,14 @@ async function loadWorkspace(){
   workspace=await ownerApi();
   if(!workspace)throw Error("Unable to load account");
   setVisible(true);
+  const currentLanguage=workspace.businessProfile?.interface_language||"en";
+  window.NexusLanguage?.setLanguage(currentLanguage,{persist:false});
+  window.NexusLanguage?.bindSave(async language=>{
+   await ownerApi("set_interface_language",{language});
+   if(workspace.businessProfile)workspace.businessProfile.interface_language=language;
+   else workspace.businessProfile={interface_language:language};
+  });
+  window.NexusFlags?.render();
   text("accountLabel",workspace.email||"Account");
   text("sideName",workspace.store?.name||workspace.profile?.business_name||"Your business");
   document.querySelectorAll("[data-owner-only]").forEach(el=>el.hidden=workspace?.personalAssistantSpecial!==true);
@@ -117,19 +125,22 @@ function render(){
  offerings:["PRODUCTS & SERVICES","What you sell","Enter your actual offerings, prices and details."],
  testbot:["TEST MY AI","Talk to your own AI salesperson","Preview real answers from your business catalog before publishing."],
  links:["TRACKED QR CODES","Turn foot traffic into leads","Create trackable QR codes for storefronts, vehicles, services and products."],
+ widget:["WEBSITE CHATBOT","Add Chatbot to Your Website","One script to add your AI salesperson to your own website."],
  leads:["LEAD CENTER","Leads & conversations","Every inquiry, appointment request and captured conversation."],
  team:["TEAM MANAGEMENT","Equipe de vendedores","QR Code, WhatsApp e idioma de cada funcionário."],
  personal:["PERSONAL AI BUILDER","Build Your Personal Assistant","Customize your named AI, personality, and personal contact link."],
  logs:["AI DIAGNOSTICS","AI Error Logs","Recent chat failures, stages, and diagnostic reference IDs."],
  brazil:["SUPER ADMIN","Brazil & Global Plans","Proposed team and personal-assistant packages; billing is not enabled."],
- billing:["48-HOUR TRIAL & BILLING","Your subscription","Core $149/month, website widget +$79/month."]};
+ billing:["48-HOUR TRIAL & BILLING","Your subscription","Base US$500/month, website widget +US$79/month."]};
  const t=titles[viewName]||titles.overview;
  text("workspaceEyebrow",t[0]);text("workspaceHeading",t[1]);text("workspaceSubtitle",t[2]);text("trialBadge",statusText());
  document.querySelectorAll("[data-view]").forEach(b=>{b.classList.toggle("active",b.dataset.view===viewName)});
- const views={overview:renderOverview,store:renderStore,offerings:renderOfferings,testbot:renderTestBot,links:renderLinks,leads:renderLeads,team:renderTeam,personal:renderPersonalAssistant,logs:renderErrorLogs,brazil:renderMarketPlans,billing:renderBilling};
+ const views={overview:renderOverview,store:renderStore,offerings:renderOfferings,testbot:renderTestBot,links:renderLinks,leads:renderLeads,widget:()=>"",team:renderTeam,personal:renderPersonalAssistant,logs:renderErrorLogs,brazil:renderMarketPlans,billing:renderBilling};
  $("viewContent").innerHTML=(views[viewName]||views.overview)();
  bindView();
+ if(viewName==="widget")window.NexusWidgetGuide?.render(workspace,ownerApi,loadWorkspace);
  if(viewName==="store")window.NexusBusinessProfile?.activate(workspace,ownerApi,loadWorkspace);
+ window.NexusLanguage?.apply();
 }
 function renderOverview(){
  const s=workspace.store,items=workspace.offerings||[],leads=workspace.leads||[];
@@ -562,6 +573,7 @@ async function init(){
  $("dialogClose").onclick=closeDialog;$("offeringForm").onsubmit=saveOffering;
  $("dialogBackdrop").addEventListener("click",e=>{if(e.target===$("dialogBackdrop"))closeDialog()});
  document.querySelectorAll("[data-view]").forEach(e=>e.onclick=()=>{viewName=e.dataset.view;render()});
+ window.NexusFlags?.render();
  await loadConfig();if(session()&&cfg)await loadWorkspace();else setVisible(false);
 }
 init();
