@@ -107,3 +107,23 @@ test("AI error diagnostics show safe reference IDs without logging private chat 
  assert.doesNotThrow(()=>new Function(ui));
  assert.doesNotThrow(()=>new Function(client));
 });
+
+test("Super admin Brazil pricing is consistent and does not enable charging",async()=>{
+ const {PLANNED_CATALOG,proposedEnterpriseTotal}=await import("../netlify/lib/market-plans.mjs");
+ assert.equal(PLANNED_CATALOG.enterpriseBaseUsd,500);
+ assert.equal(PLANNED_CATALOG.includedEmployees,3);
+ assert.equal(proposedEnterpriseTotal("BR",3).monthlyTotal,500);
+ assert.equal(proposedEnterpriseTotal("BR",5).monthlyTotal,560);
+ assert.equal(proposedEnterpriseTotal("US",5).monthlyTotal,600);
+ assert.equal(proposedEnterpriseTotal("PT",4).monthlyTotal,550);
+ assert.equal(PLANNED_CATALOG.personalUsd,30);
+ assert.equal(PLANNED_CATALOG.playfulUsd,15);
+ assert.equal(PLANNED_CATALOG.playfulPersonalities,5);
+ assert.equal(PLANNED_CATALOG.billingEnabled,false);
+ const [business,home,standalone]=await Promise.all(["business.js","index.html","business.html"].map(p=>readFile(p,"utf8")));
+ assert.match(business,/function renderMarketPlans/);
+ assert.match(business,/personalAssistantSpecial!==true/);
+ assert.match(business,/No billing, subscriptions or team accounts are activated/);
+ for(const html of [home,standalone])assert.match(html,/data-view="brazil" data-owner-only hidden/);
+ assert.doesNotThrow(()=>new Function(business));
+});
