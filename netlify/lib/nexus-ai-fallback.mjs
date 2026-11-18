@@ -13,6 +13,7 @@ const bounded=(value,fallback,low,high)=>{
 const retryableError=err=>{
  const message=String(err?.message||"");
  if(err?.name==="TimeoutError"||err?.name==="AbortError")return true;
+ if(message==="Ollama model did not provide visible answer")return true;
  if(err instanceof TypeError||/fetch failed|ENOTFOUND|ECONNREFUSED|EAI_AGAIN|ETIMEDOUT/i.test(message))return true;
  const status=Number(message.match(/^Ollama gateway status (\d{3})/)?.[1]);
  return status===408||status===429||status>=500;
