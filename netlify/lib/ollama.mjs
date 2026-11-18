@@ -24,7 +24,7 @@ function ready(){return readiness().ready}
 async function queryWithMeta(messages,{maxTokens=380,timeoutMs=75000,allowFallback=false,tenantKey=null}={}){
  const c=config();
  const mayFallback=allowFallback===true&&openaiConfigured()&&typeof tenantKey==="string";
- const primaryTimeout=mayFallback?Math.min(24000,Math.max(3500,timeoutMs-16000)):timeoutMs;
+ const primaryTimeout=mayFallback?Math.min(timeoutMs-6500,Math.min(30000,Math.max(14000,Math.round(timeoutMs*0.68)))):timeoutMs;
  try{
   if(!c)throw Error("Ollama gateway not configured");
   const r=await fetch(c.base+"/api/chat",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+c.token},
