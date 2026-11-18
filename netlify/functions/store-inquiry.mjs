@@ -43,7 +43,7 @@ export async function handler(event){
   if(kind==="appointment"&&found.store.appointments_enabled===false)return json(400,{error:"Appointment requests are not enabled for this business"});
   let sessionId=null,sourceId=null;
   if(p.sessionId){
-   const sessions=await db(c,"nx_chat_sessions?id=eq."+encodeURIComponent(p.sessionId)+"&store_id=eq."+encodeURIComponent(found.store.id)+"&select=id,source_id,personal_assistant_id");
+   const sessions=await db(c,"nx_chat_sessions?id=eq."+encodeURIComponent(p.sessionId)+"&store_id=eq."+encodeURIComponent(found.store.id)+(personalMode?"&select=id,source_id,personal_assistant_id":"&select=id,source_id"));
    if(!sessions?.length||(personalMode&&sessions[0].personal_assistant_id!==assistant.id)||(!personalMode&&sessions[0].personal_assistant_id))return json(400,{error:"Conversation not found"});
    sessionId=sessions[0].id;sourceId=sessions[0].source_id;
   }else if(p.sourceCode&&!personalMode){
@@ -51,7 +51,7 @@ export async function handler(event){
    sourceId=sources?.[0]?.id||null;
   }
   const rows=await db(c,"nx_leads",{method:"POST",body:{
-   store_id:found.store.id,session_id:sessionId,source_id:sourceId,personal_assistant_id:personalMode?assistant.id:null,
+   store_id:found.store.id,session_id:sessionId,source_id:sourceId,...(personalMode?{personal_assistant_id:assistant.id}:{}),
    customer_name:name,customer_email:email,customer_phone:phone,interest:personalMode?"Personal AI ("+assistant.display_name+"): "+interest:juniorMode?"Hope personal assistant: "+interest:interest,status:kind==="appointment"?"Appointment Requested":"New",
    request_type:kind,preferred_time:kind==="appointment"?preferred:""
   },prefer:"return=representation"});
