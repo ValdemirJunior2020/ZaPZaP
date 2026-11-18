@@ -69,7 +69,7 @@ async function loadWorkspace(){
   if(!workspace)throw Error("Unable to load account");
   setVisible(true);
   const currentLanguage=workspace.businessProfile?.interface_language||"en";
-  window.NexusLanguage?.setLanguage(currentLanguage,{persist:false});
+  window.NexusLanguage?.restoreLanguage(currentLanguage);
   window.NexusLanguage?.bindSave(async language=>{
    await ownerApi("set_interface_language",{language});
    if(workspace.businessProfile)workspace.businessProfile.interface_language=language;
