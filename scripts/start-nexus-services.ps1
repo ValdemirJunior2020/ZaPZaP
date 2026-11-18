@@ -17,9 +17,9 @@ function IsUp([int]$Port,[string]$Route) {
  } catch { return $false }
 }
 function Cmd([string]$Name) { $x=Get-Command $Name -ErrorAction SilentlyContinue | Select-Object -First 1; if($x){return $x.Source};return $null }
-function Launch([string]$Label,[string]$File,[string[]]$Args) {
+function Launch([string]$Label,[string]$File,[string[]]$ProcessArgs) {
  $safe=($Label -replace '[^A-Za-z0-9]','-').ToLowerInvariant()
- Start-Process -FilePath $File -ArgumentList $Args -WorkingDirectory $Root -WindowStyle Hidden -RedirectStandardOutput (Join-Path $Data "$safe-out.log") -RedirectStandardError (Join-Path $Data "$safe-error.log") | Out-Null
+ Start-Process -FilePath $File -ArgumentList $ProcessArgs -WorkingDirectory $Root -WindowStyle Hidden -RedirectStandardOutput (Join-Path $Data "$safe-out.log") -RedirectStandardError (Join-Path $Data "$safe-error.log") | Out-Null
  Log "Starting $Label."
 }
 if($Install) {
