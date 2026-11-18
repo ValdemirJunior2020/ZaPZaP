@@ -45,7 +45,7 @@ try {
  if(-not (IsUp 11434 '/api/tags')) {
   $ollama=Cmd 'ollama.exe';if(-not $ollama){$ollama=Cmd 'ollama'}
   if(-not $ollama){$candidate=Join-Path $env:LOCALAPPDATA 'Programs\Ollama\ollama.exe';if(Test-Path $candidate){$ollama=$candidate}}
-  if($ollama){Launch 'Ollama' $ollama @('serve');for($i=0;$i -lt 15 -and -not (IsUp 11434 '/api/tags');$i++){Start-Sleep -Seconds 1}}
+  if($ollama){Launch -Label 'Ollama' -File $ollama -ProcessArgs @('serve');for($i=0;$i -lt 15 -and -not (IsUp 11434 '/api/tags');$i++){Start-Sleep -Seconds 1}}
   else{Log 'ERROR Cannot find Ollama executable.'}
  }
  if(IsUp 11434 '/api/tags'){Log 'OK Ollama API 11434.'}else{Log 'ERROR Ollama API offline.'}
@@ -55,10 +55,10 @@ try {
  if(-not (IsUp 8789 '/health')) {
   if(-not $hasToken){Log 'ERROR Gateway token missing/too short in .env.local. No unauthenticated gateway started.'}
   elseif(-not (Test-Path (Join-Path $Root 'scripts\nexus-ollama-gateway.mjs'))){Log 'ERROR Gateway script missing.'}
-  else{Launch 'Nexus gateway' $node @('scripts/nexus-ollama-gateway.mjs');for($i=0;$i -lt 10 -and -not (IsUp 8789 '/health');$i++){Start-Sleep -Seconds 1}}
+  else{Launch -Label 'Nexus gateway' -File $node -ProcessArgs @('scripts/nexus-ollama-gateway.mjs');for($i=0;$i -lt 10 -and -not (IsUp 8789 '/health');$i++){Start-Sleep -Seconds 1}}
  }
  if(IsUp 8789 '/health'){Log 'OK protected gateway 8789.'}else{Log 'ERROR Gateway 8789 offline; see nexus-gateway-error.log.'}
- if(-not (IsUp 8788 '/business.html')){Launch 'Nexus website' $node @('server.mjs');for($i=0;$i -lt 10 -and -not (IsUp 8788 '/business.html');$i++){Start-Sleep -Seconds 1}}
+ if(-not (IsUp 8788 '/business.html')){Launch -Label 'Nexus website' -File $node -ProcessArgs @('server.mjs');for($i=0;$i -lt 10 -and -not (IsUp 8788 '/business.html');$i++){Start-Sleep -Seconds 1}}
  if(IsUp 8788 '/business.html'){Log 'OK NexusSales 8788.'}else{Log 'ERROR NexusSales 8788 offline; see nexus-website-error.log.'}
  $cf=Cmd 'cloudflared.exe';if(-not $cf){$cf=Cmd 'cloudflared'}
  $cfg=Join-Path $env:USERPROFILE '.cloudflared\config.yml'
@@ -70,7 +70,7 @@ try {
  else{
   $existing=Get-CimInstance Win32_Process -Filter "name = 'cloudflared.exe'" -ErrorAction SilentlyContinue|Where-Object{$_.CommandLine -match 'tunnel' -and $_.CommandLine -match 'run' -and $_.CommandLine -match [regex]::Escape($cfg)}
   if($existing){Log 'Existing cloudflared tunnel running; not starting another.'}
-  else{Launch 'Cloudflare tunnel' $cf @('tunnel','--config',('"'+$cfg+'"'),'run');Log 'Tunnel started with existing configuration (public route unverified).'}
+  else{Launch -Label 'Cloudflare tunnel' -File $cf -ProcessArgs @('tunnel','--config',('"'+$cfg+'"'),'run');Log 'Tunnel started with existing configuration (public route unverified).'}
  }
  Log "Logs stored in $Data"
 }finally{
