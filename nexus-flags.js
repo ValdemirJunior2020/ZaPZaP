@@ -17,6 +17,8 @@ function render(){
   nav.insertAdjacentElement("afterend",root);
  }
  const current=window.NexusLanguage?.getLanguage?.()||"en";
+ const widgetNav=nav.querySelector('[data-i18n-widget-nav]');
+ if(widgetNav)widgetNav.textContent=({en:"✦ Add Chatbot to Your Website",pt:"✦ Adicionar Chatbot ao Site",es:"✦ Añadir Chatbot al Sitio Web"})[current]||"✦ Add Chatbot to Your Website";
  root.innerHTML='<div class="nx-locale-heading">'+header[current]+'</div><div class="nx-locale-choices" role="group" aria-label="Choose language">'+Object.keys(names).map(code=>'<button type="button" class="nx-locale-btn" data-locale="'+code+'" aria-label="'+names[code]+'" aria-pressed="'+(current===code)+'"><span class="nx-locale-icon">'+flags[code]+'</span><span class="nx-locale-name">'+names[code]+'</span></button>').join("")+'</div><p class="nx-locale-message" role="status" id="nxLocaleStatus"></p>';
  root.querySelectorAll("[data-locale]").forEach(button=>button.addEventListener("click",()=>{
   const code=button.dataset.locale;
