@@ -28,9 +28,10 @@ export async function handler(event){
     leads=await db(c,"nx_leads?store_id=eq."+encodeURIComponent(store.id)+"&select=id,customer_name,customer_email,customer_phone,interest,status,request_type,preferred_time,source_id,session_id,employee_id,personal_assistant_id,created_at,updated_at&order=created_at.desc&limit=100");
    }catch(error){console.error("Personal lead fields unavailable:",error.message)}}
    const employees=store&&teamEntitled(user,ent)?await db(c,"nx_employees?store_id=eq."+encodeURIComponent(store.id)+"&archived=eq.false&select=id,name,role,whatsapp,language,enabled,qr_source_id,created_at&order=created_at.asc"):[];
+   const appointments=store?await db(c,"nx_appointments?store_id=eq."+encodeURIComponent(store.id)+"&select=id,store_id,lead_id,employee_id,staff_id,service_id,customer_name,customer_email,customer_phone,notes,start_at,end_at,status,created_at,updated_at&order=start_at.asc&limit=500"):[];
    let bot=null;
    if(store){try{const found=await db(c,"nx_bots?store_id=eq."+encodeURIComponent(store.id)+"&select=bot_id,enabled,greeting,primary_color");bot=found?.[0]||null}catch{}}
-   return json(200,{email:user.email,profile,store,offerings:items,leads,qrSources,employees,teamAllowed:teamEntitled(user,ent),bot,personalAssistant:personalRows[0]||null,personalAssistantSchemaReady:personalSchemaReady,personalAssistantSpecial:user.id===SPECIAL_OWNER&&ent.is_complimentary===true,widgetAllowed:widgetEnabled(c,ent),access:access(ent),aiConfigured:aiReady()});
+   return json(200,{email:user.email,profile,store,offerings:items,leads,qrSources,employees,appointments,teamAllowed:teamEntitled(user,ent),bot,personalAssistant:personalRows[0]||null,personalAssistantSchemaReady:personalSchemaReady,personalAssistantSpecial:user.id===SPECIAL_OWNER&&ent.is_complimentary===true,widgetAllowed:widgetEnabled(c,ent),access:access(ent),aiConfigured:aiReady()});
   }
   const data=parse(event,30000),action=str(data.action,40);
   if(action==="cancel_subscription")return cancelSubscription(c,user,ent);
@@ -150,6 +151,52 @@ export async function handler(event){
     {method:"PATCH",body:{enabled:data.enabled===true},prefer:"return=representation"});
    if(!rows?.length)return json(404,{error:"QR code not found"});
    return json(200,{source:rows[0]});
+  }
+
+  if(action==="save_appointment"){
+   const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+   const leadId=str(data.leadId,40),employeeId=str(data.employeeId,40),appointmentId=str(data.id,40);
+   const status=str(data.status,30)||"requested",notes=str(data.notes,1000);
+   if(!uuid.test(leadId)||(employeeId&&!uuid.test(employeeId))||(appointmentId&&!uuid.test(appointmentId)))return json(400,{error:"Lead or appointment ID is invalid"});
+   if(!["requested","confirmed"].includes(status))return json(400,{error:"Choose requested or confirmed"});
+   if(typeof data.startAt!=="string"||!/(Z|[+-]\d{2}:\d{2})$/i.test(data.startAt))return json(400,{error:"Select a date and time with timezone"});
+   const start=new Date(data.startAt),duration=Number(data.durationMinutes);
+   if(!Number.isFinite(start.getTime())||!Number.isInteger(duration)||duration<15||duration>480)return json(400,{error:"Choose a valid date and 15–480 minutes"});
+   const end=new Date(start.getTime()+duration*60000);
+   if(start.getTime()<Date.now()-366*86400000||start.getTime()>Date.now()+730*86400000)return json(400,{error:"Date is outside the supported scheduling range"});
+   const leads=await db(c,"nx_leads?id=eq."+encodeURIComponent(leadId)+"&store_id=eq."+encodeURIComponent(store.id)+"&select=id,customer_name,customer_phone,customer_email,employee_id");
+   const lead=leads?.[0];if(!lead)return json(404,{error:"Lead does not belong to this business"});
+   if(employeeId){
+    const staff=await db(c,"nx_employees?id=eq."+encodeURIComponent(employeeId)+"&store_id=eq."+encodeURIComponent(store.id)+"&archived=eq.false&enabled=eq.true&select=id");
+    if(!staff.length)return json(400,{error:"Employee unavailable or belongs to another business"});
+   }
+   const existing=await db(c,"nx_appointments?store_id=eq."+encodeURIComponent(store.id)+"&lead_id=eq."+encodeURIComponent(leadId)+"&select=id");
+   if(existing.length&&existing[0].id!==appointmentId)return json(409,{error:"This lead already has an appointment. Open it to reschedule."});
+   if(appointmentId&&!existing.some(a=>a.id===appointmentId))return json(404,{error:"Appointment not found for this lead"});
+   const overlaps=await db(c,"nx_appointments?store_id=eq."+encodeURIComponent(store.id)+"&status=in.(requested,confirmed)&start_at=lt."+encodeURIComponent(end.toISOString())+"&end_at=gt."+encodeURIComponent(start.toISOString())+"&select=id,employee_id,staff_id");
+   if(overlaps.some(a=>a.id!==appointmentId&&(employeeId?a.employee_id===employeeId:!a.employee_id&&!a.staff_id)))return json(409,{error:"This employee already has a booking at that time. Choose another slot."});
+   const row={lead_id:leadId,employee_id:employeeId||null,start_at:start.toISOString(),end_at:end.toISOString(),notes,status,updated_at:iso()};
+   let result;
+   if(appointmentId){
+    const rows=await db(c,"nx_appointments?id=eq."+encodeURIComponent(appointmentId)+"&store_id=eq."+encodeURIComponent(store.id),{method:"PATCH",body:row,prefer:"return=representation"});
+    result=rows?.[0];
+   }else{
+    const rows=await db(c,"nx_appointments",{method:"POST",body:{...row,store_id:store.id,customer_name:lead.customer_name,customer_phone:lead.customer_phone||"",customer_email:lead.customer_email||""},prefer:"return=representation"});
+    result=rows?.[0];
+   }
+   return json(200,{appointment:result});
+  }
+  if(action==="appointment_status"){
+   const id=str(data.id,40),status=str(data.status,30);
+   if(!/^[0-9a-f-]{36}$/i.test(id)||!["requested","confirmed","cancelled","completed","no_show"].includes(status))return json(400,{error:"Invalid appointment status"});
+   const rows=await db(c,"nx_appointments?id=eq."+encodeURIComponent(id)+"&store_id=eq."+encodeURIComponent(store.id)+"&select=id,employee_id,staff_id,start_at,end_at");
+   const item=rows?.[0];if(!item)return json(404,{error:"Appointment not found"});
+   if(["requested","confirmed"].includes(status)){
+    const clashes=await db(c,"nx_appointments?store_id=eq."+encodeURIComponent(store.id)+"&status=in.(requested,confirmed)&start_at=lt."+encodeURIComponent(item.end_at)+"&end_at=gt."+encodeURIComponent(item.start_at)+"&select=id,employee_id,staff_id");
+    if(clashes.some(a=>a.id!==id&&(item.employee_id?a.employee_id===item.employee_id:item.staff_id?a.staff_id===item.staff_id:!a.employee_id&&!a.staff_id)))return json(409,{error:"Time slot unavailable; please reschedule."});
+   }
+   const changed=await db(c,"nx_appointments?id=eq."+encodeURIComponent(id)+"&store_id=eq."+encodeURIComponent(store.id),{method:"PATCH",body:{status,updated_at:iso()},prefer:"return=representation"});
+   return json(200,{appointment:changed?.[0]});
   }
   if(action==="lead_history"){
    if(!/^[0-9a-f-]{36}$/i.test(data.id||""))return json(400,{error:"Invalid lead"});

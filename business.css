@@ -172,3 +172,50 @@
 
 /* Account-only navigation must remain hidden regardless of sidebar button styles. */
 [hidden]{display:none!important}
+
+/* Leads & Chats: integrated calendar */
+.nx-lead-tabs{display:inline-flex;gap:4px;padding:5px;border:1px solid #dcebe2;border-radius:13px;background:#f0f7f3;margin:16px 0}
+.nx-lead-tabs button{border:0;background:transparent;border-radius:9px;padding:11px 17px;color:#527565;font-weight:750;cursor:pointer}
+.nx-lead-tabs button.active{background:#fff;color:#076f53;box-shadow:0 2px 9px #143a3018}
+.nx-calendar{display:grid;gap:18px;padding-bottom:25px}
+.nx-cal-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.nx-cal-summary>div{padding:17px 19px;background:#fff;border:1px solid #dceadf;border-radius:14px;display:grid;gap:5px}
+.nx-cal-summary span{color:#668674;font-size:12px}.nx-cal-summary strong{font-size:28px;color:#166b4f}
+.nx-cal-layout{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:18px;align-items:start}
+.nx-cal-main{display:grid;gap:16px;min-width:0}
+.nx-cal-panel,.nx-cal-form-card{background:white;border:1px solid #dceadf;border-radius:17px;padding:18px}
+.nx-cal-panel .lead-bar{align-items:center;gap:14px;flex-wrap:wrap}
+.nx-cal-panel .lead-bar h2{margin:0;font-size:21px}
+.nx-cal-panel .lead-bar p,.nx-cal-form-card p{color:#799086;font-size:12px;line-height:1.5}
+.nx-cal-panel label{font-size:11px;font-weight:750;color:#316b52}
+.nx-cal-panel select{display:block;padding:9px;border:1px solid #d0e2d5;background:#fff;border-radius:9px;min-width:130px;margin-top:6px}
+.nx-cal-controls{display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;margin:17px 0}
+.nx-cal-controls strong{text-transform:capitalize;color:#155a42;font-size:17px}
+.nx-cal-buttons{display:flex;gap:4px;border:1px solid #d5e5dc;border-radius:10px;padding:3px}
+.nx-cal-buttons button{background:transparent;border:0;border-radius:7px;padding:7px 10px;font-weight:650;color:#336951}
+.nx-cal-buttons button.chosen,.nx-cal-buttons button:hover{background:#e4f7ed;color:#056d4d}
+.nx-cal-scroll{max-width:100%;overflow-x:auto}
+.nx-cal-grid{display:grid;grid-template-columns:repeat(7,minmax(98px,1fr));min-width:700px;border-top:1px solid #e0ebe3;border-left:1px solid #e0ebe3;border-radius:10px;overflow:hidden}
+.nx-cal-grid.nx-day{grid-template-columns:1fr;min-width:0}
+.nx-cal-weekday{font-size:10px;letter-spacing:.8px;text-transform:uppercase;text-align:center;font-weight:800;color:#80998b;padding:11px 3px;background:#f8fbf9;border-right:1px solid #e0ebe3;border-bottom:1px solid #e0ebe3}
+.nx-cal-cell{min-height:114px;padding:8px 7px;background:#fff;border-right:1px solid #e0ebe3;border-bottom:1px solid #e0ebe3}
+.nx-cal-week .nx-cal-cell{min-height:260px}.nx-cal-day .nx-cal-cell{min-height:400px}
+.nx-cal-cell.outside{background:#f8faf9;color:#a0b4a9}.nx-cal-cell.today{background:#f0fbf5}
+.nx-day-number{border:0;background:transparent;color:#245a41;font-size:12px;font-weight:850;border-radius:50%;min-width:27px;height:27px}
+.nx-cal-cell.today .nx-day-number{background:#087959;color:#fff}
+.nx-cal-events{display:grid;gap:5px;margin-top:5px}
+.nx-cal-event{display:block;width:100%;min-width:0;text-align:left;overflow:hidden;border:1px solid #c6ebd7;background:#eafaf1;color:#176a49;border-radius:7px;padding:6px 7px;font-size:10px;font-weight:750}
+.nx-cal-event span,.nx-cal-event small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.nx-cal-event small{font-size:9px;color:#66816e;margin-top:2px}
+.nx-status-requested{background:#fff5e5;border-color:#f4dfb9;color:#8a5b14}
+.nx-status-cancelled{background:#f2f3f3;border-color:#ddd;color:#7d8584}
+.nx-status-completed{background:#edf2ff;border-color:#dbe2ff;color:#475a97}
+.nx-cal-more{font-size:10px;background:transparent;border:0;color:#067e5d;text-align:left}
+.nx-cal-side{min-width:0;position:sticky;top:86px}
+.nx-calendar-form{display:grid;gap:11px}
+.nx-calendar-form label{display:block;color:#396d53;font-size:11px;font-weight:750}
+.nx-calendar-form input,.nx-calendar-form select,.nx-calendar-form textarea{width:100%;margin-top:6px;border:1px solid #ccdfd2;border-radius:9px;background:#fff;color:#234d3a;padding:10px;font-size:12px}
+.nx-calendar-form textarea{resize:vertical}.nx-cal-form-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:4px}
+.nx-cal-request-list{display:grid;gap:9px}.nx-cal-request{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px;background:#f8fcf9;border-radius:11px}
+.nx-cal-request strong,.nx-cal-request small{display:block}.nx-cal-request small{font-size:11px;color:#829589;margin-top:5px}
+@media(max-width:1060px){.nx-cal-layout{grid-template-columns:1fr}.nx-cal-side{position:static}}
+@media(max-width:600px){.nx-cal-summary{grid-template-columns:1fr 1fr}.nx-cal-summary>div:last-child{grid-column:span 2}.nx-cal-panel{padding:10px}.nx-cal-controls{justify-content:center}.nx-lead-tabs{display:flex;width:100%}.nx-lead-tabs button{flex:1}.nx-cal-form-actions button{flex:1}}
