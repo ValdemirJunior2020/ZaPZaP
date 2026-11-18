@@ -187,6 +187,27 @@ test("Owner previews their actual unpublished catalog without starting a trial",
   assert.equal(dbWrites,0,"owner test must not publish or start trial");
  }finally{globalThis.fetch=original}
 });
+test("Private AI preview accepts saved business with no offerings and invents no catalog",async()=>{
+ configure();const {handler}=await import("../netlify/functions/owner-test-chat.mjs");
+ const previous=globalThis.fetch;let aiRequest=null;
+ const base=fakeNetwork({onCall:(url,payload)=>{if(url==="https://qwen.example.com/api/chat")aiRequest=payload}});
+ globalThis.fetch=async(url,options)=>{
+  if(String(url).includes("/rest/v1/nx_offerings"))return res([]);
+  return base(url,options);
+ };
+ try{
+  const result=await handler({
+   httpMethod:"POST",
+   headers:{host:"zapzap-bot.netlify.app",origin:"https://zapzap-bot.netlify.app",authorization:"Bearer demo.user.token","x-nf-client-connection-ip":"198.51.100.52"},
+   body:JSON.stringify({message:"What do you know about my business?"})
+  });
+  assert.equal(result.statusCode,200);
+  assert.equal(JSON.parse(result.body).source,"ollama");
+  assert.match(JSON.stringify(aiRequest),/Alpha Plumbing/);
+  assert.match(JSON.stringify(aiRequest),/"catalog":\[\]/);
+  assert.doesNotMatch(JSON.stringify(aiRequest),/Drain cleaning/);
+ }finally{globalThis.fetch=previous}
+});
 test("Owner test requires authentication and existing own store",async()=>{
  configure();const {handler}=await import("../netlify/functions/owner-test-chat.mjs");
  const original=globalThis.fetch;
