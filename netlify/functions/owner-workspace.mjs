@@ -48,6 +48,15 @@ export async function handler(event){
   }
   if(["save_employee","set_employee_enabled","delete_employee"].includes(action)&&!teamEntitled(user,ent))return json(403,{error:"A gestão de equipe requer o novo plano Empresarial confirmado. Os planos antigos permanecem inalterados."});
   if(!canEdit(ent)&&!["pause","disable_widget","lead_history","update_lead"].includes(action))return json(402,{error:"Your trial has ended. Subscribe to continue.",access:access(ent)});
+  if(action==="set_interface_language"){
+   if(!store)return json(400,{error:"Create your business first"});
+   const language=String(data.language||"").trim().toLowerCase();
+   if(!["en","es","pt"].includes(language))return json(400,{error:"Choose English, Español or Português"});
+   const rows=await db(c,"nx_business_profiles?on_conflict=store_id",{method:"POST",
+    body:{store_id:store.id,interface_language:language,updated_at:iso()},
+    prefer:"resolution=merge-duplicates,return=representation"});
+   return json(200,{language:rows?.[0]?.interface_language||language});
+  }
   if(action==="save_business_profile"){
    if(!store)return json(400,{error:"Save your SmartStore before setting business hours"});
    let profile;
