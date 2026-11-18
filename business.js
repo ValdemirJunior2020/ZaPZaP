@@ -574,6 +574,7 @@ async function init(){
  $("dialogBackdrop").addEventListener("click",e=>{if(e.target===$("dialogBackdrop"))closeDialog()});
  document.querySelectorAll("[data-view]").forEach(e=>e.onclick=()=>{viewName=e.dataset.view;render()});
  window.NexusFlags?.render();
+ window.addEventListener("nexus:language",()=>{if(workspace)render()});
  await loadConfig();if(session()&&cfg)await loadWorkspace();else setVisible(false);
 }
 init();
