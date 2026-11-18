@@ -118,6 +118,7 @@ function render(){
  testbot:["TEST MY AI","Talk to your own AI salesperson","Preview real answers from your business catalog before publishing."],
  links:["TRACKED QR CODES","Turn foot traffic into leads","Create trackable QR codes for storefronts, vehicles, services and products."],
  leads:["LEAD CENTER","Leads & conversations","Every inquiry, appointment request and captured conversation."],
+ team:["TEAM MANAGEMENT","Equipe de vendedores","QR Code, WhatsApp e idioma de cada funcionário."],
  personal:["PERSONAL AI BUILDER","Build Your Personal Assistant","Customize your named AI, personality, and personal contact link."],
  logs:["AI DIAGNOSTICS","AI Error Logs","Recent chat failures, stages, and diagnostic reference IDs."],
  brazil:["SUPER ADMIN","Brazil & Global Plans","Proposed team and personal-assistant packages; billing is not enabled."],
@@ -125,7 +126,7 @@ function render(){
  const t=titles[viewName]||titles.overview;
  text("workspaceEyebrow",t[0]);text("workspaceHeading",t[1]);text("workspaceSubtitle",t[2]);text("trialBadge",statusText());
  document.querySelectorAll("[data-view]").forEach(b=>{b.classList.toggle("active",b.dataset.view===viewName)});
- const views={overview:renderOverview,store:renderStore,offerings:renderOfferings,testbot:renderTestBot,links:renderLinks,leads:renderLeads,personal:renderPersonalAssistant,logs:renderErrorLogs,brazil:renderMarketPlans,billing:renderBilling};
+ const views={overview:renderOverview,store:renderStore,offerings:renderOfferings,testbot:renderTestBot,links:renderLinks,leads:renderLeads,team:renderTeam,personal:renderPersonalAssistant,logs:renderErrorLogs,brazil:renderMarketPlans,billing:renderBilling};
  $("viewContent").innerHTML=(views[viewName]||views.overview)();
  bindView();
 }
@@ -305,6 +306,58 @@ function updateMarketPreview(){
  $("marketTotal").textContent="US$ "+total.toLocaleString("en-US")+"/month";
  $("marketBreakdown").textContent="3 included; "+extra+" additional.";
 }
+
+function renderTeam(){
+ const people=workspace.employees||[],sources=workspace.qrSources||[];
+ const cards=people.map(p=>{
+  const qr=sources.find(s=>s.id===p.qr_source_id);
+  const url=qr?qrSourceUrl(qr.code):"";
+  const img=url?"https://api.qrserver.com/v1/create-qr-code/?size=180x180&data="+encodeURIComponent(url):"";
+  const number=String(p.whatsapp||"").replace(/\D/g,"");
+  const count=(workspace.leads||[]).filter(l=>l.employee_id===p.id).length;
+  return '<div class="card"><h3>'+htmlEsc(p.name)+'</h3><p>'+htmlEsc(p.role)+' • '+htmlEsc(p.language)+' • '+(p.enabled?'Ativo':'Pausado')+'</p>'+
+   (img?'<img class="qr" alt="QR Code do funcionário" src="'+htmlEsc(img)+'" loading="lazy">':'')+
+   '<p>'+count+' leads atribuídos</p><div class="actions">'+
+   (url?'<a class="button" target="_blank" rel="noopener" href="'+htmlEsc(url)+'">Abrir QR</a>':'')+
+   '<a class="button" target="_blank" rel="noopener" href="https://wa.me/'+htmlEsc(number)+'">WhatsApp</a>'+
+   '<button class="button" type="button" data-edit-team="'+htmlEsc(p.id)+'">Editar</button>'+
+   '<button class="button" type="button" data-toggle-team="'+htmlEsc(p.id)+'">'+(p.enabled?'Pausar':'Ativar')+'</button>'+
+   '<button class="button" type="button" data-delete-team="'+htmlEsc(p.id)+'">Excluir</button></div></div>';
+ }).join('');
+ return '<div class="card"><h2>Equipe de vendas</h2><p>Três funcionários incluídos; cada um tem seu próprio QR Code e WhatsApp. Leads e histórico continuam pertencendo à loja.</p>'+
+ '<p><strong>'+people.length+'</strong> funcionários cadastrados · '+(workspace.personalAssistantSpecial?'20 disponíveis para testes administrativos':'3 incluídos; extras aguardam faturamento PayPal')+'</p>'+
+ '<form id="teamForm"><input type="hidden" id="teamId">'+
+ '<label>Nome do funcionário<input id="teamName" maxlength="80" placeholder="Ana" required></label>'+
+ '<label>Cargo<input id="teamRole" maxlength="80" value="Vendedor" required></label>'+
+ '<label>WhatsApp com DDI (somente números)<input id="teamPhone" maxlength="16" placeholder="5511999999999" required></label>'+
+ '<label>Idioma<select id="teamLanguage"><option value="pt_BR">Português (Brasil)</option><option value="en_US">English</option><option value="es_ES">Español</option></select></label>'+
+ '<div class="actions"><button class="primary" id="teamSubmit" type="submit">Salvar funcionário</button><button class="button" id="teamClear" type="button">Limpar</button></div></form><p id="teamStatus" role="status"></p></div>'+
+ '<div class="view-grid">'+(cards||'<div class="card">Nenhum funcionário cadastrado.</div>')+'</div>';
+}
+function bindTeam(){
+ const clear=()=>{$("teamForm").reset();$("teamId").value="";$("teamRole").value="Vendedor"};
+ $("teamClear").onclick=clear;
+ $("teamForm").onsubmit=async event=>{
+  event.preventDefault();const button=$("teamSubmit");button.disabled=true;
+  try{
+   await ownerApi("save_employee",{employee:{id:$("teamId").value||null,name:$("teamName").value.trim(),role:$("teamRole").value.trim(),whatsapp:$("teamPhone").value.trim(),language:$("teamLanguage").value}});
+   await loadWorkspace();viewName="team";render();toast("Funcionário salvo");
+  }catch(e){$("teamStatus").textContent=e.message}finally{if(button.isConnected)button.disabled=false}
+ };
+ document.querySelectorAll("[data-edit-team]").forEach(button=>button.onclick=()=>{
+  const p=(workspace.employees||[]).find(x=>x.id===button.dataset.editTeam);if(!p)return;
+  $("teamId").value=p.id;$("teamName").value=p.name;$("teamRole").value=p.role;
+  $("teamPhone").value=p.whatsapp;$("teamLanguage").value=p.language;$("teamName").focus();
+ });
+ document.querySelectorAll("[data-toggle-team]").forEach(button=>button.onclick=async()=>{
+  const p=(workspace.employees||[]).find(x=>x.id===button.dataset.toggleTeam);if(!p)return;
+  try{await ownerApi("set_employee_enabled",{id:p.id,enabled:!p.enabled});await loadWorkspace();viewName="team";render()}catch(e){toast(e.message)}
+ });
+ document.querySelectorAll("[data-delete-team]").forEach(button=>button.onclick=async()=>{
+  const p=(workspace.employees||[]).find(x=>x.id===button.dataset.deleteTeam);if(!p||!confirm("Excluir "+p.name+"? Os leads serão preservados."))return;
+  try{await ownerApi("delete_employee",{id:p.id});await loadWorkspace();viewName="team";render()}catch(e){toast(e.message)}
+ });
+}
 function renderErrorLogs(){
  if(workspace?.personalAssistantSpecial!==true)return '<div class="card">Logs are restricted to the complimentary owner.</div>';
  return '<div class="card"><h2>AI Error Logs</h2><p>Only technical status is saved. No visitor messages, tokens, passwords, or IP addresses are recorded here.</p>'+
@@ -339,7 +392,7 @@ function renderLeads(){
  const source=sources.find(s=>s.id===l.source_id);
  const date=new Date(l.created_at).toLocaleString();
  return '<button class="lead-row" type="button" data-lead="'+htmlEsc(l.id)+'" data-status="'+htmlEsc(l.status)+'">'+
- '<span class="lead-avatar">'+htmlEsc((l.customer_name||'?').slice(0,1).toUpperCase())+'</span><span class="lead-main"><strong>'+htmlEsc(l.customer_name)+'</strong><small>'+htmlEsc(l.interest.slice(0,100))+'</small><small>'+htmlEsc(l.personal_assistant_id?('Personal AI • '+(workspace.personalAssistant?.display_name||'Assistant')):(source?.label||'SmartStore / website'))+' • '+htmlEsc(date)+'</small></span>'+
+ '<span class="lead-avatar">'+htmlEsc((l.customer_name||'?').slice(0,1).toUpperCase())+'</span><span class="lead-main"><strong>'+htmlEsc(l.customer_name)+'</strong><small>'+htmlEsc(l.interest.slice(0,100))+'</small><small>'+htmlEsc(l.personal_assistant_id?('Personal AI • '+(workspace.personalAssistant?.display_name||'Assistant')):(source?.label||'SmartStore / website'))+' • '+htmlEsc((workspace.employees||[]).find(e=>e.id===l.employee_id)?.name||'')+' • '+htmlEsc(date)+'</small></span>'+
  '<span class="lead-right"><span class="lead-status">'+htmlEsc(l.status)+'</span><small>'+htmlEsc(l.customer_phone||l.customer_email||'No contact')+'</small></span></button>'
  }).join('')+'</div>':'<div class="empty">No leads yet. Publish a QR code and ask a customer to submit an inquiry.</div>')+
  '</div><div class="card lead-detail hidden" id="leadDetail" aria-live="polite"></div>';
@@ -372,6 +425,7 @@ function renderBilling(){
  return '<div class="card"><h2>'+htmlEsc(statusText())+'</h2><p>'+htmlEsc(status)+'</p><div class="view-grid"><div><strong class="metric">$149<small>/mo</small></strong><p>Core store, AI salesperson, SmartLinks and leads.</p></div><div><strong class="metric">$228<small>/mo</small></strong><p>Core + embedded website widget ($79 add-on).</p></div></div><div class="actions">'+(a.reason==="COMPLIMENTARY"?'<span class="status-badge">✓ No payment required</span>':'<a class="primary" href="'+url+'">Manage PayPal subscription</a>')+'</div>'+(a.reason==="COMPLIMENTARY"?'<p class="hint">All NexusSales features are included with your complimentary access.</p>':'<p class="hint">Manage your subscription, security and account deletion in Account Settings.</p>')+'</div>';
 }
 function bindView(){
+ if(viewName==="team")bindTeam();
  if(viewName==="brazil"&&workspace?.personalAssistantSpecial===true){$("marketCountry").onchange=updateMarketPreview;$("marketEmployees").oninput=updateMarketPreview;updateMarketPreview()}
  if(viewName==="logs"&&workspace?.personalAssistantSpecial===true){$("refreshAiLogs").onclick=fetchAiLogs;fetchAiLogs()}
  if(viewName==="personal"&&$("personalBuilderForm")){
