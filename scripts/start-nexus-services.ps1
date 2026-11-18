@@ -68,7 +68,7 @@ try {
  elseif(-not(IsUp 8789 '/health')){Log 'TUNNEL PENDING gateway offline.'}
  elseif(-not(Select-String -LiteralPath $cfg -Pattern '(127\.0\.0\.1|localhost):8789' -Quiet)){Log 'TUNNEL PENDING existing config does not point to 8789; not changing it.'}
  else{
-  $existing=Get-CimInstance Win32_Process -Filter "name = 'cloudflared.exe'" -ErrorAction SilentlyContinue|Where-Object{$_.CommandLine -match 'tunnel' -and $_.CommandLine -match 'run'}
+  $existing=Get-CimInstance Win32_Process -Filter "name = 'cloudflared.exe'" -ErrorAction SilentlyContinue|Where-Object{$_.CommandLine -match 'tunnel' -and $_.CommandLine -match 'run' -and $_.CommandLine -match [regex]::Escape($cfg)}
   if($existing){Log 'Existing cloudflared tunnel running; not starting another.'}
   else{Launch 'Cloudflare tunnel' $cf @('tunnel','--config',('"'+$cfg+'"'),'run');Log 'Tunnel started with existing configuration (public route unverified).'}
  }
