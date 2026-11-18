@@ -1,7 +1,7 @@
 /* NexusSales UI language — one saved business preference, three languages. */
 (function(){
 "use strict";
-const languages=Object.freeze({en:"🇺🇸 English",es:"🇪🇸 Español",pt:"🇧🇷 Português"});
+const languages=Object.freeze({en:"English",es:"Español",pt:"Português"});
 const entries=[
 ["Overview","Visão geral","Resumen"],
 ["My Store","Minha empresa","Mi empresa"],
@@ -166,11 +166,19 @@ function apply(){
 }
 function schedule(){if(scheduled)return;scheduled=true;queueMicrotask(()=>{scheduled=false;apply()})}
 function setLanguage(value,{persist=true}={}){
- const next=normalize(value);locale=next;
+ const next=normalize(value),previous=locale;locale=next;
  try{localStorage.setItem('nexus_platform_language',locale)}catch{}
  schedule();
- if(persist&&typeof save==='function')Promise.resolve(save(locale)).catch(e=>{console.warn('Could not save interface language:',e?.message||e)});
  window.dispatchEvent(new CustomEvent('nexus:language',{detail:{language:locale}}));
+ if(!persist)return Promise.resolve();
+ if(typeof save!=='function')return Promise.reject(new Error('Business language is not connected'));
+ return Promise.resolve().then(()=>save(next)).catch(error=>{
+  locale=previous;
+  try{localStorage.setItem('nexus_platform_language',previous)}catch{}
+  schedule();
+  window.dispatchEvent(new CustomEvent('nexus:language',{detail:{language:locale}}));
+  throw error;
+ });
 }
 function getLanguage(){return locale}
 function bindSave(callback){save=callback}
