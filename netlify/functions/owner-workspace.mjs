@@ -19,10 +19,13 @@ export async function handler(event){
   if(event.httpMethod==="GET"){
    const profile=await ownerProfile(c,user.id);
    const items=store?await offerings(c,store.id):[];
-   const leads=store?await db(c,"nx_leads?store_id=eq."+encodeURIComponent(store.id)+"&select=id,customer_name,customer_email,customer_phone,interest,status,request_type,preferred_time,source_id,session_id,personal_assistant_id,created_at,updated_at&order=created_at.desc&limit=100"):[];
+   let leads=store?await db(c,"nx_leads?store_id=eq."+encodeURIComponent(store.id)+"&select=id,customer_name,customer_email,customer_phone,interest,status,request_type,preferred_time,source_id,session_id,created_at,updated_at&order=created_at.desc&limit=100"):[];
    const qrSources=store?await db(c,"nx_qr_sources?store_id=eq."+encodeURIComponent(store.id)+"&select=id,code,label,enabled,offering_id,scan_count,created_at&order=created_at.desc&limit=100"):[];
    let personalRows=[],personalSchemaReady=true;
    if(store){try{personalRows=await db(c,"nx_personal_assistants?owner_id=eq."+encodeURIComponent(user.id)+"&store_id=eq."+encodeURIComponent(store.id)+"&select=id,handle,display_name,personality,greeting,about,enabled,max_messages,max_minutes")}catch(error){personalSchemaReady=false}}
+   if(store&&personalSchemaReady){try{
+    leads=await db(c,"nx_leads?store_id=eq."+encodeURIComponent(store.id)+"&select=id,customer_name,customer_email,customer_phone,interest,status,request_type,preferred_time,source_id,session_id,personal_assistant_id,created_at,updated_at&order=created_at.desc&limit=100");
+   }catch(error){console.error("Personal lead fields unavailable:",error.message)}}
    let bot=null;
    if(store){try{const found=await db(c,"nx_bots?store_id=eq."+encodeURIComponent(store.id)+"&select=bot_id,enabled,greeting,primary_color");bot=found?.[0]||null}catch{}}
    return json(200,{email:user.email,profile,store,offerings:items,leads,qrSources,bot,personalAssistant:personalRows[0]||null,personalAssistantSchemaReady:personalSchemaReady,personalAssistantSpecial:user.id===SPECIAL_OWNER&&ent.is_complimentary===true,widgetAllowed:widgetEnabled(c,ent),access:access(ent),aiConfigured:aiReady()});
