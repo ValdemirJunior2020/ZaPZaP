@@ -286,12 +286,12 @@ function renderPersonalAssistant(){
 // Super-admin preview only. Pricing is not wired to PayPal or subscriptions.
 function renderMarketPlans(){
  if(workspace?.personalAssistantSpecial!==true)return '<div class="card">Super Admin only.</div>';
- return '<div class="card"><div class="tag">SUPER ADMIN · DRAFT PRICING</div><h2>Brazil &amp; Global Plans</h2>'+
+ return '<div class="card"><div class="tag">SUPER ADMIN · DRAFT PRICING</div><h2>Worldwide Plans · Brazil</h2>'+
  '<p>This is your private pricing design. No billing, subscriptions or team accounts are activated.</p>'+
  '<label for="marketCountry">Region</label><select id="marketCountry"><option value="BR">Brazil · Português (BR)</option><option value="GLOBAL">United States & other countries</option></select>'+
  '<label for="marketEmployees">Team size (3 included)</label><input id="marketEmployees" type="number" min="0" max="1000" value="3">'+
  '<div class="view-grid"><div class="card"><small>Business base</small><h2>US$ 500/month</h2><p>Includes first 3 employees, each with a separate QR code and WhatsApp contact (planned).</p></div>'+
- '<div class="card"><small>Additional employee</small><h2 id="marketExtraPrice">US$ 30/month</h2><p id="marketCountryLabel">Brazil</p></div>'+
+ '<div class="card"><small>Additional employee</small><h2 id="marketExtraPrice">US$ 30/month</h2><p id="marketCountryLabel">Worldwide · same price</p></div>'+
  '<div class="card"><small>Proposed business total</small><h2 id="marketTotal">US$ 500/month</h2><p id="marketBreakdown">3 included; 0 additional.</p></div></div>'+
  '<div class="view-grid"><div class="card"><h3>Personal assistant</h3><strong>US$ 30/month</strong><p>Individual plan; business employment not required.</p></div>'+
  '<div class="card"><h3>Just for Fun</h3><strong>US$ 15/month</strong><p>Five personalities. Personal use, no business required.</p></div></div>'+
@@ -300,9 +300,9 @@ function renderMarketPlans(){
 function updateMarketPreview(){
  const c=$("marketCountry"),e=$("marketEmployees");if(!c||!e)return;
  const count=Math.max(0,Math.min(1000,Math.floor(Number(e.value)||0)));
- const extra=Math.max(0,count-3),per=c.value==="BR"?30:50,total=500+extra*per;
+ const extra=Math.max(0,count-3),per=30,total=500+extra*per;
  $("marketExtraPrice").textContent="US$ "+per+"/month";
- $("marketCountryLabel").textContent=c.value==="BR"?"Brazil":"United States & other countries";
+ $("marketCountryLabel").textContent="Worldwide · same price";
  $("marketTotal").textContent="US$ "+total.toLocaleString("en-US")+"/month";
  $("marketBreakdown").textContent="3 included; "+extra+" additional.";
 }

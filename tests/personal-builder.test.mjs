@@ -114,8 +114,8 @@ test("Super admin Brazil pricing is consistent and does not enable charging",asy
  assert.equal(PLANNED_CATALOG.includedEmployees,3);
  assert.equal(proposedEnterpriseTotal("BR",3).monthlyTotal,500);
  assert.equal(proposedEnterpriseTotal("BR",5).monthlyTotal,560);
- assert.equal(proposedEnterpriseTotal("US",5).monthlyTotal,600);
- assert.equal(proposedEnterpriseTotal("PT",4).monthlyTotal,550);
+ assert.equal(proposedEnterpriseTotal("US",5).monthlyTotal,560);
+ assert.equal(proposedEnterpriseTotal("PT",4).monthlyTotal,530);
  assert.equal(PLANNED_CATALOG.personalUsd,30);
  assert.equal(PLANNED_CATALOG.playfulUsd,15);
  assert.equal(PLANNED_CATALOG.playfulPersonalities,5);
