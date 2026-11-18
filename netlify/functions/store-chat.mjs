@@ -114,6 +114,17 @@ export async function handler(event){
   const assigned=qrSource?.id?(await db(c,"nx_employees?store_id=eq."+encodeURIComponent(store.id)+"&qr_source_id=eq."+encodeURIComponent(qrSource.id)+"&enabled=eq.true&select=name,role,language"))?.[0]:null;
   const linkedOffering=qrSource?.offering_id?items.find(item=>item.id===qrSource.offering_id)||null:null;
   const messages=personalMode?personalMessages(assistant,message,history):juniorMode?juniorMessages(message,history):businessMessages(store,items,message,history,qrSource?{label:qrSource.label,offering:linkedOffering}:null);
+  if(!personalMode&&!juniorMode){
+   try{
+    const profile=(await db(c,"nx_business_profiles?store_id=eq."+encodeURIComponent(store.id)+"&select=address,city,region,country,online_only,address_public,timezone,categories,weekly_hours,closed_dates,booking_duration_minutes"))?.[0];
+    if(profile){
+     const now=new Intl.DateTimeFormat("en-US",{timeZone:profile.timezone,dateStyle:"full",timeStyle:"short"}).format(new Date());
+     const publicFacts={timezone:profile.timezone,localBusinessTime:now,weeklyHours:profile.weekly_hours,closedDates:profile.closed_dates,onlineOnly:profile.online_only,categories:profile.categories,
+      ...(profile.address_public?{publicAddress:[profile.address,profile.city,profile.region,profile.country].filter(Boolean).join(", ")}:{} )};
+     messages[0].content+=" VERIFIED BUSINESS OPERATING PROFILE: "+JSON.stringify(publicFacts).slice(0,3500)+". Use this timezone and opening hours for questions. The scheduling form can check a customer-proposed time for conflicts; it does NOT confirm a booking. Invite the visitor to submit the appointment request and do not invent available times.";
+    }
+   }catch(e){console.warn("Business-hours context unavailable:",e.message)}
+  }
   if(assigned)messages[0].content+=" Assigned sales employee (not the owner): "+JSON.stringify(assigned)+". Reply in the visitor language, or the employee language if unclear. Do not claim to place calls.";
   // Persist only actual visitor/AI messages, never browser-provided transcripts.
   diagStage="message_save";
