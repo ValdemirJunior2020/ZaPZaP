@@ -26,3 +26,8 @@ alter table public.nx_business_profiles enable row level security;
 -- All reads/writes in this upgrade pass through existing authenticated owner backend.
 -- RLS intentionally grants no direct anon/auth browser access to the profile.
 revoke all on public.nx_business_profiles from anon, authenticated;
+-- Preferred interface language for each business: United States, Spain, Brazil.
+-- This setting is saved on the server and survives sign-out / sign-in on any device.
+alter table public.nx_business_profiles
+ add column if not exists interface_language text not null default 'en'
+ check (interface_language in ('en','es','pt'));
