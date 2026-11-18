@@ -168,6 +168,18 @@ test("Anonymous demo rate limit refuses requests without invoking Ollama",async(
  }finally{globalThis.fetch=original}
 });
 
+test("Catalog knowledge includes discovery options, plan pricing and platform link past 350 characters",async()=>{
+ const {businessMessages}=await import("../netlify/lib/business-ai.mjs");
+ const description="Nexus AI helps businesses with customer service and selling. ".repeat(8)+
+ "Options: AI for my business, Personal assistant, Tell me more about it. "+
+ "From US$500/month; website widget US$79/month. Visit https://za-p-za-p.vercel.app/";
+ const msg=businessMessages({...store,name:"JULAO TESTANDO"},[{name:"Nexus AI",type:"Service",description,price_label:"Plans from US$500/month",status:"Available"}],"Tell me more about it");
+ const system=msg[0].content;
+ assert.match(system,/Tell me more about it/);
+ assert.match(system,/US\$79\/month/);
+ assert.match(system,/https:\/\/za-p-za-p\.vercel\.app\//);
+ assert.match(system,/JULAO TESTANDO/);
+});
 test("Owner previews their actual unpublished catalog without starting a trial",async()=>{
  configure();const {handler}=await import("../netlify/functions/owner-test-chat.mjs");
  const original=globalThis.fetch;let aiRequest=null,dbWrites=0;
