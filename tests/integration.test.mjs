@@ -204,7 +204,7 @@ test("Private AI preview accepts saved business with no offerings and invents no
   assert.equal(result.statusCode,200);
   assert.equal(JSON.parse(result.body).source,"ollama");
   assert.match(JSON.stringify(aiRequest),/Alpha Plumbing/);
-  assert.match(JSON.stringify(aiRequest),/"catalog":\[\]/);
+  assert.match(aiRequest.messages[0].content,/"catalog":\[\]/);
   assert.doesNotMatch(JSON.stringify(aiRequest),/Drain cleaning/);
  }finally{globalThis.fetch=previous}
 });
