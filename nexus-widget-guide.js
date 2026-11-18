@@ -32,8 +32,8 @@ function render(workspace,ownerApi,refresh){
  (local?'<p class="alert">'+escape(t.local)+'</p>':"")+
  '<p class="form-message" role="status" id="nxWgStatus"></p></div></div>';
  const result=(text)=>{const x=el("nxWgStatus");if(x)x.textContent=text};
- const enable=el("nxWgEnable");if(enable)enable.onclick=async()=>{enable.disabled=true;try{await ownerApi("enable_widget",{});await refresh();render(workspace,ownerApi,refresh)}catch(e){result(t.error+e.message);enable.disabled=false}};
- const disable=el("nxWgDisable");if(disable)disable.onclick=async()=>{disable.disabled=true;try{await ownerApi("disable_widget",{});await refresh();render(workspace,ownerApi,refresh)}catch(e){result(t.error+e.message);disable.disabled=false}};
+ const enable=el("nxWgEnable");if(enable)enable.onclick=async()=>{enable.disabled=true;try{await ownerApi("enable_widget",{});await refresh()}catch(e){result(t.error+e.message);enable.disabled=false}};
+ const disable=el("nxWgDisable");if(disable)disable.onclick=async()=>{disable.disabled=true;try{await ownerApi("disable_widget",{});await refresh()}catch(e){result(t.error+e.message);disable.disabled=false}};
  const copy=el("nxWgCopy");if(copy)copy.onclick=()=>navigator.clipboard.writeText(el("nxWgCode").value).then(()=>result(t.copied)).catch(()=>el("nxWgCode").select());
 }
 window.NexusWidgetGuide={render};
