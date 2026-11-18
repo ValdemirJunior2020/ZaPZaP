@@ -129,6 +129,7 @@ function render(){
  const views={overview:renderOverview,store:renderStore,offerings:renderOfferings,testbot:renderTestBot,links:renderLinks,leads:renderLeads,team:renderTeam,personal:renderPersonalAssistant,logs:renderErrorLogs,brazil:renderMarketPlans,billing:renderBilling};
  $("viewContent").innerHTML=(views[viewName]||views.overview)();
  bindView();
+ if(viewName==="store")window.NexusBusinessProfile?.activate(workspace,ownerApi,loadWorkspace);
 }
 function renderOverview(){
  const s=workspace.store,items=workspace.offerings||[],leads=workspace.leads||[];
@@ -474,6 +475,7 @@ function bindView(){
    panel.scrollIntoView({behavior:"smooth",block:"nearest"});
   });
   window.NexusCalendar?.activate(workspace,ownerApi,loadWorkspace);
+  window.NexusInsights?.activate(workspace);
  }
  if(viewName==="links"&&workspace.store){
   const qrForm=$("qrForm");if(qrForm)qrForm.onsubmit=async event=>{
