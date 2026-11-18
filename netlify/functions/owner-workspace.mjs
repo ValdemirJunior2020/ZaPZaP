@@ -1,4 +1,4 @@
-import{SPECIAL_OWNER,validHandle,validStyle}from"../lib/personal-assistant.mjs";
+import{SPECIAL_OWNER,NEXUS_STYLE,validHandle,validStyle}from"../lib/personal-assistant.mjs";
 import{JUNIOR_OWNER_ID}from"../lib/junior-assistant.mjs";
 import{normalizePersonality,PERSONALITIES}from"../lib/ai-personalities.mjs";
 import{cancelSubscription,deleteAccount}from"../lib/account-lifecycle.mjs";
@@ -61,7 +61,7 @@ export async function handler(event){
    const a=data.assistant||{},name=str(a.name,50),handle=String(a.handle||"").trim().toLowerCase();
    if(name.length<2)return json(400,{error:"Enter an assistant name of at least two characters"});
    if(!validHandle(handle))return json(400,{error:"Public link ID must be 3–32 characters, start with a letter and use letters, numbers or single hyphens"});
-   if(!validStyle(a.personality,user.id))return json(403,{error:"Personality unavailable for this account"});
+   if(!validStyle(a.personality,user.id)||(a.personality===NEXUS_STYLE&&ent.is_complimentary!==true))return json(403,{error:"Personality unavailable for this account"});
    const maxMessages=Number(a.maxMessages),maxMinutes=Number(a.maxMinutes);
    if(!Number.isInteger(maxMessages)||maxMessages<5||maxMessages>30||!Number.isInteger(maxMinutes)||maxMinutes<5||maxMinutes>30)return json(400,{error:"Limits must be 5–30 messages and 5–30 minutes"});
    const current=await db(c,"nx_personal_assistants?owner_id=eq."+encodeURIComponent(user.id)+"&select=id,handle");

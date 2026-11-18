@@ -257,7 +257,10 @@ function renderPersonalAssistant(){
  const style=a.personality||(special?'faithful_encourager':'friendly');
  const handle=a.handle||(special?'junior-ai':'my-assistant');
  const url=saved?location.origin+'/assistant/'+encodeURIComponent(handle):'';
- const personalities=[...personalityOptions,...(special?[{id:'faithful_encourager',icon:'✝',title:'Faithful Encourager',desc:'Christian-inspired kindness and encouragement, only when welcomed.',best:'Exclusive bonus'}]:[])];
+ const personalities=[...personalityOptions,...(special?[
+ {id:'faithful_encourager',icon:'✝',title:'Faithful Encourager',desc:'Christian-inspired kindness and encouragement, only when welcomed.',best:'Exclusive bonus'},
+ {id:'nexus_sales_expert',icon:'✦',title:'NexusSales AI Sales Expert',desc:'Sells NexusSales with ready-to-use product features, accurate pricing and opt-in lead capture.',best:'Exclusive · preloaded'}
+]:[])];
  return '<div class="card personal-builder"><div class="tag">BUILD YOUR PERSONAL ASSISTANT</div><h2>Your AI, your name, your personality</h2>'+
  '<p>Build an assistant on NexusSales. Send a personal link by WhatsApp or anywhere else. Visitors open a mobile-first page and may choose to leave a contact request.</p>'+
  (workspace.personalAssistantSchemaReady===false?'<div class="setup-alert">The personal assistant database migration has not been applied. This builder is in review mode and saving is disabled.</div>':'')+
@@ -327,6 +330,14 @@ function bindView(){
  if(viewName==="personal"&&$("personalBuilderForm")){
   const preview=()=>{$("paPreviewName").textContent=$("paName").value.trim()||"Your assistant";$("paPreviewGreeting").textContent=$("paGreeting").value.trim()||"Hi! I'm "+$("paName").value.trim()+", your AI assistant."};
   $("paName").oninput=preview;$("paGreeting").oninput=preview;
+  document.querySelectorAll('input[name="paStyle"]').forEach(radio=>radio.addEventListener("change",()=>{
+   if(radio.checked&&radio.value==="nexus_sales_expert"){
+    $("paGreeting").value="Hi! I'm your NexusSales AI assistant. I can explain SmartStore, AI conversations, SmartLinks, QR codes, lead capture and pricing. What type of business do you run?";
+    $("paAbout").value="NexusSales AI offers SmartStore pages for products and services, AI business conversations using real business details, SmartLinks and QR sharing, and opt-in customer inquiries. Core is $149/month; Core plus website chatbot is $228/month. A 48-hour trial begins only when the live store and hosted AI are activated.";
+    preview();
+    toast("NexusSales sales content loaded");
+   }
+  }));
   $("personalBuilderForm").onsubmit=async e=>{
    e.preventDefault();const button=$("paSave");button.disabled=true;
    const assistant={name:$("paName").value.trim(),handle:$("paHandle").value.trim().toLowerCase(),personality:document.querySelector('input[name="paStyle"]:checked')?.value,

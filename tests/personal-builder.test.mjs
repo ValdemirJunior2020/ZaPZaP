@@ -2,7 +2,7 @@ import test from"node:test";
 import assert from"node:assert/strict";
 import{readFile}from"node:fs/promises";
 import{PERSONALITIES}from"../netlify/lib/ai-personalities.mjs";
-import{SPECIAL_OWNER,validHandle,validStyle,personalMessages}from"../netlify/lib/personal-assistant.mjs";
+import{SPECIAL_OWNER,NEXUS_STYLE,SALES_GREETING,SALES_ABOUT,validHandle,validStyle,personalMessages}from"../netlify/lib/personal-assistant.mjs";
 
 test("Five standard personalities exist",()=>{
  assert.deepEqual(Object.keys(PERSONALITIES),["professional","friendly","sales","concierge","concise"]);
@@ -53,4 +53,25 @@ test("Migration is deliberately unapplied and service-role only",async()=>{
  assert.match(sql,/revoke all on public.nx_personal_assistants from public,anon,authenticated/);
  assert.match(sql,/personal_assistant_id/);
  assert.match(sql,/nx_claim_personal_message/);
+});
+
+test("NexusSales sales personality is exclusive to the owner",()=>{
+ assert.equal(validStyle(NEXUS_STYLE,SPECIAL_OWNER),true);
+ assert.equal(validStyle(NEXUS_STYLE,"22222222-2222-4222-8222-222222222222"),false);
+ assert.match(SALES_GREETING,/NexusSales AI/);
+ assert.match(SALES_ABOUT,/149\/month/);
+ assert.match(SALES_ABOUT,/228\/month/);
+});
+test("NexusSales sales persona knows the actual product, pricing and consent rules",()=>{
+ const system=personalMessages({owner_id:SPECIAL_OWNER,display_name:"Maya",personality:NEXUS_STYLE}, "What can it do?")[0].content;
+ for(const item of ["SmartStore","SmartLinks","QR codes","149 USD per month","228 USD per month","48-hour trial","separate contact form","Do not invent"])assert.ok(system.includes(item),item);
+ const spoof=personalMessages({owner_id:"22222222-2222-4222-8222-222222222222",display_name:"Maya",personality:NEXUS_STYLE}, "hi")[0].content;
+ assert.doesNotMatch(spoof,/149 USD per month/);
+});
+test("Sales Expert tile preloads copy while backend requires complimentary owner",async()=>{
+ const [ui,api]=await Promise.all([readFile("business.js","utf8"),readFile("netlify/functions/owner-workspace.mjs","utf8")]);
+ assert.match(ui,/nexus_sales_expert/);
+ assert.match(ui,/NexusSales AI Sales Expert/);
+ assert.match(ui,/NexusSales sales content loaded/);
+ assert.match(api,/ent.is_complimentary!==true/);
 });
