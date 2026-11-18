@@ -24,6 +24,33 @@ async function load(){
    $("requestType").querySelector('[value="callback"]').textContent=pt?"Solicitar retorno do vendedor":es?"Solicitar llamada":"Request employee callback";
    $("requestType").querySelector('[value="quote"]').textContent=pt?"Solicitar orçamento":es?"Solicitar presupuesto":"Request quote";
    $("contactSend").textContent=pt?"Enviar solicitação":es?"Enviar solicitud":"Send inquiry";
+
+   if(pt||es){
+    const terms=pt?{
+     productsHeading:"Produtos e serviços",contactHeading:"Solicitar informações ou atendimento",
+     contactDescription:"Envie sua solicitação ao vendedor. Seu histórico de conversa será associado ao pedido quando disponível.",
+     nameLabel:"Seu nome",emailLabel:"E-mail",phoneLabel:"Telefone (ou e-mail)",
+     typeLabel:"Tipo de solicitação",messageLabel:"Como podemos ajudar?",
+     askQuote:"Solicitar orçamento",askAppointment:"Agendar atendimento",
+     chatSend:"Enviar",info:"Informações",appointment:"Solicitar atendimento"
+    }:{
+     productsHeading:"Productos y servicios",contactHeading:"Solicitar información o atención",
+     contactDescription:"Envía tu solicitud al vendedor. El historial del chat podrá asociarse con tu mensaje.",
+     nameLabel:"Tu nombre",emailLabel:"Correo electrónico",phoneLabel:"Teléfono (o correo)",
+     typeLabel:"Tipo de solicitud",messageLabel:"¿Cómo podemos ayudarte?",
+     askQuote:"Solicitar presupuesto",askAppointment:"Solicitar cita",
+     chatSend:"Enviar",info:"Información",appointment:"Solicitar cita"
+    };
+    for(const [id,value]of Object.entries(terms))if($(id))$(id).textContent=value;
+    $("requestType").querySelector('[value="information"]').textContent=terms.info;
+    $("requestType").querySelector('[value="appointment"]').textContent=terms.appointment;
+    const quick=document.querySelectorAll("[data-ask]");
+    if(quick[0])quick[0].textContent=pt?"O que vocês vendem?":"¿Qué ofrecen?";
+    if(quick[1])quick[1].textContent=pt?"Preços":"Precios";
+    if(quick[2])quick[2].textContent=pt?"Horários":"Horarios";
+    $("chatFoot").textContent=pt?"As conversas podem ser salvas quando você enviar uma solicitação. Agendamentos precisam de confirmação.":"Las conversaciones pueden guardarse al enviar una solicitud. Las citas requieren confirmación.";
+   }
+
   }
 
   remaining=store.chatMaxMessages||10;

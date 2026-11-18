@@ -354,7 +354,7 @@ function bindTeam(){
   try{await ownerApi("set_employee_enabled",{id:p.id,enabled:!p.enabled});await loadWorkspace();viewName="team";render()}catch(e){toast(e.message)}
  });
  document.querySelectorAll("[data-delete-team]").forEach(button=>button.onclick=async()=>{
-  const p=(workspace.employees||[]).find(x=>x.id===button.dataset.deleteTeam);if(!p||!confirm("Excluir "+p.name+"? Os leads serão preservados."))return;
+  const p=(workspace.employees||[]).find(x=>x.id===button.dataset.deleteTeam);if(!p||!confirm("Arquivar "+p.name+"? O QR será desativado e o histórico será preservado."))return;
   try{await ownerApi("delete_employee",{id:p.id});await loadWorkspace();viewName="team";render()}catch(e){toast(e.message)}
  });
 }

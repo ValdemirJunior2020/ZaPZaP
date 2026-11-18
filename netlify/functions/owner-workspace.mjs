@@ -26,7 +26,7 @@ export async function handler(event){
    if(store&&personalSchemaReady){try{
     leads=await db(c,"nx_leads?store_id=eq."+encodeURIComponent(store.id)+"&select=id,customer_name,customer_email,customer_phone,interest,status,request_type,preferred_time,source_id,session_id,employee_id,personal_assistant_id,created_at,updated_at&order=created_at.desc&limit=100");
    }catch(error){console.error("Personal lead fields unavailable:",error.message)}}
-   const employees=store?await db(c,"nx_employees?store_id=eq."+encodeURIComponent(store.id)+"&select=id,name,role,whatsapp,language,enabled,qr_source_id,created_at&order=created_at.asc"):[];
+   const employees=store?await db(c,"nx_employees?store_id=eq."+encodeURIComponent(store.id)+"&archived=eq.false&select=id,name,role,whatsapp,language,enabled,qr_source_id,created_at&order=created_at.asc"):[];
    let bot=null;
    if(store){try{const found=await db(c,"nx_bots?store_id=eq."+encodeURIComponent(store.id)+"&select=bot_id,enabled,greeting,primary_color");bot=found?.[0]||null}catch{}}
    return json(200,{email:user.email,profile,store,offerings:items,leads,qrSources,employees,bot,personalAssistant:personalRows[0]||null,personalAssistantSchemaReady:personalSchemaReady,personalAssistantSpecial:user.id===SPECIAL_OWNER&&ent.is_complimentary===true,widgetAllowed:widgetEnabled(c,ent),access:access(ent),aiConfigured:aiReady()});
@@ -70,14 +70,14 @@ export async function handler(event){
    const whatsapp=String(d.whatsapp||"").replace(/\D/g,"");
    if(name.length<2||role.length<2||!/^[1-9][0-9]{9,14}$/.test(whatsapp))return json(400,{error:"Nome, cargo e WhatsApp com DDI são obrigatórios"});
    if(!["pt_BR","en_US","es_ES"].includes(d.language))return json(400,{error:"Idioma inválido"});
-   const employees=await db(c,"nx_employees?store_id=eq."+encodeURIComponent(store.id)+"&select=id,qr_source_id");
+   const employees=await db(c,"nx_employees?store_id=eq."+encodeURIComponent(store.id)+"&select=id,qr_source_id,enabled,archived");
    if(d.id){
-    if(!employees.some(x=>x.id===d.id))return json(404,{error:"Funcionário não pertence a esta loja"});
+    if(!employees.some(x=>x.id===d.id&&!x.archived))return json(404,{error:"Funcionário não pertence a esta loja"});
     const rows=await db(c,"nx_employees?id=eq."+encodeURIComponent(d.id)+"&store_id=eq."+encodeURIComponent(store.id),{method:"PATCH",body:{name,role,whatsapp,language:d.language,updated_at:iso()},prefer:"return=representation"});
     return json(200,{employee:rows[0]});
    }
    const limit=user.id===SPECIAL_OWNER&&ent.is_complimentary===true?20:3;
-   if(employees.length>=limit)return json(402,{error:"Os três funcionários incluídos estão completos. Cobrança de funcionários extras ainda não está ativada."});
+   if(employees.filter(x=>x.enabled&&!x.archived).length>=limit)return json(402,{error:"Os três funcionários incluídos estão completos. Cobrança de funcionários extras ainda não está ativada."});
    const sources=await db(c,"nx_qr_sources?store_id=eq."+encodeURIComponent(store.id)+"&select=id&limit=101");
    if(sources.length>=100)return json(403,{error:"Limite de QR Codes atingido"});
    const qr=await db(c,"nx_qr_sources",{method:"POST",body:{store_id:store.id,label:"Vendedor: "+name,enabled:true},prefer:"return=representation"});
@@ -92,11 +92,16 @@ export async function handler(event){
   if(action==="set_employee_enabled"||action==="delete_employee"){
    const id=str(data.id,40);
    if(!/^[0-9a-f-]{36}$/i.test(id))return json(400,{error:"Funcionário inválido"});
-   const rows=await db(c,"nx_employees?id=eq."+encodeURIComponent(id)+"&store_id=eq."+encodeURIComponent(store.id)+"&select=id,qr_source_id");
-   if(!rows.length)return json(404,{error:"Funcionário não encontrado"});
+   const rows=await db(c,"nx_employees?id=eq."+encodeURIComponent(id)+"&store_id=eq."+encodeURIComponent(store.id)+"&select=id,qr_source_id,archived");
+   if(!rows.length||rows[0].archived)return json(404,{error:"Funcionário não encontrado"});
    const employee=rows[0],enabled=data.enabled===true;
+   if(action==="set_employee_enabled"&&enabled){
+    const active=await db(c,"nx_employees?store_id=eq."+encodeURIComponent(store.id)+"&enabled=eq.true&archived=eq.false&select=id");
+    const limit=user.id===SPECIAL_OWNER&&ent.is_complimentary===true?20:3;
+    if(active.length>=limit)return json(402,{error:"Limite de funcionários ativos. Funcionários extras exigem pagamento confirmado."});
+   }
    if(action==="delete_employee"){
-    await db(c,"nx_employees?id=eq."+encodeURIComponent(id)+"&store_id=eq."+encodeURIComponent(store.id),{method:"DELETE",prefer:"return=minimal"});
+    await db(c,"nx_employees?id=eq."+encodeURIComponent(id)+"&store_id=eq."+encodeURIComponent(store.id),{method:"PATCH",body:{enabled:false,archived:true,updated_at:iso()},prefer:"return=minimal"});
    }else{
     await db(c,"nx_employees?id=eq."+encodeURIComponent(id)+"&store_id=eq."+encodeURIComponent(store.id),{method:"PATCH",body:{enabled,updated_at:iso()},prefer:"return=minimal"});
    }
