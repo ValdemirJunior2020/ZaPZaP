@@ -29,7 +29,7 @@
  '<div class="nx-cal-buttons" role="group" aria-label="Visualização">'+["month","week","day"].map((v,i)=>'<button type="button" data-cal-view="'+v+'" class="'+(state.view===v?"chosen":"")+'">'+["Mês","Semana","Dia"][i]+'</button>').join("")+'</div>'+
  '</div>';
  function grid(w){
-  const events=appointments(w).filter(a=>a.status!=="cancelled");
+  const events=appointments(w);
   let days=[];
   if(state.view==="month"){
    const first=startOfWeek(new Date(state.focus.getFullYear(),state.focus.getMonth(),1));
