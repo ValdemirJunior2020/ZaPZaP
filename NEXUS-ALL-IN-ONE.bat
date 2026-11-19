@@ -4,14 +4,14 @@ title NexusSales AI - Windows Installer, Local Integration and Launcher
 color 0A
 set "ROOT=%~dp0"
 cd /d "%ROOT%"
-set "GITBRANCH=feat/exclusive-nexus-sales-expert-20261118"
+set "GITBRANCH=main"
 set "LOG=%TEMP%\\NEXUS-LOCAL-SETUP.log"
 echo [NexusSales AI] %date% %time% > "%LOG%"
 echo.
 echo ===============================================================
-echo   NEXUSSALES AI - ALL IN ONE / INSTALAR, MERGE LOCAL E INICIAR
+echo   NEXUSSALES AI - UPDATE AND TEST LATEST GITHUB MAIN
 echo ===============================================================
-echo This tool NEVER pushes to GitHub, merges remote main, or deploys.
+echo Never merges old experimental branches or deploys production.
 echo.
 where git >nul 2>&1
 if errorlevel 1 (
@@ -23,40 +23,31 @@ if errorlevel 1 (
 )
 git rev-parse --is-inside-work-tree >nul 2>&1 || (
  echo This BAT must run inside the downloaded ZaPZaP repository.
- echo First run: git clone -b %GITBRANCH% https://github.com/ValdemirJunior2020/ZaPZaP.git
+ echo First run: git clone -b main https://github.com/ValdemirJunior2020/ZaPZaP.git
  goto :error
 )
-for /f "delims=" %%R in ('git config --get remote.origin.url') do set "REMOTE=%%R"
-echo Repository: !REMOTE!
-echo.
-echo Checking your local changes first...
+echo Checking for uncommitted changes...
 for /f "delims=" %%S in ('git status --porcelain') do set "DIRTY=1"
 if defined DIRTY (
- echo.
- echo [STOP] Existing local changes found. Nothing was overwritten.
- echo Run: git status
- echo Commit or stash your changes, then run this BAT again.
- echo If the original calendar has changes, preserve them before merging.
+ echo [STOP] Uncommitted files detected; none were overwritten.
+ echo Run git status and save your work first.
  goto :error
 )
-echo [1/6] Fetching all remote branches...
-git fetch origin --prune >> "%LOG%" 2>&1 || goto :error
-git show-ref --verify --quiet "refs/remotes/origin/%GITBRANCH%"
-if errorlevel 1 (
- echo Required feature branch does not exist on origin.
+echo [1/6] Fetching latest production main...
+git fetch origin main >> "%LOG%" 2>&1 || goto :error
+echo [2/6] Switching to local main...
+git switch main >> "%LOG%" 2>&1 || (
+ echo Local main is not available; creating tracking branch...
+ git switch -c main --track origin/main >> "%LOG%" 2>&1 || goto :error
+)
+echo [3/6] Fast-forwarding main safely without overwriting local commits...
+git merge --ff-only origin/main >> "%LOG%" 2>&1 || (
+ echo [STOP] Local main diverged. No reset or force merge attempted.
+ echo Inspect: git log --oneline --left-right main...origin/main
  goto :error
 )
-echo [2/6] Creating a NEW local integration branch without changing main...
-for /f %%T in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd-HHmmss"') do set "STAMP=%%T"
-set "INTEGRATION=nexus-local-integration-!STAMP!"
-git switch --create "!INTEGRATION!" "origin/%GITBRANCH%" >> "%LOG%" 2>&1 || goto :error
-echo Local integration branch: !INTEGRATION!
-echo.
-echo Would you like to attempt to merge ALL other remote branches locally?
-echo This can include obsolete or experimental code. Nothing is pushed.
-echo Safe mode: conflicts are automatically aborted and reported.
-choice /c YN /n /m "Merge all remote branches into local integration [Y/N]? "
-if errorlevel 2 goto :dependencies
+echo Updated local main successfully.
+:dependencies
 echo [3/6] Merging remote branches only into !INTEGRATION!...
 set /a MERGED=0
 set /a SKIPPED=0
@@ -134,7 +125,7 @@ if not exist ".env.local" (
 call npm run test:ci >> "%LOG%" 2>&1
 if errorlevel 1 (
  echo [STOP] Tests FAILED. View "%LOG%"
- echo No server was started. Your original main and feature branches are intact.
+ echo No server was started. Your local files have not been overwritten.
  goto :error
 )
 echo All local tests passed.
@@ -143,7 +134,7 @@ start "NexusSales AI Server" cmd /k "cd /d ""%ROOT%"" && npm start"
 timeout /t 4 /nobreak >nul
 start "" "http://127.0.0.1:8788/business.html"
 echo.
-echo DONE. Active LOCAL branch: !INTEGRATION!
+echo DONE. Active LOCAL branch: main
 echo Setup log: "%LOG%"
 echo OpenAI remains OFF until you explicitly enable its private env flag.
 echo.
