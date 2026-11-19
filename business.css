@@ -219,3 +219,9 @@
 .nx-cal-request strong,.nx-cal-request small{display:block}.nx-cal-request small{font-size:11px;color:#829589;margin-top:5px}
 @media(max-width:1060px){.nx-cal-layout{grid-template-columns:1fr}.nx-cal-side{position:static}}
 @media(max-width:600px){.nx-cal-summary{grid-template-columns:1fr 1fr}.nx-cal-summary>div:last-child{grid-column:span 2}.nx-cal-panel{padding:10px}.nx-cal-controls{justify-content:center}.nx-lead-tabs{display:flex;width:100%}.nx-lead-tabs button{flex:1}.nx-cal-form-actions button{flex:1}}
+
+/* Personal / business onboarding choices */
+.account-kind-picker{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:18px 0 14px}
+.account-kind-picker button{background:#fff;border:1px solid #cde3d5;color:#234a3d;border-radius:12px;padding:13px 10px;font:inherit;font-weight:750;cursor:pointer;text-align:center}
+.account-kind-picker button[aria-pressed="true"]{border-color:#08a978;background:#e9faf0;box-shadow:0 0 0 1px #08a978 inset;color:#076446}
+@media(max-width:470px){.account-kind-picker{grid-template-columns:1fr}}
