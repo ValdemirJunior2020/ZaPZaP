@@ -290,6 +290,8 @@ function renderPersonalAssistant(){
  '<label>Public information the assistant may share<textarea id="paAbout" rows="3" maxlength="900" placeholder="Share public background only, never private information or passwords">'+htmlEsc(a.about||'')+'</textarea></label>'+
  '<div class="personal-two"><label>Messages per session (5–30)<input id="paMessages" type="number" min="5" max="30" required value="'+Number(a.max_messages||10)+'"></label>'+
  '<label>Session minutes (5–30)<input id="paMinutes" type="number" min="5" max="30" required value="'+Number(a.max_minutes||10)+'"></label></div>'+
+ '<label>Public owner phone (+country code)<input id="paOwnerPhone" type="tel" maxlength="16" placeholder="+15551234567" value="'+htmlEsc(a.public_contact_phone||'')+'"></label>'+
+ '<label class="personal-check"><input type="checkbox" id="paPublishPhone" '+(a.publish_contact_phone===true?'checked':'')+'> Share my phone for direct handoff after the chat limit</label>'+
  '<label class="personal-check"><input type="checkbox" id="paEnabled" '+(a.enabled===true||!saved?'checked':'')+'> Enable assistant for visitors</label>'+
  '<button class="primary" type="submit" id="paSave" '+(workspace.personalAssistantSchemaReady===false?'disabled':'')+'>'+(saved?'Save assistant':'Create assistant')+'</button></form>'+
  '<div class="personal-live-preview"><strong id="paPreviewName">'+htmlEsc(name)+'</strong><p id="paPreviewGreeting">'+htmlEsc(a.greeting||('Hi! I am '+name+', your AI assistant.'))+'</p><small>Profile preview; live replies require your Ollama connection.</small></div>'+
@@ -456,7 +458,7 @@ function bindView(){
   $("personalBuilderForm").onsubmit=async e=>{
    e.preventDefault();const button=$("paSave");button.disabled=true;
    const assistant={name:$("paName").value.trim(),handle:$("paHandle").value.trim().toLowerCase(),personality:document.querySelector('input[name="paStyle"]:checked')?.value,
-    greeting:$("paGreeting").value.trim(),about:$("paAbout").value.trim(),maxMessages:Number($("paMessages").value),maxMinutes:Number($("paMinutes").value),enabled:$("paEnabled").checked};
+    greeting:$("paGreeting").value.trim(),about:$("paAbout").value.trim(),maxMessages:Number($("paMessages").value),maxMinutes:Number($("paMinutes").value),contactPhone:$("paOwnerPhone").value.trim(),publishContactPhone:$("paPublishPhone").checked,enabled:$("paEnabled").checked};
    try{await ownerApi("save_personal_assistant",{assistant});await loadWorkspace();viewName="personal";render();toast("Personal assistant saved")}
    catch(error){toast(error.message);button.disabled=false}
   };
