@@ -9,8 +9,11 @@
  const startOfWeek=d=>{const n=new Date(d.getFullYear(),d.getMonth(),d.getDate());n.setDate(n.getDate()-((n.getDay()+6)%7));return n};
  const addDays=(d,n)=>new Date(d.getFullYear(),d.getMonth(),d.getDate()+n);
  const appointments=w=>(w.appointments||[]).filter(a=>state.employee==="all"||a.employee_id===state.employee);
- const labels={requested:"Solicitado",confirmed:"Confirmado",cancelled:"Cancelado",completed:"Concluído",no_show:"Não compareceu"};
- const fmt=(d,opts)=>new Intl.DateTimeFormat("pt-BR",opts).format(d);
+ const uiLocale=()=>window.NexusLanguage?.getLanguage?.()||"en";
+ const lang=(en,pt,es)=>({en,pt,es})[uiLocale()]||en;
+ const labels={requested:"Requested",confirmed:"Confirmed",cancelled:"Cancelled",completed:"Completed",no_show:"No-show"};
+ const statusLabel=s=>({requested:lang("Requested","Solicitado","Solicitado"),confirmed:lang("Confirmed","Confirmado","Confirmado"),cancelled:lang("Cancelled","Cancelado","Cancelado"),completed:lang("Completed","Concluído","Completado"),no_show:lang("No-show","Não compareceu","No asistió")})[s]||s;
+ const fmt=(d,opts)=>new Intl.DateTimeFormat(({en:"en-US",pt:"pt-BR",es:"es-ES"})[uiLocale()]||"en-US",opts).format(d);
  const labelDate=d=>fmt(d,{day:"2-digit",month:"short",year:"numeric"});
  const hours=d=>fmt(d,{hour:"2-digit",minute:"2-digit"});
  const localDateTime=d=>isoDay(d)+"T"+pad(d.getHours())+":"+pad(d.getMinutes());
@@ -21,12 +24,12 @@
  const pending=w=>(w.leads||[]).filter(l=>l.request_type==="appointment"&&!booked(w).has(l.id));
  const eventHtml=(w,a)=>'<button type="button" class="nx-cal-event nx-status-'+esc(safeStatus(a.status))+'" data-cal-edit="'+esc(a.id)+'">'+
  '<span>'+esc(hours(new Date(a.start_at)))+' · '+esc(nameOf(w,a))+'</span>'+
- '<small>'+esc(staffOf(w,a))+' · '+esc(labels[safeStatus(a.status)])+'</small></button>';
+ '<small>'+esc(staffOf(w,a))+' · '+esc(statusLabel(safeStatus(a.status)))+'</small></button>';
  const controls=()=>'<div class="nx-cal-controls">'+
- '<div class="nx-cal-buttons"><button type="button" data-cal-nav="-1" aria-label="Período anterior">‹</button><button type="button" data-cal-nav="today">Hoje</button><button type="button" data-cal-nav="1" aria-label="Próximo período">›</button></div>'+
+ '<div class="nx-cal-buttons"><button type="button" data-cal-nav="-1" aria-label="'+lang("Previous period","Período anterior","Período anterior")+'">‹</button><button type="button" data-cal-nav="today">'+lang("Today","Hoje","Hoy")+'</button><button type="button" data-cal-nav="1" aria-label="'+lang("Next period","Próximo período","Próximo período")+'">›</button></div>'+
  '<strong id="nxCalPeriod">'+esc(state.view==="month"?fmt(state.focus,{month:"long",year:"numeric"}):state.view==="week"?
  labelDate(startOfWeek(state.focus))+" – "+labelDate(addDays(startOfWeek(state.focus),6)):labelDate(state.focus))+'</strong>'+
- '<div class="nx-cal-buttons" role="group" aria-label="Visualização">'+["month","week","day"].map((v,i)=>'<button type="button" data-cal-view="'+v+'" class="'+(state.view===v?"chosen":"")+'">'+["Mês","Semana","Dia"][i]+'</button>').join("")+'</div>'+
+ '<div class="nx-cal-buttons" role="group" aria-label="Visualização">'+["month","week","day"].map((v,i)=>'<button type="button" data-cal-view="'+v+'" class="'+(state.view===v?"chosen":"")+'">'+({en:["Month","Week","Day"],pt:["Mês","Semana","Dia"],es:["Mes","Semana","Día"]})[uiLocale()][i]+'</button>').join("")+'</div>'+
  '</div>';
  function grid(w){
   const events=appointments(w);
@@ -39,7 +42,7 @@
   }else if(state.view==="week"){
    const first=startOfWeek(state.focus);days=Array.from({length:7},(_,i)=>addDays(first,i));
   }else{days=[new Date(state.focus.getFullYear(),state.focus.getMonth(),state.focus.getDate())]}
-  const week=["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
+  const week=({pt:["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"],es:["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"],en:["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]})[uiLocale()]||["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
   const month=state.view==="month";
   return '<div class="nx-cal-scroll"><div class="nx-cal-grid '+(month?"nx-month":state.view==="week"?"nx-week":"nx-day")+'">'+
  (month||state.view==="week"?week.map(x=>'<div class="nx-cal-weekday">'+x+'</div>').join(""):"")+
