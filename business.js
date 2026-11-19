@@ -200,7 +200,7 @@ function renderStore(){
  '<label class="wide">Business description and policies<textarea id="storeDescription" rows="5" maxlength="2500">'+htmlEsc(s.description||"")+'</textarea></label>'+
  '<label>Business hours<input id="storeHours" maxlength="280" value="'+htmlEsc(s.hours||"")+'" placeholder="Mon–Fri 8AM–5PM"></label>'+
  '<label>Store cover image URL (HTTPS)<input id="storeImage" type="url" value="'+htmlEsc(s.store_image_url||"")+'" placeholder="https://..."></label>'+
- '<div class="wide actions"><button class="primary" type="submit" '+(!isEditable()?'disabled':'')+'>Save business details</button></div></form>'+
+ '<div class="wide actions"><button class="primary" type="submit" '+(!isEditable()?'disabled':'')+'>Save business details</button><p id="storeSaveStatus" role="status" aria-live="polite"></p></div></form>'+
  '<p class="hint">Image URLs are saved in the database; the original image stays with its image host. Changes are reflected on the public store after publication.</p></div>';
 }
 function renderOfferings(){
@@ -580,8 +580,8 @@ async function saveStore(e){
   if(!changed||changed.length<3){toast("SmartLink name must contain at least three letters or numbers");return}
   if(!confirm("Change your SmartLink from /s/"+previous+" to /s/"+changed+"?\\n\\nIMPORTANT: Your old link and QR codes will stop working. Update all places where you shared them. This cannot be automatically undone."))return;
  }
- const button=e.target.querySelector("[type=submit]");button.disabled=true;
- try{const response=await ownerApi("save_store",{store});if(!response.store?.id)throw Error("Save could not be verified. Please retry.");await loadWorkspace({throwOnError:true});if(workspace.store?.slug!==cleanSlug(store.slug)||workspace.store?.name!==store.name)throw Error("Saved details could not be verified. Please retry.");viewName="store";render();toast(previous&&previous!==workspace.store?.slug?"SmartLink updated. Replace your old links and QR codes.":"Business details saved and verified.")}catch(err){toast(err.message)}finally{if(button.isConnected)button.disabled=false}
+ const button=e.target.querySelector("[type=submit]");const status=$("storeSaveStatus");if(status)status.textContent="Saving business details…";button.disabled=true;
+ try{const response=await ownerApi("save_store",{store});if(!response.store?.id)throw Error("Save could not be verified. Please retry.");await loadWorkspace({throwOnError:true});if(workspace.store?.slug!==cleanSlug(store.slug)||workspace.store?.name!==store.name)throw Error("Saved details could not be verified. Please retry.");viewName="store";render();const message=previous&&previous!==workspace.store?.slug?"SmartLink updated. Replace your old links and QR codes.":"Business details saved and verified.";if($("storeSaveStatus"))$("storeSaveStatus").textContent=message;toast(message)}catch(err){if(status?.isConnected)status.textContent=err.message;toast(err.message)}finally{if(button.isConnected)button.disabled=false}
 }
 function editOffering(id){
  const p=(workspace.offerings||[]).find(x=>x.id===id)||{};
