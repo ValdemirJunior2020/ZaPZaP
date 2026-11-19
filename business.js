@@ -131,7 +131,7 @@ function render(){
  personal:["PERSONAL AI BUILDER","Build Your Personal Assistant","Customize your named AI, personality, and personal contact link."],
  logs:["AI DIAGNOSTICS","AI Error Logs","Recent chat failures, stages, and diagnostic reference IDs."],
  brazil:["SUPER ADMIN","Brazil & Global Plans","Proposed team and personal-assistant packages; billing is not enabled."],
- billing:["48-HOUR TRIAL & BILLING","Your subscription","Base US$500/month, website widget +US$79/month."]};
+ billing:["48-HOUR TRIAL & BILLING","Your subscription","Base US$499/month, website widget +US$79/month."]};
  const t=titles[viewName]||titles.overview;
  text("workspaceEyebrow",t[0]);text("workspaceHeading",t[1]);text("workspaceSubtitle",t[2]);text("trialBadge",statusText());
  document.querySelectorAll("[data-view]").forEach(b=>{b.classList.toggle("active",b.dataset.view===viewName)});
@@ -261,7 +261,7 @@ function renderLinks(){
  '<img class="qr" alt="Store SmartLink QR code" loading="lazy" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&amp;data='+encodeURIComponent(url)+'">'+
  '<div class="actions"><button id="publishStore" class="primary" '+(!workspace.aiConfigured||!isEditable()||!(workspace.offerings||[]).length||s.published?'disabled':'')+'>'+(workspace.access.reason==="COMPLIMENTARY"?"Publish store — free forever":"Publish store & start trial")+'</button>'+
  (s.published?'<button id="pauseStore" class="button">Unpublish store</button>':'')+'</div></div>'+
- '<div class="card"><h2>Website widget • +$79/month</h2><p>Embed your AI salesperson on an existing website. The 48-hour trial includes widget access; after the trial, an active $228/month bundled subscription is required.</p>'+(
+ '<div class="card"><h2>Website widget • +$79/month</h2><p>Embed your AI salesperson on an existing website. The 48-hour trial includes widget access; the new business checkout must be verified before charges can begin.</p>'+(
  workspace.bot?.enabled?'<label>Install script (add before the closing body tag)<textarea id="widgetCode" rows="3" readonly>'+htmlEsc('<script src="'+location.origin+'/widget.js" data-bot-id="'+workspace.bot.bot_id+'" async></'+'script>')+'</textarea></label><div class="actions"><button class="button" id="copyWidgetCode">Copy widget code</button><button class="button danger" id="disableWidget">Disable widget</button></div>':
  '<div class="actions"><button class="button" id="enableWidget" '+(!workspace.widgetAllowed||!s.published?'disabled':'')+'>Generate my website widget</button></div>'
  )+(!workspace.widgetAllowed?'<p class="hint">The website widget requires an active bundled subscription after the trial.</p>':'')+'</div>';
@@ -303,25 +303,25 @@ function renderMarketPlans(){
  '<p>This is your private pricing design. No billing, subscriptions or team accounts are activated.</p>'+
  '<label for="marketCountry">Region</label><select id="marketCountry"><option value="BR">Brazil · Português (BR)</option><option value="GLOBAL">United States & other countries</option></select>'+
  '<label for="marketEmployees">Team size (3 included)</label><input id="marketEmployees" type="number" min="0" max="1000" value="3">'+
- '<div class="view-grid"><div class="card"><small>Business base</small><h2>US$ 500/month</h2><p>Includes first 3 employees, each with a separate QR code and WhatsApp contact (planned).</p></div>'+
- '<div class="card"><small>Additional employee</small><h2 id="marketExtraPrice">US$ 30/month</h2><p id="marketCountryLabel">Worldwide · same price</p></div>'+
- '<div class="card"><small>Proposed business total</small><h2 id="marketTotal">US$ 500/month</h2><p id="marketBreakdown">3 included; 0 additional.</p></div></div>'+
+ '<div class="view-grid"><div class="card"><small>Business base</small><h2>US$ 499/month</h2><p>Includes first 3 employees, each with a separate QR code and WhatsApp contact (planned).</p></div>'+
+ '<div class="card"><small>Additional employee</small><h2 id="marketExtraPrice">US$ 30/month</h2><p id="marketCountryLabel">Brazil · $30, outside Brazil · $50</p></div>'+
+ '<div class="card"><small>Proposed business total</small><h2 id="marketTotal">US$ 499/month</h2><p id="marketBreakdown">3 included; 0 additional.</p></div></div>'+
  '<div class="view-grid"><div class="card"><h3>Personal assistant</h3><strong>US$ 30/month</strong><p>Individual plan; business employment not required.</p></div>'+
  '<div class="card"><h3>Just for Fun</h3><strong>US$ 15/month</strong><p>Five personalities. Personal use, no business required.</p></div></div>'+
- '<p class="hint">Product roadmap: employer invites employees, each employee selects language and WhatsApp, has an individual QR code, and leads belong to the company but are assigned to the employee. These controls and payments are not live yet.</p></div>';
+ '<label><input type="checkbox" id="marketWidget"> Add website chatbot (+$79/month)</label><p class="hint">Product roadmap: employer invites employees, each employee selects language and WhatsApp, has an individual QR code, and leads belong to the company but are assigned to the employee. These controls and payments are not live yet.</p></div>';
 }
 function updateMarketPreview(){
  const c=$("marketCountry"),e=$("marketEmployees");if(!c||!e)return;
  const count=Math.max(0,Math.min(1000,Math.floor(Number(e.value)||0)));
- const extra=Math.max(0,count-3),per=30,total=500+extra*per;
+ const extra=Math.max(0,count-3),per=c.value==='BR'?30:50,widget=Boolean($("marketWidget")?.checked),total=499+extra*per+(widget?79:0);
  $("marketExtraPrice").textContent="US$ "+per+"/month";
- $("marketCountryLabel").textContent="Worldwide · same price";
+ $("marketCountryLabel").textContent="Brazil · $30, outside Brazil · $50";
  $("marketTotal").textContent="US$ "+total.toLocaleString("en-US")+"/month";
- $("marketBreakdown").textContent="3 included; "+extra+" additional.";
+ $("marketBreakdown").textContent="3 included; "+extra+" additional; website widget "+(widget?"+$79":"not selected")+".";
 }
 
 function renderTeam(){
- if(workspace.teamAllowed!==true)return '<div class="card"><h2>Equipe de vendas</h2><p>O plano Empresarial começa em US$ 500/mês, incluindo 3 funcionários. Este recurso ainda não faz parte do seu plano atual. A cobrança de novas assinaturas não está ativada.</p></div>';
+ if(workspace.teamAllowed!==true)return '<div class="card"><h2>Equipe de vendas</h2><p>O plano Empresarial começa em US$ 499/mês, incluindo 3 funcionários. Este recurso ainda não faz parte do seu plano atual. A cobrança de novas assinaturas não está ativada.</p></div>';
  const people=workspace.employees||[],sources=workspace.qrSources||[];
  const cards=people.map(p=>{
   const qr=sources.find(s=>s.id===p.qr_source_id);
@@ -435,12 +435,12 @@ function renderChatSettings(){
 }
 function renderBilling(){
  const a=workspace.access||{},url="/account.html";
- const status=a.reason==="COMPLIMENTARY"?"Lifetime complimentary account — no expiration or subscription payment required.":a.reason==="TRIAL"?"Your trial ends "+new Date(a.trialEndsAt).toLocaleString():a.reason==="PAID"?"Your account is subscribed.":a.reason==="TRIAL_EXPIRED"?"The trial has ended.":"The 48-hour trial has not started. It begins when your live AI store is published.";
- return '<div class="card"><h2>'+htmlEsc(statusText())+'</h2><p>'+htmlEsc(status)+'</p><div class="view-grid"><div><strong class="metric">$149<small>/mo</small></strong><p>Core store, AI salesperson, SmartLinks and leads.</p></div><div><strong class="metric">$228<small>/mo</small></strong><p>Core + embedded website widget ($79 add-on).</p></div></div><div class="actions">'+(a.reason==="COMPLIMENTARY"?'<span class="status-badge">✓ No payment required</span>':'<a class="primary" href="'+url+'">Manage PayPal subscription</a>')+'</div>'+(a.reason==="COMPLIMENTARY"?'<p class="hint">All NexusSales features are included with your complimentary access.</p>':'<p class="hint">Manage your subscription, security and account deletion in Account Settings.</p>')+'</div>';
+ const status=a.reason==="COMPLIMENTARY"?"Lifetime complimentary account — no payment required.":a.reason==="PAID"?"Existing subscription active.":"Business subscriptions are being configured; live checkout is not enabled.";
+ return '<div class="card"><h2>'+htmlEsc(statusText())+'</h2><p>'+htmlEsc(status)+'</p><div class="view-grid"><div><strong class="metric">$499<small>/mo</small></strong><p>Business base with 3 employees. Extra employees: $30 each/month in Brazil or $50 elsewhere.</p></div><div><strong class="metric">+$79<small>/mo</small></strong><p>Optional website chatbot. Prices are estimates until checkout is verified.</p></div></div><p class="hint">The old $149/$228 PayPal plans are retired for new purchases.</p><div class="actions">'+(a.reason==="COMPLIMENTARY"?'<span class="status-badge">✓ No payment required</span>':'<a class="primary" href="'+url+'">Account status</a>')+'</div></div>';
 }
 function bindView(){
  if(viewName==="team"&&workspace?.teamAllowed===true)bindTeam();
- if(viewName==="brazil"&&workspace?.personalAssistantSpecial===true){$("marketCountry").onchange=updateMarketPreview;$("marketEmployees").oninput=updateMarketPreview;updateMarketPreview()}
+ if(viewName==="brazil"&&workspace?.personalAssistantSpecial===true){$("marketCountry").onchange=updateMarketPreview;$("marketEmployees").oninput=updateMarketPreview;$("marketWidget").onchange=updateMarketPreview;updateMarketPreview()}
  if(viewName==="logs"&&workspace?.personalAssistantSpecial===true){$("refreshAiLogs").onclick=fetchAiLogs;fetchAiLogs()}
  if(viewName==="personal"&&$("personalBuilderForm")){
   const preview=()=>{$("paPreviewName").textContent=$("paName").value.trim()||"Your assistant";$("paPreviewGreeting").textContent=$("paGreeting").value.trim()||"Hi! I'm "+$("paName").value.trim()+", your AI assistant."};
@@ -448,7 +448,7 @@ function bindView(){
   document.querySelectorAll('input[name="paStyle"]').forEach(radio=>radio.addEventListener("change",()=>{
    if(radio.checked&&radio.value==="nexus_sales_expert"){
     $("paGreeting").value="Hi! I'm your NexusSales AI assistant. I can explain SmartStore, AI conversations, SmartLinks, QR codes, lead capture and pricing. What type of business do you run?";
-    $("paAbout").value="NexusSales AI offers SmartStore pages for products and services, AI business conversations using real business details, SmartLinks and QR sharing, and opt-in customer inquiries. Core is $149/month; Core plus website chatbot is $228/month. A 48-hour trial begins only when the live store and hosted AI are activated.";
+    $("paAbout").value="NexusSales AI offers SmartStore pages for products and services, AI business conversations using real business details, SmartLinks and QR sharing, and opt-in customer inquiries. Business base: $499/month, including 3 employees; additional employees $30/month in Brazil or $50/month elsewhere; website widget +$79/month. A 48-hour trial begins only when the live store and hosted AI are activated.";
     preview();
     toast("NexusSales sales content loaded");
    }
