@@ -1,4 +1,5 @@
 import{validHandle}from"../lib/personal-assistant.mjs";
+import{checkSlot}from"../lib/nexus-slot-availability.mjs";
 import{entitlement,access}from"../lib/tenant.mjs";
 import{JUNIOR_OWNER_ID,JUNIOR_EXPERIENCE}from"../lib/junior-assistant.mjs";
 import{allow,clientIp}from"../lib/abuse.mjs";
@@ -7,6 +8,7 @@ const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]
 export async function handler(event){
  if(event.httpMethod!=="POST")return json(405,{error:"Method not allowed"});
  if(!postOrigin(event))return json(403,{error:"Origin rejected"});
+ if(event.body&&event.body.includes("check_slot")){try{const p=parse(event,2000);if(p.action==="check_slot")return checkSlot(event)}catch(e){return json(400,{error:"Invalid slot request"})}}
  try{
   const p=parse(event,6000);
   if(p.honeypot)return json(200,{accepted:true});
@@ -50,8 +52,9 @@ export async function handler(event){
    const sources=await db(c,"nx_qr_sources?code=eq."+encodeURIComponent(str(p.sourceCode,80))+"&store_id=eq."+encodeURIComponent(found.store.id)+"&enabled=eq.true&select=id");
    sourceId=sources?.[0]?.id||null;
   }
+  const employee=sourceId?(await db(c,"nx_employees?store_id=eq."+encodeURIComponent(found.store.id)+"&qr_source_id=eq."+encodeURIComponent(sourceId)+"&enabled=eq.true&select=id"))?.[0]:null;
   const rows=await db(c,"nx_leads",{method:"POST",body:{
-   store_id:found.store.id,session_id:sessionId,source_id:sourceId,...(personalMode?{personal_assistant_id:assistant.id}:{}),
+   store_id:found.store.id,session_id:sessionId,source_id:sourceId,employee_id:employee?.id||null,...(personalMode?{personal_assistant_id:assistant.id}:{}),
    customer_name:name,customer_email:email,customer_phone:phone,interest:personalMode?"Personal AI ("+assistant.display_name+"): "+interest:juniorMode?"Hope personal assistant: "+interest:interest,status:kind==="appointment"?"Appointment Requested":"New",
    request_type:kind,preferred_time:kind==="appointment"?preferred:""
   },prefer:"return=representation"});

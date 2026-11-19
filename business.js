@@ -68,8 +68,17 @@ async function loadWorkspace(){
   workspace=await ownerApi();
   if(!workspace)throw Error("Unable to load account");
   setVisible(true);
+  const currentLanguage=workspace.businessProfile?.interface_language||"en";
+  window.NexusLanguage?.restoreLanguage(currentLanguage);
+  window.NexusLanguage?.bindSave(async language=>{
+   await ownerApi("set_interface_language",{language});
+   if(workspace.businessProfile)workspace.businessProfile.interface_language=language;
+   else workspace.businessProfile={interface_language:language};
+  });
+  window.NexusFlags?.render();
   text("accountLabel",workspace.email||"Account");
   text("sideName",workspace.store?.name||workspace.profile?.business_name||"Your business");
+  document.querySelectorAll("[data-owner-only]").forEach(el=>el.hidden=workspace?.personalAssistantSpecial!==true);
   render();
  }catch(e){toast(e.message);if(/sign in|session|invalid login|unauthorized/i.test(e.message)){saveSession(null);setVisible(false)}else{setVisible(true);$("viewContent").innerHTML='<div class="alert">Business data is temporarily unavailable. Your account has not been logged out. Refresh the page to retry.</div>'}}
 }
@@ -116,15 +125,22 @@ function render(){
  offerings:["PRODUCTS & SERVICES","What you sell","Enter your actual offerings, prices and details."],
  testbot:["TEST MY AI","Talk to your own AI salesperson","Preview real answers from your business catalog before publishing."],
  links:["TRACKED QR CODES","Turn foot traffic into leads","Create trackable QR codes for storefronts, vehicles, services and products."],
+ widget:["WEBSITE CHATBOT","Add Chatbot to Your Website","One script to add your AI salesperson to your own website."],
  leads:["LEAD CENTER","Leads & conversations","Every inquiry, appointment request and captured conversation."],
+ team:["TEAM MANAGEMENT","Equipe de vendedores","QR Code, WhatsApp e idioma de cada funcionário."],
  personal:["PERSONAL AI BUILDER","Build Your Personal Assistant","Customize your named AI, personality, and personal contact link."],
- billing:["48-HOUR TRIAL & BILLING","Your subscription","Core $149/month, website widget +$79/month."]};
+ logs:["AI DIAGNOSTICS","AI Error Logs","Recent chat failures, stages, and diagnostic reference IDs."],
+ brazil:["SUPER ADMIN","Brazil & Global Plans","Proposed team and personal-assistant packages; billing is not enabled."],
+ billing:["48-HOUR TRIAL & BILLING","Your subscription","Base US$499/month, website widget +US$79/month."]};
  const t=titles[viewName]||titles.overview;
  text("workspaceEyebrow",t[0]);text("workspaceHeading",t[1]);text("workspaceSubtitle",t[2]);text("trialBadge",statusText());
  document.querySelectorAll("[data-view]").forEach(b=>{b.classList.toggle("active",b.dataset.view===viewName)});
- const views={overview:renderOverview,store:renderStore,offerings:renderOfferings,testbot:renderTestBot,links:renderLinks,leads:renderLeads,personal:renderPersonalAssistant,billing:renderBilling};
+ const views={overview:renderOverview,store:renderStore,offerings:renderOfferings,testbot:renderTestBot,links:renderLinks,leads:renderLeads,widget:()=>"",team:renderTeam,personal:renderPersonalAssistant,logs:renderErrorLogs,brazil:renderMarketPlans,billing:renderBilling};
  $("viewContent").innerHTML=(views[viewName]||views.overview)();
  bindView();
+ if(viewName==="widget")window.NexusWidgetGuide?.render(workspace,ownerApi,loadWorkspace);
+ if(viewName==="store")window.NexusBusinessProfile?.activate(workspace,ownerApi,loadWorkspace);
+ window.NexusLanguage?.apply();
 }
 function renderOverview(){
  const s=workspace.store,items=workspace.offerings||[],leads=workspace.leads||[];
@@ -175,20 +191,21 @@ function smartUrl(){return workspace?.store?.slug?location.origin+"/s/"+workspac
 
 function renderTestBot(){
  const st=workspace?.store,items=workspace?.offerings||[];
- const ready=Boolean(st&&items.length&&isEditable());
- const intro=st?("Hi! I am "+(st.agent_name||"your business assistant")+". Ask me about "+st.name+"'s products and services."):"Save your business profile first to begin.";
+ const ready=Boolean(st&&isEditable());
+ const sellingNexus=items.some(p=>String(p.name||"").trim().toLowerCase()==="nexus ai");
+ const intro=st?(sellingNexus?"Hi! I am "+(st.agent_name||"your business assistant")+". Would you like an AI for your business, a personal assistant, or would you like me to tell you more about it? Explore the platform: https://za-p-za-p.vercel.app/":"Hi! I am "+(st.agent_name||"your business assistant")+". Ask me about "+st.name+"'s products and services."):"Save your business profile first to begin.";
  const style=personalityOptions.find(p=>p.id===(st?.ai_personality||"professional"))||personalityOptions[0];
  return '<div class="testbot-wrap"><div class="testbot-setup card"><span class="tag">PRIVATE PREVIEW • ONLY YOU</span><h2>Your own AI. Your real business information.</h2><p>This is a private testing space. Your assistant uses the products, prices, description and hours you saved. Test it before publishing.</p>'+
  '<div class="testbot-status">'+(st?'✓ Business saved':'○ Save business details')+'</div>'+
- '<div class="testbot-status">'+(items.length?'✓ '+items.length+' product(s) or service(s) loaded':'○ Add at least one offering')+'</div>'+
+ '<div class="testbot-status">'+(items.length?'✓ '+items.length+' product(s) or service(s) loaded':'○ No offerings yet — you can still test your saved business description')+'</div>'+
  '<div class="testbot-status">✓ Testing never publishes the store or starts your 48-hour trial.</div>'+ 
  '<div class="testbot-status">✦ Personality: <strong>'+htmlEsc(style.title)+'</strong> — '+htmlEsc(style.desc)+'</div>'+
- '<p class="testbot-help">20 private test questions per day. Answers come directly from Ollama Qwen3, not example responses.</p>'+
+ '<p class="testbot-help">20 private test questions per day. Replies use your configured AI provider, never example responses.</p>'+
  '<div class="actions"><button type="button" class="button" data-jump="store">Business details</button><button type="button" class="button" data-jump="offerings">Edit offerings</button><button type="button" class="button" data-jump="links">Publish when ready</button></div></div>'+
  '<div class="testbot-chat card"><div class="testbot-chat-head"><div class="testbot-ai-icon">✦</div><div><strong>'+htmlEsc(st?.agent_name||"My AI Assistant")+'</strong><small>'+htmlEsc(st?.name||"Your business")+' • PRIVATE TEST CHAT</small></div></div>'+
  '<div class="testbot-messages" id="testBotMessages" role="log" aria-live="polite"><div class="testbot-bubble assistant">'+htmlEsc(intro)+'</div></div>'+
  '<div class="testbot-controls"><div class="testbot-hints">Try: “What do you offer?” · “How much does it cost?” · “When are you open?”</div>'+
- '<form id="testBotForm" class="testbot-form"><label class="sr-only" for="testBotQuestion">Ask your own AI a question</label><input id="testBotQuestion" maxlength="500" autocomplete="off" placeholder="'+(ready?"Ask about your products or services…":"Add your business and an offering first")+'" '+(!ready?'disabled':'')+' required><button type="submit" class="primary" id="testBotSend" '+(!ready?'disabled':'')+'>Send ↗</button></form><p id="testBotStatus" role="status" class="testbot-meta">'+(ready?"Ready to test your saved catalog. Your trial remains untouched.":"Complete your business details and offerings to enable testing.")+'</p></div></div></div>';
+ '<form id="testBotForm" class="testbot-form"><label class="sr-only" for="testBotQuestion">Ask your own AI a question</label><input id="testBotQuestion" maxlength="500" autocomplete="off" placeholder="'+(ready?"Ask about your products or services…":"Save your business details first")+'" '+(!ready?'disabled':'')+' required><button type="submit" class="primary" id="testBotSend" '+(!ready?'disabled':'')+'>Send ↗</button></form><p id="testBotStatus" role="status" class="testbot-meta">'+(ready?"Ready to test your saved catalog. Your trial remains untouched.":"Save your business details to enable testing. Product prices cannot be provided until you add offerings.")+'</p></div></div></div>';
 }
 let testBotHistory=[];
 function testBotMessage(role,content){
@@ -204,7 +221,7 @@ async function submitTestBot(event,retry=true){
  button.disabled=true;field.disabled=true;
  testBotMessage("user",message);field.value="";
  const pending=testBotMessage("assistant","Asking your real AI…");
- text("testBotStatus","Connecting securely to Ollama Qwen3…");
+ text("testBotStatus","Connecting securely to your AI…");
  try{
   const r=await fetch("/.netlify/functions/owner-test-chat",{method:"POST",headers:header,body:JSON.stringify({message,history:testBotHistory.slice(-6)}),cache:"no-store",signal:AbortSignal.timeout(27000)});
   const data=await r.json().catch(()=>({}));
@@ -214,17 +231,17 @@ async function submitTestBot(event,retry=true){
    const again=await fetch("/.netlify/functions/owner-test-chat",{method:"POST",headers:newHeader,body:JSON.stringify({message,history:testBotHistory.slice(-6)}),cache:"no-store",signal:AbortSignal.timeout(27000)});
    const againData=await again.json().catch(()=>({}));
    if(!again.ok)throw Error((againData.error||"AI testing failed")+(againData.code?" ["+againData.code+"]":""));
-   if(!againData.reply||againData.source!=="ollama")throw Error("AI did not return a verified response");
+   if(!againData.reply||!["ollama","ollama-lite","openai"].includes(againData.source))throw Error("AI did not return a verified response");
    pending.textContent=againData.reply;
    testBotHistory.push({role:"user",content:message},{role:"assistant",content:againData.reply});
   }else{
    if(!r.ok)throw Error((data.error||"AI testing failed")+(data.code?" ["+data.code+"]":""));
-   if(!data.reply||data.source!=="ollama")throw Error("AI did not return a verified response");
+   if(!data.reply||!["ollama","ollama-lite","openai"].includes(data.source))throw Error("AI did not return a verified response");
    pending.textContent=data.reply;
    testBotHistory.push({role:"user",content:message},{role:"assistant",content:data.reply});
   }
   testBotHistory=testBotHistory.slice(-6);
-  text("testBotStatus",workspace?.access?.reason==="COMPLIMENTARY"?"Answered by Qwen3. Your complimentary access stays active.":"Answered by Ollama Qwen3. Your 48-hour trial has not started.");
+  text("testBotStatus",workspace?.access?.reason==="COMPLIMENTARY"?"AI answered your question. Your complimentary access stays active.":"AI answered your question. Your 48-hour trial has not started.");
  }catch(error){
   pending.textContent=error?.name==="TimeoutError"?"Your AI did not answer in time. Try again.":error.message;
   text("testBotStatus","No fake answers were used. Your trial remains unchanged.");
@@ -244,7 +261,7 @@ function renderLinks(){
  '<img class="qr" alt="Store SmartLink QR code" loading="lazy" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&amp;data='+encodeURIComponent(url)+'">'+
  '<div class="actions"><button id="publishStore" class="primary" '+(!workspace.aiConfigured||!isEditable()||!(workspace.offerings||[]).length||s.published?'disabled':'')+'>'+(workspace.access.reason==="COMPLIMENTARY"?"Publish store — free forever":"Publish store & start trial")+'</button>'+
  (s.published?'<button id="pauseStore" class="button">Unpublish store</button>':'')+'</div></div>'+
- '<div class="card"><h2>Website widget • +$79/month</h2><p>Embed your AI salesperson on an existing website. The 48-hour trial includes widget access; after the trial, an active $228/month bundled subscription is required.</p>'+(
+ '<div class="card"><h2>Website widget • +$79/month</h2><p>Embed your AI salesperson on an existing website. The 48-hour trial includes widget access; the new business checkout must be verified before charges can begin.</p>'+(
  workspace.bot?.enabled?'<label>Install script (add before the closing body tag)<textarea id="widgetCode" rows="3" readonly>'+htmlEsc('<script src="'+location.origin+'/widget.js" data-bot-id="'+workspace.bot.bot_id+'" async></'+'script>')+'</textarea></label><div class="actions"><button class="button" id="copyWidgetCode">Copy widget code</button><button class="button danger" id="disableWidget">Disable widget</button></div>':
  '<div class="actions"><button class="button" id="enableWidget" '+(!workspace.widgetAllowed||!s.published?'disabled':'')+'>Generate my website widget</button></div>'
  )+(!workspace.widgetAllowed?'<p class="hint">The website widget requires an active bundled subscription after the trial.</p>':'')+'</div>';
@@ -257,7 +274,10 @@ function renderPersonalAssistant(){
  const style=a.personality||(special?'faithful_encourager':'friendly');
  const handle=a.handle||(special?'junior-ai':'my-assistant');
  const url=saved?location.origin+'/assistant/'+encodeURIComponent(handle):'';
- const personalities=[...personalityOptions,...(special?[{id:'faithful_encourager',icon:'✝',title:'Faithful Encourager',desc:'Christian-inspired kindness and encouragement, only when welcomed.',best:'Exclusive bonus'}]:[])];
+ const personalities=[...personalityOptions,...(special?[
+ {id:'faithful_encourager',icon:'✝',title:'Faithful Encourager',desc:'Christian-inspired kindness and encouragement, only when welcomed.',best:'Exclusive bonus'},
+ {id:'nexus_sales_expert',icon:'✦',title:'NexusSales AI Sales Expert',desc:'Sells NexusSales with ready-to-use product features, accurate pricing and opt-in lead capture.',best:'Exclusive · preloaded'}
+]:[])];
  return '<div class="card personal-builder"><div class="tag">BUILD YOUR PERSONAL ASSISTANT</div><h2>Your AI, your name, your personality</h2>'+
  '<p>Build an assistant on NexusSales. Send a personal link by WhatsApp or anywhere else. Visitors open a mobile-first page and may choose to leave a contact request.</p>'+
  (workspace.personalAssistantSchemaReady===false?'<div class="setup-alert">The personal assistant database migration has not been applied. This builder is in review mode and saving is disabled.</div>':'')+
@@ -270,11 +290,108 @@ function renderPersonalAssistant(){
  '<label>Public information the assistant may share<textarea id="paAbout" rows="3" maxlength="900" placeholder="Share public background only, never private information or passwords">'+htmlEsc(a.about||'')+'</textarea></label>'+
  '<div class="personal-two"><label>Messages per session (5–30)<input id="paMessages" type="number" min="5" max="30" required value="'+Number(a.max_messages||10)+'"></label>'+
  '<label>Session minutes (5–30)<input id="paMinutes" type="number" min="5" max="30" required value="'+Number(a.max_minutes||10)+'"></label></div>'+
+ '<label>Public owner phone (+country code)<input id="paOwnerPhone" type="tel" maxlength="16" placeholder="+15551234567" value="'+htmlEsc(a.public_contact_phone||'')+'"></label>'+
+ '<label class="personal-check"><input type="checkbox" id="paPublishPhone" '+(a.publish_contact_phone===true?'checked':'')+'> Share my phone for direct handoff after the chat limit</label>'+
  '<label class="personal-check"><input type="checkbox" id="paEnabled" '+(a.enabled===true||!saved?'checked':'')+'> Enable assistant for visitors</label>'+
  '<button class="primary" type="submit" id="paSave" '+(workspace.personalAssistantSchemaReady===false?'disabled':'')+'>'+(saved?'Save assistant':'Create assistant')+'</button></form>'+
  '<div class="personal-live-preview"><strong id="paPreviewName">'+htmlEsc(name)+'</strong><p id="paPreviewGreeting">'+htmlEsc(a.greeting||('Hi! I am '+name+', your AI assistant.'))+'</p><small>Profile preview; live replies require your Ollama connection.</small></div>'+
  (saved?'<div class="personal-share"><h3>Share your personal AI</h3><div class="link-input"><input id="personalLink" readonly value="'+htmlEsc(url)+'"><button id="copyPersonalLink" class="button" type="button">Copy</button></div><div class="link-actions"><a class="button" href="'+htmlEsc(url)+'" target="_blank" rel="noopener">Open assistant</a><a class="button" href="https://wa.me/?text='+encodeURIComponent('Meet '+name+', my AI assistant: '+url)+'" target="_blank" rel="noopener">Share by WhatsApp link</a></div></div>':'')+
  '<p class="hint">Faithful Encourager is exclusive to your lifetime complimentary account. The assistant always identifies itself as AI. Opt-in leads appear in your existing Leads & Chats dashboard.</p></div>';
+}
+// Super-admin preview only. Pricing is not wired to PayPal or subscriptions.
+function renderMarketPlans(){
+ if(workspace?.personalAssistantSpecial!==true)return '<div class="card">Super Admin only.</div>';
+ return '<div class="card"><div class="tag">SUPER ADMIN · DRAFT PRICING</div><h2>Worldwide Plans · Brazil</h2>'+
+ '<p>This is your private pricing design. No billing, subscriptions or team accounts are activated.</p>'+
+ '<label for="marketCountry">Region</label><select id="marketCountry"><option value="BR">Brazil · Português (BR)</option><option value="GLOBAL">United States & other countries</option></select>'+
+ '<label for="marketEmployees">Team size (3 included)</label><input id="marketEmployees" type="number" min="0" max="1000" value="3">'+
+ '<div class="view-grid"><div class="card"><small>Business base</small><h2>US$ 499/month</h2><p>Includes first 3 employees, each with a separate QR code and WhatsApp contact (planned).</p></div>'+
+ '<div class="card"><small>Additional employee</small><h2 id="marketExtraPrice">US$ 30/month</h2><p id="marketCountryLabel">Brazil · $30, outside Brazil · $50</p></div>'+
+ '<div class="card"><small>Proposed business total</small><h2 id="marketTotal">US$ 499/month</h2><p id="marketBreakdown">3 included; 0 additional.</p></div></div>'+
+ '<div class="view-grid"><div class="card"><h3>Personal assistant</h3><strong>US$ 30/month</strong><p>Individual plan; business employment not required.</p></div>'+
+ '<div class="card"><h3>Just for Fun</h3><strong>US$ 15/month</strong><p>Five personalities. Personal use, no business required.</p></div></div>'+
+ '<label><input type="checkbox" id="marketWidget"> Add website chatbot (+$79/month)</label><p class="hint">Product roadmap: employer invites employees, each employee selects language and WhatsApp, has an individual QR code, and leads belong to the company but are assigned to the employee. These controls and payments are not live yet.</p></div>';
+}
+function updateMarketPreview(){
+ const c=$("marketCountry"),e=$("marketEmployees");if(!c||!e)return;
+ const count=Math.max(0,Math.min(1000,Math.floor(Number(e.value)||0)));
+ const extra=Math.max(0,count-3),per=c.value==='BR'?30:50,widget=Boolean($("marketWidget")?.checked),total=499+extra*per+(widget?79:0);
+ $("marketExtraPrice").textContent="US$ "+per+"/month";
+ $("marketCountryLabel").textContent="Brazil · $30, outside Brazil · $50";
+ $("marketTotal").textContent="US$ "+total.toLocaleString("en-US")+"/month";
+ $("marketBreakdown").textContent="3 included; "+extra+" additional; website widget "+(widget?"+$79":"not selected")+".";
+}
+
+function renderTeam(){
+ if(workspace.teamAllowed!==true)return '<div class="card"><h2>Equipe de vendas</h2><p>O plano Empresarial começa em US$ 499/mês, incluindo 3 funcionários. Este recurso ainda não faz parte do seu plano atual. A cobrança de novas assinaturas não está ativada.</p></div>';
+ const people=workspace.employees||[],sources=workspace.qrSources||[];
+ const cards=people.map(p=>{
+  const qr=sources.find(s=>s.id===p.qr_source_id);
+  const url=qr?qrSourceUrl(qr.code):"";
+  const img=url?"https://api.qrserver.com/v1/create-qr-code/?size=180x180&data="+encodeURIComponent(url):"";
+  const number=String(p.whatsapp||"").replace(/\D/g,"");
+  const count=(workspace.leads||[]).filter(l=>l.employee_id===p.id).length;
+  return '<div class="card"><h3>'+htmlEsc(p.name)+'</h3><p>'+htmlEsc(p.role)+' • '+htmlEsc(p.language)+' • '+(p.enabled?'Ativo':'Pausado')+'</p>'+
+   (img?'<img class="qr" alt="QR Code do funcionário" src="'+htmlEsc(img)+'" loading="lazy">':'')+
+   '<p>'+count+' leads atribuídos</p><div class="actions">'+
+   (url?'<a class="button" target="_blank" rel="noopener" href="'+htmlEsc(url)+'">Abrir QR</a>':'')+
+   '<a class="button" target="_blank" rel="noopener" href="https://wa.me/'+htmlEsc(number)+'">WhatsApp</a>'+
+   '<button class="button" type="button" data-edit-team="'+htmlEsc(p.id)+'">Editar</button>'+
+   '<button class="button" type="button" data-toggle-team="'+htmlEsc(p.id)+'">'+(p.enabled?'Pausar':'Ativar')+'</button>'+
+   '<button class="button" type="button" data-delete-team="'+htmlEsc(p.id)+'">Excluir</button></div></div>';
+ }).join('');
+ return '<div class="card"><h2>Equipe de vendas</h2><p>Três funcionários incluídos; cada um tem seu próprio QR Code e WhatsApp. Leads e histórico continuam pertencendo à loja.</p>'+
+ '<p><strong>'+people.length+'</strong> funcionários cadastrados · '+(workspace.personalAssistantSpecial?'20 disponíveis para testes administrativos':'3 incluídos; extras aguardam faturamento PayPal')+'</p>'+
+ '<form id="teamForm"><input type="hidden" id="teamId">'+
+ '<label>Nome do funcionário<input id="teamName" maxlength="80" placeholder="Ana" required></label>'+
+ '<label>Cargo<input id="teamRole" maxlength="80" value="Vendedor" required></label>'+
+ '<label>WhatsApp com DDI (somente números)<input id="teamPhone" maxlength="16" placeholder="5511999999999" required></label>'+
+ '<label>Idioma<select id="teamLanguage"><option value="pt_BR">Português (Brasil)</option><option value="en_US">English</option><option value="es_ES">Español</option></select></label>'+
+ '<div class="actions"><button class="primary" id="teamSubmit" type="submit">Salvar funcionário</button><button class="button" id="teamClear" type="button">Limpar</button></div></form><p id="teamStatus" role="status"></p></div>'+
+ '<div class="view-grid">'+(cards||'<div class="card">Nenhum funcionário cadastrado.</div>')+'</div>';
+}
+function bindTeam(){
+ const clear=()=>{$("teamForm").reset();$("teamId").value="";$("teamRole").value="Vendedor"};
+ $("teamClear").onclick=clear;
+ $("teamForm").onsubmit=async event=>{
+  event.preventDefault();const button=$("teamSubmit");button.disabled=true;
+  try{
+   await ownerApi("save_employee",{employee:{id:$("teamId").value||null,name:$("teamName").value.trim(),role:$("teamRole").value.trim(),whatsapp:$("teamPhone").value.trim(),language:$("teamLanguage").value}});
+   await loadWorkspace();viewName="team";render();toast("Funcionário salvo");
+  }catch(e){$("teamStatus").textContent=e.message}finally{if(button.isConnected)button.disabled=false}
+ };
+ document.querySelectorAll("[data-edit-team]").forEach(button=>button.onclick=()=>{
+  const p=(workspace.employees||[]).find(x=>x.id===button.dataset.editTeam);if(!p)return;
+  $("teamId").value=p.id;$("teamName").value=p.name;$("teamRole").value=p.role;
+  $("teamPhone").value=p.whatsapp;$("teamLanguage").value=p.language;$("teamName").focus();
+ });
+ document.querySelectorAll("[data-toggle-team]").forEach(button=>button.onclick=async()=>{
+  const p=(workspace.employees||[]).find(x=>x.id===button.dataset.toggleTeam);if(!p)return;
+  try{await ownerApi("set_employee_enabled",{id:p.id,enabled:!p.enabled});await loadWorkspace();viewName="team";render()}catch(e){toast(e.message)}
+ });
+ document.querySelectorAll("[data-delete-team]").forEach(button=>button.onclick=async()=>{
+  const p=(workspace.employees||[]).find(x=>x.id===button.dataset.deleteTeam);if(!p||!confirm("Arquivar "+p.name+"? O QR será desativado e o histórico será preservado."))return;
+  try{await ownerApi("delete_employee",{id:p.id});await loadWorkspace();viewName="team";render()}catch(e){toast(e.message)}
+ });
+}
+function renderErrorLogs(){
+ if(workspace?.personalAssistantSpecial!==true)return '<div class="card">Logs are restricted to the complimentary owner.</div>';
+ return '<div class="card"><h2>AI Error Logs</h2><p>Only technical status is saved. No visitor messages, tokens, passwords, or IP addresses are recorded here.</p>'+
+ '<div class="actions"><button class="button" id="refreshAiLogs" type="button">Refresh Logs</button></div>'+
+ '<div id="aiLogsResults" role="status">Loading recent errors…</div></div>';
+}
+async function fetchAiLogs(){
+ const target=$("aiLogsResults");if(!target)return;
+ target.textContent="Loading recent errors…";
+ try{
+  const result=await ownerApi("ai_error_logs",{});
+  const rows=result.logs||[];
+  target.innerHTML=rows.length?'<div class="lead-list">'+rows.map(x=>
+   '<div class="lead-row" style="display:block;text-align:left;cursor:auto"><strong>'+htmlEsc(x.error_code)+'</strong>'+
+   '<small style="display:block">'+htmlEsc(new Date(x.created_at).toLocaleString())+' • Stage: '+htmlEsc(x.stage)+' • '+Number(x.elapsed_ms)+' ms</small>'+
+   '<small style="display:block">Reference: '+htmlEsc(x.id)+'</small></div>').join('')+'</div>'
+   :'<p>No AI failures logged yet. Send a test message, then refresh.</p>';
+ }catch(e){target.textContent="Unable to load diagnostic logs: "+e.message}
 }
 function renderLeads(){
  const leads=workspace.leads||[],sources=workspace.qrSources||[];
@@ -284,17 +401,17 @@ function renderLeads(){
  const metric=(label,num,caption)=>'<div class="lead-metric"><small>'+label+'</small><strong>'+num+'</strong><span>'+caption+'</span></div>';
  return '<div class="lead-metrics">'+metric('Total leads',leads.length,'People to follow up')+
  metric('New inquiries',newCount,'Awaiting response')+metric('Appointment requests',appointments,'Require confirmation')+
- metric('QR-sourced leads',qrLeads,'Attributed to printed codes')+'</div>'+
+ metric('QR-sourced leads',qrLeads,'Attributed to printed codes')+'</div>'+'<div class="nx-lead-tabs" role="tablist" aria-label="Leads & Chats views"><button type="button" role="tab" data-lead-pane="leads">Leads &amp; Chats</button><button type="button" role="tab" data-lead-pane="calendar">📅 Calendar / Agenda</button></div><div id="leadListPane">'+
  '<div class="card lead-center"><div class="lead-bar"><div><h2>Lead Center</h2><p>Every customer request, follow-up and linked AI transcript in one place.</p></div>'+
  '<select id="leadFilter" aria-label="Filter leads"><option value="all">All leads</option><option value="New">New</option><option value="Contacted">Contacted</option><option value="Appointment Requested">Appointment requested</option><option value="Booked">Booked</option><option value="Won">Won</option><option value="Lost">Lost</option></select></div>'+
  (leads.length?'<div class="lead-list">'+leads.map(l=>{
  const source=sources.find(s=>s.id===l.source_id);
  const date=new Date(l.created_at).toLocaleString();
  return '<button class="lead-row" type="button" data-lead="'+htmlEsc(l.id)+'" data-status="'+htmlEsc(l.status)+'">'+
- '<span class="lead-avatar">'+htmlEsc((l.customer_name||'?').slice(0,1).toUpperCase())+'</span><span class="lead-main"><strong>'+htmlEsc(l.customer_name)+'</strong><small>'+htmlEsc(l.interest.slice(0,100))+'</small><small>'+htmlEsc(l.personal_assistant_id?('Personal AI • '+(workspace.personalAssistant?.display_name||'Assistant')):(source?.label||'SmartStore / website'))+' • '+htmlEsc(date)+'</small></span>'+
+ '<span class="lead-avatar">'+htmlEsc((l.customer_name||'?').slice(0,1).toUpperCase())+'</span><span class="lead-main"><strong>'+htmlEsc(l.customer_name)+'</strong><small>'+htmlEsc(l.interest.slice(0,100))+'</small><small>'+htmlEsc(l.personal_assistant_id?('Personal AI • '+(workspace.personalAssistant?.display_name||'Assistant')):(source?.label||'SmartStore / website'))+' • '+htmlEsc((workspace.employees||[]).find(e=>e.id===l.employee_id)?.name||'')+' • '+htmlEsc(date)+'</small></span>'+
  '<span class="lead-right"><span class="lead-status">'+htmlEsc(l.status)+'</span><small>'+htmlEsc(l.customer_phone||l.customer_email||'No contact')+'</small></span></button>'
  }).join('')+'</div>':'<div class="empty">No leads yet. Publish a QR code and ask a customer to submit an inquiry.</div>')+
- '</div><div class="card lead-detail hidden" id="leadDetail" aria-live="polite"></div>';
+ '</div><div class="card lead-detail hidden" id="leadDetail" aria-live="polite"></div></div><div id="leadCalendarPane" class="hidden"></div>';
 }
 function qrSourceUrl(code){return smartUrl()+'?src='+encodeURIComponent(code)}
 function renderQrSources(){
@@ -320,17 +437,28 @@ function renderChatSettings(){
 }
 function renderBilling(){
  const a=workspace.access||{},url="/account.html";
- const status=a.reason==="COMPLIMENTARY"?"Lifetime complimentary account — no expiration or subscription payment required.":a.reason==="TRIAL"?"Your trial ends "+new Date(a.trialEndsAt).toLocaleString():a.reason==="PAID"?"Your account is subscribed.":a.reason==="TRIAL_EXPIRED"?"The trial has ended.":"The 48-hour trial has not started. It begins when your live AI store is published.";
- return '<div class="card"><h2>'+htmlEsc(statusText())+'</h2><p>'+htmlEsc(status)+'</p><div class="view-grid"><div><strong class="metric">$149<small>/mo</small></strong><p>Core store, AI salesperson, SmartLinks and leads.</p></div><div><strong class="metric">$228<small>/mo</small></strong><p>Core + embedded website widget ($79 add-on).</p></div></div><div class="actions">'+(a.reason==="COMPLIMENTARY"?'<span class="status-badge">✓ No payment required</span>':'<a class="primary" href="'+url+'">Manage PayPal subscription</a>')+'</div>'+(a.reason==="COMPLIMENTARY"?'<p class="hint">All NexusSales features are included with your complimentary access.</p>':'<p class="hint">Manage your subscription, security and account deletion in Account Settings.</p>')+'</div>';
+ const status=a.reason==="COMPLIMENTARY"?"Lifetime complimentary account — no payment required.":a.reason==="PAID"?"Existing subscription active.":"Business subscriptions are being configured; live checkout is not enabled.";
+ return '<div class="card"><h2>'+htmlEsc(statusText())+'</h2><p>'+htmlEsc(status)+'</p><div class="view-grid"><div><strong class="metric">$499<small>/mo</small></strong><p>Business base with 3 employees. Extra employees: $30 each/month in Brazil or $50 elsewhere.</p></div><div><strong class="metric">+$79<small>/mo</small></strong><p>Optional website chatbot. Prices are estimates until checkout is verified.</p></div></div><p class="hint">The old $149/$228 PayPal plans are retired for new purchases.</p><div class="actions">'+(a.reason==="COMPLIMENTARY"?'<span class="status-badge">✓ No payment required</span>':'<a class="primary" href="'+url+'">Account status</a>')+'</div></div>';
 }
 function bindView(){
+ if(viewName==="team"&&workspace?.teamAllowed===true)bindTeam();
+ if(viewName==="brazil"&&workspace?.personalAssistantSpecial===true){$("marketCountry").onchange=updateMarketPreview;$("marketEmployees").oninput=updateMarketPreview;$("marketWidget").onchange=updateMarketPreview;updateMarketPreview()}
+ if(viewName==="logs"&&workspace?.personalAssistantSpecial===true){$("refreshAiLogs").onclick=fetchAiLogs;fetchAiLogs()}
  if(viewName==="personal"&&$("personalBuilderForm")){
   const preview=()=>{$("paPreviewName").textContent=$("paName").value.trim()||"Your assistant";$("paPreviewGreeting").textContent=$("paGreeting").value.trim()||"Hi! I'm "+$("paName").value.trim()+", your AI assistant."};
   $("paName").oninput=preview;$("paGreeting").oninput=preview;
+  document.querySelectorAll('input[name="paStyle"]').forEach(radio=>radio.addEventListener("change",()=>{
+   if(radio.checked&&radio.value==="nexus_sales_expert"){
+    $("paGreeting").value="Hi! I'm your NexusSales AI assistant. I can explain SmartStore, AI conversations, SmartLinks, QR codes, lead capture and pricing. What type of business do you run?";
+    $("paAbout").value="NexusSales AI offers SmartStore pages for products and services, AI business conversations using real business details, SmartLinks and QR sharing, and opt-in customer inquiries. Business base: $499/month, including 3 employees; additional employees $30/month in Brazil or $50/month elsewhere; website widget +$79/month. A 48-hour trial begins only when the live store and hosted AI are activated.";
+    preview();
+    toast("NexusSales sales content loaded");
+   }
+  }));
   $("personalBuilderForm").onsubmit=async e=>{
    e.preventDefault();const button=$("paSave");button.disabled=true;
    const assistant={name:$("paName").value.trim(),handle:$("paHandle").value.trim().toLowerCase(),personality:document.querySelector('input[name="paStyle"]:checked')?.value,
-    greeting:$("paGreeting").value.trim(),about:$("paAbout").value.trim(),maxMessages:Number($("paMessages").value),maxMinutes:Number($("paMinutes").value),enabled:$("paEnabled").checked};
+    greeting:$("paGreeting").value.trim(),about:$("paAbout").value.trim(),maxMessages:Number($("paMessages").value),maxMinutes:Number($("paMinutes").value),contactPhone:$("paOwnerPhone").value.trim(),publishContactPhone:$("paPublishPhone").checked,enabled:$("paEnabled").checked};
    try{await ownerApi("save_personal_assistant",{assistant});await loadWorkspace();viewName="personal";render();toast("Personal assistant saved")}
    catch(error){toast(error.message);button.disabled=false}
   };
@@ -360,6 +488,8 @@ function bindView(){
    }catch(e){panel.textContent=e.message}
    panel.scrollIntoView({behavior:"smooth",block:"nearest"});
   });
+  window.NexusCalendar?.activate(workspace,ownerApi,loadWorkspace);
+  window.NexusInsights?.activate(workspace);
  }
  if(viewName==="links"&&workspace.store){
   const qrForm=$("qrForm");if(qrForm)qrForm.onsubmit=async event=>{
@@ -446,6 +576,8 @@ async function init(){
  $("dialogClose").onclick=closeDialog;$("offeringForm").onsubmit=saveOffering;
  $("dialogBackdrop").addEventListener("click",e=>{if(e.target===$("dialogBackdrop"))closeDialog()});
  document.querySelectorAll("[data-view]").forEach(e=>e.onclick=()=>{viewName=e.dataset.view;render()});
+ window.NexusFlags?.render();
+ window.addEventListener("nexus:language",()=>{if(workspace)render()});
  await loadConfig();if(session()&&cfg)await loadWorkspace();else setVisible(false);
 }
 init();

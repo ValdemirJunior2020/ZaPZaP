@@ -168,6 +168,18 @@ test("Anonymous demo rate limit refuses requests without invoking Ollama",async(
  }finally{globalThis.fetch=original}
 });
 
+test("Catalog knowledge includes discovery options, plan pricing and platform link past 350 characters",async()=>{
+ const {businessMessages}=await import("../netlify/lib/business-ai.mjs");
+ const description="Nexus AI helps businesses with customer service and selling. ".repeat(8)+
+ "Options: AI for my business, Personal assistant, Tell me more about it. "+
+ "From US$500/month; website widget US$79/month. Visit https://za-p-za-p.vercel.app/";
+ const msg=businessMessages({...store,name:"JULAO TESTANDO"},[{name:"Nexus AI",type:"Service",description,price_label:"Plans from US$500/month",status:"Available"}],"Tell me more about it");
+ const system=msg[0].content;
+ assert.match(system,/Tell me more about it/);
+ assert.match(system,/US\$79\/month/);
+ assert.match(system,/https:\/\/za-p-za-p\.vercel\.app\//);
+ assert.match(system,/JULAO TESTANDO/);
+});
 test("Owner previews their actual unpublished catalog without starting a trial",async()=>{
  configure();const {handler}=await import("../netlify/functions/owner-test-chat.mjs");
  const original=globalThis.fetch;let aiRequest=null,dbWrites=0;
@@ -186,6 +198,27 @@ test("Owner previews their actual unpublished catalog without starting a trial",
   assert.doesNotMatch(JSON.stringify(aiRequest),/Fake competitor|attacker-other-store/);
   assert.equal(dbWrites,0,"owner test must not publish or start trial");
  }finally{globalThis.fetch=original}
+});
+test("Private AI preview accepts saved business with no offerings and invents no catalog",async()=>{
+ configure();const {handler}=await import("../netlify/functions/owner-test-chat.mjs");
+ const previous=globalThis.fetch;let aiRequest=null;
+ const base=fakeNetwork({onCall:(url,payload)=>{if(url==="https://qwen.example.com/api/chat")aiRequest=payload}});
+ globalThis.fetch=async(url,options)=>{
+  if(String(url).includes("/rest/v1/nx_offerings"))return res([]);
+  return base(url,options);
+ };
+ try{
+  const result=await handler({
+   httpMethod:"POST",
+   headers:{host:"zapzap-bot.netlify.app",origin:"https://zapzap-bot.netlify.app",authorization:"Bearer demo.user.token","x-nf-client-connection-ip":"198.51.100.52"},
+   body:JSON.stringify({message:"What do you know about my business?"})
+  });
+  assert.equal(result.statusCode,200);
+  assert.equal(JSON.parse(result.body).source,"ollama");
+  assert.match(JSON.stringify(aiRequest),/Alpha Plumbing/);
+  assert.match(aiRequest.messages[0].content,/"catalog":\[\]/);
+  assert.doesNotMatch(JSON.stringify(aiRequest),/Drain cleaning/);
+ }finally{globalThis.fetch=previous}
 });
 test("Owner test requires authentication and existing own store",async()=>{
  configure();const {handler}=await import("../netlify/functions/owner-test-chat.mjs");
@@ -243,6 +276,6 @@ test("PayPal checkout refuses to charge a complimentary account",async()=>{
  };
  try{
   const r=await handler({httpMethod:"POST",headers:{host:"zapzap-bot.netlify.app",origin:"https://zapzap-bot.netlify.app",authorization:"Bearer test.token"},body:JSON.stringify({tier:"core"})});
-  assert.equal(r.statusCode,409);assert.equal(checkoutRequests,0);
+  assert.equal(r.statusCode,503);assert.equal(checkoutRequests,0);
  }finally{globalThis.fetch=original;delete process.env.NEXUS_BILLING_ENABLED;delete process.env.PAYPAL_CLIENT_ID;delete process.env.PAYPAL_CLIENT_SECRET;delete process.env.PAYPAL_PLAN_ID}
 });

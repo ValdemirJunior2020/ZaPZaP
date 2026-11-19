@@ -1,0 +1,18 @@
+/* Bilingual sales intelligence, isolated from existing calendar and site styles. */
+.nx-intelligence{display:grid;gap:18px;margin:18px 0 28px;color:#153b2b}
+.nx-intel-header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.nx-intel-header h2{font-size:22px;margin:0 0 5px}.nx-intel-header p{margin:0;color:#617d6c;font-size:12px}
+.nx-intel-header label{display:grid;gap:5px;font-size:12px;font-weight:700}
+.nx-intel-header select{padding:9px 11px;border-radius:10px;background:white;border:1px solid #cee5d8;color:#254e3c}
+.nx-intel-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.nx-intel-kpi,.nx-intel-panel{border:1px solid #d6e6db;background:#fff;border-radius:16px;padding:16px;min-width:0}
+.nx-intel-kpi small{display:block;color:#658273;font-size:12px;margin-bottom:10px}.nx-intel-kpi strong{display:block;font-size:26px;font-weight:800;color:#086c51}
+.nx-intel-panel h3{font-size:15px;margin:0 0 14px}.nx-intel-scroll{overflow-x:auto}
+.nx-intel-panel table{border-collapse:collapse;width:100%;font-size:12px;text-align:left}
+.nx-intel-panel th,.nx-intel-panel td{padding:10px 8px;border-bottom:1px solid #e8efeb;vertical-align:top}
+.nx-intel-panel th{font-size:11px;color:#617b6c;white-space:nowrap}
+.nx-intel-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.nx-intel-disclaimer{font-size:12px;line-height:1.6;color:#587261;margin:0}
+@media(max-width:850px){.nx-intel-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.nx-intel-columns{grid-template-columns:1fr}}
+@media(max-width:480px){.nx-intel-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.nx-intel-kpi{padding:12px}.nx-intel-kpi strong{font-size:22px}}
+.nx-business-profile{margin-top:22px}.nx-bp-heading{display:flex;align-items:start;justify-content:space-between;gap:12px;flex-wrap:wrap}.nx-bp-heading h2{margin:0}.nx-bp-heading p{font-size:12px;color:#627d6b;max-width:700px}.nx-business-profile form{display:grid;gap:12px;margin-top:15px}.nx-bp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.nx-business-profile label{display:grid;gap:5px;font-size:12px;font-weight:650}.nx-business-profile input:not([type=checkbox]),.nx-business-profile select{width:100%;border:1px solid #c8ddcf;background:#fff;border-radius:9px;padding:10px;color:#284734;min-width:0}.nx-bp-check{display:flex!important;gap:7px!important;align-items:center}.nx-bp-days{display:grid;gap:8px}.nx-bp-day{display:grid;grid-template-columns:minmax(120px,1fr) minmax(90px,130px) minmax(90px,130px);gap:9px;align-items:center}.nx-bp-day label{display:flex;align-items:center;gap:7px}.nx-business-profile h3{font-size:15px;margin:12px 0 0}@media(max-width:520px){.nx-bp-grid{grid-template-columns:1fr}.nx-bp-day{grid-template-columns:minmax(85px,1fr) 88px 88px;gap:4px}.nx-bp-day input{padding:5px!important}}

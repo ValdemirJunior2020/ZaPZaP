@@ -1,0 +1,20 @@
+/* NexusSales interface-language control: circular glossy SVG flag icons */
+.nx-locale-box{display:grid;gap:9px;padding:15px 10px 14px;margin:10px 8px 12px;border:1px solid rgba(135,196,165,.26);border-radius:16px;background:linear-gradient(160deg,rgba(240,255,246,.11),rgba(10,75,60,.1));}
+.nx-locale-heading{font-size:11px;letter-spacing:.06em;font-weight:800;opacity:.85;margin-bottom:2px}
+.nx-locale-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.nx-locale-btn{min-width:0;display:flex;flex-direction:column;gap:5px;align-items:center;padding:7px 2px 6px;border-radius:12px;background:transparent;border:1px solid transparent;color:inherit;cursor:pointer;transition:transform .14s,border-color .14s,background .14s}
+.nx-locale-btn:hover{transform:translateY(-2px);background:rgba(255,255,255,.11)}
+.nx-locale-btn[aria-pressed="true"]{background:rgba(221,255,235,.15);border-color:#87d5ae}
+.nx-locale-btn:focus-visible{outline:3px solid #88e6bb;outline-offset:2px}
+.nx-locale-icon{position:relative;display:grid;place-items:center;width:40px;height:40px;aspect-ratio:1;border-radius:50%;overflow:hidden;border:2px solid rgba(255,255,255,.92);box-shadow:inset 0 -4px 8px rgba(0,0,0,.27),inset 0 3px 4px rgba(255,255,255,.55),0 4px 9px rgba(0,0,0,.29),0 1px 1px rgba(255,255,255,.6);background:#fff}
+.nx-locale-icon svg{display:block;width:100%;height:100%;border-radius:50%;object-fit:cover}
+.nx-locale-icon:after{content:"";position:absolute;inset:1px 2px 45%;border-radius:100% 100% 60% 50%;background:linear-gradient(180deg,rgba(255,255,255,.62),rgba(255,255,255,0));pointer-events:none}
+.nx-locale-name{font-size:10px;line-height:1.25;font-weight:800;text-align:center;white-space:nowrap}
+.nx-locale-message{font-size:11px;line-height:1.3;min-height:14px;margin:0}
+.nx-wg{display:grid;gap:16px}.nx-wg .card{padding:22px}.nx-wg h2{font-size:24px}.nx-wg h3{margin:17px 0 10px}.nx-wg p,.nx-wg li{line-height:1.65}
+.nx-wg-prices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;margin:15px 0}
+.nx-wg-prices>div{border-radius:13px;padding:15px;background:#f3faf6;border:1px solid #d2e8db}
+.nx-wg-prices small{display:block;color:#56715f;font-size:12px}.nx-wg-prices strong{display:block;color:#126947;margin-top:7px;font-size:19px}
+.nx-wg-state{font-size:13px;font-weight:800;margin:14px 0;color:#146c50}
+.nx-wg-code{display:block;box-sizing:border-box;width:100%;padding:12px;border-radius:12px;border:1px solid #bddac7;background:#f8fdf9;color:#204938;font-family:monospace;resize:vertical}
+@media(max-width:650px){.nx-wg-prices{grid-template-columns:1fr}.nx-locale-icon{width:36px;height:36px}}

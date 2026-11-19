@@ -7,19 +7,19 @@
 <header><b id="businessName">NexusSales SmartStore</b><small>Powered by NexusSales AI</small></header>
 <main class="wrap"><div class="notice" id="storeUnavailable">Loading this business…</div>
 <div id="storeContent" class="hidden"><section class="cover" id="hero"><div><div class="tag">WELCOME</div><h1 id="headline"></h1><p id="intro"></p></div></section>
-<div class="layout"><section><h2>Products & services</h2><p id="count"></p><div id="products" class="products"></div></section>
-<aside class="chat" id="chatPanel"><div class="chat-head"><div class="avatar">✦</div><div><b id="assistantName">Business AI assistant</b><small id="chatStatus">Checking live AI…</small></div></div>
+<div class="layout"><section><h2 id="productsHeading">Products & services</h2><p id="count"></p><div id="products" class="products"></div></section>
+<aside class="chat" id="chatPanel"><div id="employeeContact" class="hidden" style="padding:14px;background:#e9fff2"></div><div class="chat-head"><div class="avatar">✦</div><div><b id="assistantName">Business AI assistant</b><small id="chatStatus">Checking live AI…</small></div></div>
 <div id="chatFeed" class="feed" role="log" aria-live="polite"><div class="bubble bot" id="welcome">Hi! How can I help?</div></div>
 <div class="quick"><button type="button" data-ask="What do you offer?">What do you offer?</button><button type="button" data-ask="Can you explain your prices?">Pricing</button><button type="button" data-ask="What are your business hours?">Hours</button><button type="button" id="askQuote">Request quote</button><button type="button" id="askAppointment">Schedule request</button></div>
 <form id="chatForm" class="chat-form"><input id="question" maxlength="700" required placeholder="Ask about this business…" autocomplete="off"><button id="chatSend" type="submit">Send</button></form>
 <div class="chat-foot" id="chatFoot">Chats may be saved and shared with the business when you submit an inquiry. Appointments are requests only.</div></aside></div>
-<section class="card contact" id="contact"><h2>Request information or an appointment</h2><p>Send your request to the business. If you used the chat, its history will be attached to your inquiry. Appointments require confirmation.</p>
-<form id="contactForm"><div class="contact-grid"><label>Your name<input id="customerName" maxlength="100" autocomplete="name" required></label><label>Email address<input id="customerEmail" maxlength="180" type="email" autocomplete="email"></label></div>
-<label>Phone number (or email above)<input id="customerPhone" maxlength="35" type="tel" autocomplete="tel"></label>
-<label>Request type<select id="requestType"><option value="information">Information</option><option value="appointment">Appointment request</option><option value="callback">Call me back</option><option value="quote">Request quote</option></select></label>
+<section class="card contact" id="contact"><h2 id="contactHeading">Request information or an appointment</h2><p id="contactDescription">Send your request to the business. If you used the chat, its history will be attached to your inquiry. Appointments require confirmation.</p>
+<form id="contactForm"><div class="contact-grid"><label><span id="nameLabel">Your name</span><input id="customerName" maxlength="100" autocomplete="name" required></label><label><span id="emailLabel">Email address</span><input id="customerEmail" maxlength="180" type="email" autocomplete="email"></label></div>
+<label><span id="phoneLabel">Phone number (or email above)</span><input id="customerPhone" maxlength="35" type="tel" autocomplete="tel"></label>
+<label><span id="typeLabel">Request type</span><select id="requestType"><option value="information">Information</option><option value="appointment">Appointment request</option><option value="callback">Call me back</option><option value="quote">Request quote</option></select></label>
 <label id="preferredTimeWrap" class="hidden">Preferred appointment date/time<input id="preferredTime" maxlength="120" placeholder="Friday at 2 PM"></label>
-<label>What can we help with?<textarea id="customerMessage" maxlength="1500" required></textarea></label>
+<label><span id="messageLabel">What can we help with?</span><textarea id="customerMessage" maxlength="1500" required></textarea></label>
 <label class="hidden">Leave this blank<input id="hp" tabindex="-1" autocomplete="off"></label>
 <button id="contactSend" class="btn" type="submit">Send inquiry</button><div id="contactStatus" class="form-msg" aria-live="polite"></div></form></section></div></main>
 <div class="footer">NexusSales AI • Digital storefront and AI-powered customer assistance</div>
-<script type="module" src="/store-live.js"></script></body></html>
+<script src="/nexus-slot-ui.js" defer></script><script type="module" src="/store-live.js"></script></body></html>

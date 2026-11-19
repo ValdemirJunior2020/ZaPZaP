@@ -29,7 +29,7 @@ async function localFunction(req,res,url,name){
  res.end(answer.body||"");
 }
 
-const TYPES={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.toml':'text/plain'};
+const TYPES={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.toml':'text/plain'};
 const language=(s)=>/[ãõçáéíóúâêôà]/i.test(s)||/\b(olá|oi|vocês|preço|quanto custa|obrigad[oa]|agendar|carro|hoje)\b/i.test(s)?'pt':/[¿¡ñ]/.test(s)||/\b(hola|precio|gracias|quiero|cita|mañana|cuánto|tienen|necesito)\b/i.test(s)?'es':'en';
 const fallback={en:"Thanks for messaging us! We're helping other customers right now. Someone will be with you shortly.",es:"¡Gracias por escribirnos! Estamos atendiendo a otros clientes. En breve estaremos contigo.",pt:"Obrigado por entrar em contato! Estamos atendendo outros clientes. Em breve vamos falar com você."};
 const result=(res,status,obj)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(obj))};

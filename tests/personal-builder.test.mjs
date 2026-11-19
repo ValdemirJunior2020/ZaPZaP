@@ -2,7 +2,7 @@ import test from"node:test";
 import assert from"node:assert/strict";
 import{readFile}from"node:fs/promises";
 import{PERSONALITIES}from"../netlify/lib/ai-personalities.mjs";
-import{SPECIAL_OWNER,validHandle,validStyle,personalMessages}from"../netlify/lib/personal-assistant.mjs";
+import{SPECIAL_OWNER,NEXUS_STYLE,SALES_GREETING,SALES_ABOUT,validHandle,validStyle,personalMessages}from"../netlify/lib/personal-assistant.mjs";
 
 test("Five standard personalities exist",()=>{
  assert.deepEqual(Object.keys(PERSONALITIES),["professional","friendly","sales","concierge","concise"]);
@@ -53,4 +53,78 @@ test("Migration is deliberately unapplied and service-role only",async()=>{
  assert.match(sql,/revoke all on public.nx_personal_assistants from public,anon,authenticated/);
  assert.match(sql,/personal_assistant_id/);
  assert.match(sql,/nx_claim_personal_message/);
+});
+
+test("NexusSales sales personality is exclusive to the owner",()=>{
+ assert.equal(validStyle(NEXUS_STYLE,SPECIAL_OWNER),true);
+ assert.equal(validStyle(NEXUS_STYLE,"22222222-2222-4222-8222-222222222222"),false);
+ assert.match(SALES_GREETING,/NexusSales AI/);
+ assert.match(SALES_ABOUT,/499\/month/);
+ assert.match(SALES_ABOUT,/79\/month/);
+});
+test("NexusSales sales persona knows the actual product, pricing and consent rules",()=>{
+ const system=personalMessages({owner_id:SPECIAL_OWNER,display_name:"Maya",personality:NEXUS_STYLE}, "What can it do?")[0].content;
+ for(const item of ["SmartStore","SmartLinks","QR codes","499 USD per month","79 USD per month","48-hour trial","separate contact form","Do not invent"])assert.ok(system.includes(item),item);
+ const spoof=personalMessages({owner_id:"22222222-2222-4222-8222-222222222222",display_name:"Maya",personality:NEXUS_STYLE}, "hi")[0].content;
+ assert.doesNotMatch(spoof,/499 USD per month/);
+});
+test("Sales Expert tile preloads copy while backend requires complimentary owner",async()=>{
+ const [ui,api]=await Promise.all([readFile("business.js","utf8"),readFile("netlify/functions/owner-workspace.mjs","utf8")]);
+ assert.match(ui,/nexus_sales_expert/);
+ assert.match(ui,/NexusSales AI Sales Expert/);
+ assert.match(ui,/NexusSales sales content loaded/);
+ assert.match(api,/ent.is_complimentary!==true/);
+});
+
+test("Personal sales assistant provides owner's direct WhatsApp link without exposing it for other owners",async()=>{
+ const api=await readFile("netlify/functions/store-chat.mjs","utf8");
+ const ui=await readFile("personal-chat.js","utf8");
+ const html=await readFile("personal-chat.html","utf8");
+ assert.match(api,/a.publish_contact_phone===true/);
+ assert.match(api,/public_contact_phone/);
+ assert.doesNotMatch(api,/15616445874/);
+ assert.match(ui,/ownerWhatsAppUrl/);
+ assert.match(ui,/AI configured/);
+ assert.match(ui,/AI temporarily unavailable/);
+ assert.match(html,/id="ownerWhatsApp"/);
+ assert.match(html,/id="ownerQuickWhatsApp"/);
+ assert.doesNotThrow(()=>new Function(ui));
+});
+
+test("AI error diagnostics show safe reference IDs without logging private chat data",async()=>{
+ const [handler,logs,owner,ui,client,html]=await Promise.all([
+  "netlify/functions/store-chat.mjs","netlify/lib/ai-diagnostics.mjs",
+  "netlify/functions/owner-workspace.mjs","business.js","personal-chat.js","index.html"
+ ].map(path=>readFile(path,"utf8")));
+ assert.match(handler,/recordAiError/);
+ assert.match(handler,/reference:diag.id/);
+ assert.match(logs,/error_code:code/);
+ assert.doesNotMatch(logs,/content:message|token:|raw_exception:/);
+ assert.match(owner,/action==="ai_error_logs"/);
+ assert.match(owner,/user.id!==SPECIAL_OWNER/);
+ assert.match(ui,/AI Error Logs/);
+ assert.match(client,/Diagnostic /);
+ assert.match(html,/data-owner-only hidden/);
+ assert.doesNotThrow(()=>new Function(ui));
+ assert.doesNotThrow(()=>new Function(client));
+});
+
+test("Super admin Brazil pricing is consistent and does not enable charging",async()=>{
+ const {PLANNED_CATALOG,proposedEnterpriseTotal}=await import("../netlify/lib/market-plans.mjs");
+ assert.equal(PLANNED_CATALOG.enterpriseBaseUsd,499);
+ assert.equal(PLANNED_CATALOG.includedEmployees,3);
+ assert.equal(proposedEnterpriseTotal("BR",3).monthlyTotal,499);
+ assert.equal(proposedEnterpriseTotal("BR",5).monthlyTotal,559);
+ assert.equal(proposedEnterpriseTotal("US",5).monthlyTotal,599);
+ assert.equal(proposedEnterpriseTotal("PT",4).monthlyTotal,549);
+ assert.equal(PLANNED_CATALOG.personalUsd,30);
+ assert.equal(PLANNED_CATALOG.playfulUsd,15);
+ assert.equal(PLANNED_CATALOG.playfulPersonalities,5);
+ assert.equal(PLANNED_CATALOG.billingEnabled,false);
+ const [business,home,standalone]=await Promise.all(["business.js","index.html","business.html"].map(p=>readFile(p,"utf8")));
+ assert.match(business,/function renderMarketPlans/);
+ assert.match(business,/personalAssistantSpecial!==true/);
+ assert.match(business,/No billing, subscriptions or team accounts are activated/);
+ for(const html of [home,standalone])assert.match(html,/data-view="brazil" data-owner-only hidden/);
+ assert.doesNotThrow(()=>new Function(business));
 });

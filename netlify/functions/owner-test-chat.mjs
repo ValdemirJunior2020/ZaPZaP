@@ -1,7 +1,7 @@
 import {env,json,userFrom,ownStore,offerings,postOrigin,parse,aiReady,access} from "../lib/tenant.mjs";
 import {allow,clientIp} from "../lib/abuse.mjs";
 import {businessMessages} from "../lib/business-ai.mjs";
-import {query as ollamaQuery,readiness} from "../lib/ollama.mjs";
+import {queryWithMeta as aiQuery,readiness} from "../lib/ollama.mjs";
 
 // Owner-only sandbox. The business and catalog are ALWAYS loaded using
 // the authenticated Supabase user. Testing never writes trial or publish state.
@@ -19,7 +19,9 @@ export async function handler(event){
   const store=await ownStore(c,user.id);
   if(!store)return json(400,{error:"Save your business details first."});
   const items=await offerings(c,store.id);
-  if(!items.length)return json(400,{error:"Add at least one product or service to test your AI."});
+  // Owner preview can test business knowledge before adding offerings.
+  // Missing catalog entries never authorize invented prices or availability.
+  // Public storefront publishing rules remain unchanged.
   if(!aiReady())return json(503,{code:readiness().code,error:"The AI gateway is not configured or is offline. Your trial has not started."});
   // Database-backed, cross-instance budgets. No client-provided tenant ID.
   if(!await allow(c,"owner_test_global","all",500,86400))return json(429,{error:"Testing capacity reached for today."});
@@ -28,8 +30,8 @@ export async function handler(event){
   if(!await allow(c,"owner_test_ip",clientIp(event),20,60))return json(429,{error:"Too many requests from this connection."});
   const history=Array.isArray(input.history)?input.history.slice(-6):[];
   const messages=businessMessages(store,items,message,history);
-  const reply=await ollamaQuery(messages,{maxTokens:350,timeoutMs:22000});
-  return json(200,{reply,source:"ollama",trialStarted:false,published:store.published});
+  const result=await aiQuery(messages,{maxTokens:350,timeoutMs:22000,allowFallback:true,tenantKey:store.id});
+  return json(200,{reply:result.text,source:result.source,trialStarted:false,published:store.published});
  }catch(error){
   console.error("Owner private AI test failed:",String(error?.message||error).slice(0,160));
   const code=error?.status||503;
