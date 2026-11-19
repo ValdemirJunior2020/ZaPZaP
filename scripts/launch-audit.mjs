@@ -20,7 +20,7 @@ check(/publish\s*=\s*"public"/.test(netlify),"Netlify deploys only the public as
 check(vercel.rewrites.some(x=>x.source==="/assistant/:handle"),"Vercel routes personal assistant links","Personal assistant routes missing");
 check(await exists("nexus-conversation-history.js"),"History viewer exists for no-lead chats","Conversation history viewer missing");
 const [ownerCode,appCode]=await Promise.all([read("netlify/functions/owner-workspace.mjs"),read("business.js")]);
-check(ownerCode.includes('action==="initialize_personal_workspace"')&&appCode.includes('data-account-kind')===false&&appCode.includes('accountKind==="personal"'),"Personal signup and private workspace logic present","Personal signup or private workspace path is missing");
+check(ownerCode.includes('action==="initialize_personal_workspace"')&&appCode.includes('data-account-kind')&&appCode.includes('accountKind==="personal"'),"Personal signup and private workspace logic present","Personal signup or private workspace path is missing");
 check(ownerCode.includes('action==="activate_personal"')&&ownerCode.includes("verifyHostedAI()"),"Personal trial requires explicit hosted AI verification","Personal trial must fail closed without live AI");
 
 check(await exists("tests/conversation-history-manual-delete.test.mjs"),"History deletion has regression tests","Missing conversation deletion tests");
