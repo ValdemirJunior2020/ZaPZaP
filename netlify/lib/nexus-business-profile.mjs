@@ -24,8 +24,7 @@ function normalizeProfile(input){
  if(categories.length>15||categories.some(x=>typeof x!=='string'||x.length>70))throw Error('Invalid business categories');
  const address=clean(v.address,250),city=clean(v.city,100),region=clean(v.region,100),country=clean(v.country,100);
  const phone=clean(v.phone,35).replace(/[\s()\-]/g,''),website=clean(v.website,250);
- if(phone&&!/^\+[1-9][0-9]{7,14}$/.test(phone))throw Error('Use an international phone number such as +15551234567');
- if(v.phone_public===true&&!phone)throw Error('Enter a phone number before enabling AI phone sharing');
+ if(v.phone_public===true&&!/^\+[1-9][0-9]{7,14}$/.test(phone))throw Error('To share your phone with customers, enter an international number such as +15551234567');
  if(website){let u;try{u=new URL(website)}catch{}if(!u||!['http:','https:'].includes(u.protocol))throw Error('Invalid website address')}
  return{timezone:tz,address,city,region,country,phone,website,online_only:v.online_only===true,
   address_public:v.address_public===true,phone_public:v.phone_public===true,weekly_hours:hours,closed_dates:[...new Set(holidays)].sort(),
