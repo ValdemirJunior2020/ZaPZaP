@@ -68,35 +68,22 @@ test("Public lead is accepted only for a published store and can be persisted fo
 test("PayPal checkout stays disabled without secrets, even for valid plan selection",async()=>{
  setup();const old=process.env.NEXUS_BILLING_ENABLED;delete process.env.NEXUS_BILLING_ENABLED;
  const original=globalThis.fetch;globalThis.fetch=async()=>{throw Error("Billing network must not be used")};
- try{const r=await checkout(event({tier:"core"}));assert.equal(r.statusCode,503);assert.match(JSON.parse(r.body).error,/not enabled/i)}
+ try{const r=await checkout(event({tier:"core"}));assert.equal(r.statusCode,503);assert.match(JSON.parse(r.body).error,/being configured|not enabled/i)}
  finally{globalThis.fetch=original;if(old===undefined)delete process.env.NEXUS_BILLING_ENABLED;else process.env.NEXUS_BILLING_ENABLED=old}
 });
-test("PayPal Sandbox checkout verifies plan price before generating approval URL",async()=>{
- setup();const original=globalThis.fetch;const prev=Object.fromEntries(["NEXUS_BILLING_ENABLED","PAYPAL_MODE","PAYPAL_CLIENT_ID","PAYPAL_CLIENT_SECRET","PAYPAL_PLAN_ID"].map(k=>[k,process.env[k]]));
- Object.assign(process.env,{NEXUS_BILLING_ENABLED:"true",PAYPAL_MODE:"sandbox",PAYPAL_CLIENT_ID:"sandbox-id",PAYPAL_CLIENT_SECRET:"sandbox-secret",PAYPAL_PLAN_ID:"P-CORE-TEST"});
- let requests=0,updated=null;
- globalThis.fetch=async(url,opt={})=>{
-  const u=String(url);
-  if(u==="https://api-m.sandbox.paypal.com/v1/oauth2/token")return response({access_token:"sandbox-access"});
-  if(u.endsWith("/v1/billing/plans/P-CORE-TEST"))return response({status:"ACTIVE",billing_cycles:[{tenure_type:"REGULAR",frequency:{interval_unit:"MONTH",interval_count:1},pricing_scheme:{fixed_price:{currency_code:"USD",value:"149.00"}},total_cycles:0}]});
-  if(u.includes("/auth/v1/user"))return response({id:uid,email:"owner@example.com"});
-  if(u.includes("/nx_entitlements")&&opt.method==="PATCH"){updated=JSON.parse(opt.body);return response([])}
-  if(u.includes("/nx_entitlements"))return response([{user_id:uid,is_complimentary:false,subscription_status:"TRIAL",trial_started_at:null,paypal_subscription_id:null}]);
-  if(u.endsWith("/v1/billing/subscriptions")&&opt.method==="POST"){
-   requests++;const body=JSON.parse(opt.body);
-   assert.equal(body.custom_id,uid);
-   assert.equal(body.plan_id,"P-CORE-TEST");
-   return response({id:"I-TEST123456",status:"APPROVAL_PENDING",links:[{rel:"approve",href:"https://www.sandbox.paypal.com/checkoutnow?token=EXAMPLE"}]});
-  }
-  throw Error("Unexpected sandbox request "+u);
- };
+test("Legacy and proposed PayPal checkouts remain disabled even if env flag is true",async()=>{
+ setup();
+ const original=globalThis.fetch,old=process.env.NEXUS_BILLING_ENABLED;
+ process.env.NEXUS_BILLING_ENABLED="true";
+ let calls=0;globalThis.fetch=async()=>{calls++;throw Error("No PayPal calls allowed")};
  try{
-  const r=await checkout(event({tier:"core"}));
-  assert.equal(r.statusCode,200);
-  assert.equal(requests,1);
-  assert.match(JSON.parse(r.body).approvalUrl,/sandbox.paypal.com/);
-  assert.equal(updated.subscription_status,"PENDING");
- }finally{globalThis.fetch=original;for(const[k,v]of Object.entries(prev)){if(v===undefined)delete process.env[k];else process.env[k]=v}}
+  for(const tier of ["core","core_widget","business"]){
+   const result=await checkout(event({tier}));
+   assert.equal(result.statusCode,503);
+   assert.match(JSON.parse(result.body).error,/499/);
+  }
+  assert.equal(calls,0);
+ }finally{globalThis.fetch=original;if(old===undefined)delete process.env.NEXUS_BILLING_ENABLED;else process.env.NEXUS_BILLING_ENABLED=old}
 });
 test("PayPal webhook verifies signature via Sandbox before changing subscription",async()=>{
  setup();const original=globalThis.fetch;const keys=["PAYPAL_MODE","PAYPAL_CLIENT_ID","PAYPAL_CLIENT_SECRET","PAYPAL_PLAN_ID","PAYPAL_WEBHOOK_ID"];const prev=Object.fromEntries(keys.map(k=>[k,process.env[k]]));
