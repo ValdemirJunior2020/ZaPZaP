@@ -12,7 +12,7 @@ function showWhatsApp(){
  }
  const quick=$("contactAsk");if(quick)quick.hidden=true;
 }
-function end(){closed=true;$("question").disabled=true;$("send").disabled=true;$("status").textContent="Chat finished";$("foot").textContent="Session limit reached. You may leave a contact request below.";$("contact").classList.add("open");$("toggle").setAttribute("aria-expanded","true")}
+function end(){closed=true;$("question").disabled=true;$("send").disabled=true;$("status").textContent="Chat limit reached";$("foot").textContent=ownerWhatsAppUrl?"Your AI limit is reached. Contact the owner directly using WhatsApp below.":"Your AI limit is reached. Leave a message for the owner below.";showWhatsApp();$("contact").classList.add("open");$("toggle").setAttribute("aria-expanded","true")}
 async function init(){
  if(!valid){$("status").textContent="Invalid link";return}
  try{
@@ -20,8 +20,7 @@ async function init(){
   const data=await r.json().catch(()=>({}));
   if(!r.ok||!data.assistant)throw Error("Assistant unavailable");
   assistant=data.assistant;
-  ownerWhatsAppUrl=/^https:\/\/wa\.me\/15616445874$/.test(data.contactWhatsAppUrl||"")?data.contactWhatsAppUrl:null;
-  showWhatsApp();
+  ownerWhatsAppUrl=/^https:\/\/wa\.me\/[1-9][0-9]{7,14}$/.test(data.contactWhatsAppUrl||"")?data.contactWhatsAppUrl:null;
   $("heroName").textContent=assistant.name;
   $("chatName").textContent=assistant.name+" · AI";
   $("chatStyle").textContent=assistant.style||"Personal assistant";
