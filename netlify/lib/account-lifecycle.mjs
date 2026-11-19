@@ -14,7 +14,14 @@ async function cancelPayPalSubscription(c,userId,ent){
  const path="/v1/billing/subscriptions/"+encodeURIComponent(id);
  let sub=await paypal(c,path);
  // Verify this exact owner and original plan; do not cancel someone else's subscription.
- if(sub.custom_id!==userId||sub.plan_id!==ent.paypal_plan_id)
+ let billingOrder=null;
+ if(sub.custom_id!==userId){
+  const rows=await db(c,"nx_billing_orders?id=eq."+encodeURIComponent(sub.custom_id||"")+
+   "&user_id=eq."+encodeURIComponent(userId)+"&paypal_subscription_id=eq."+encodeURIComponent(id)+"&select=id,paypal_plan_id");
+  billingOrder=rows?.[0];
+ }
+ if((sub.custom_id!==userId&&!billingOrder)||sub.plan_id!==ent.paypal_plan_id||
+   (billingOrder&&billingOrder.paypal_plan_id!==sub.plan_id))
   throw Object.assign(new Error("Subscription ownership could not be verified"),{status:409});
  if(!cancelStatuses.has(sub.status)){
   await paypal(c,path+"/cancel",{method:"POST",body:{reason:"Subscriber requested cancellation from NexusSales AI account settings"}});
@@ -22,6 +29,8 @@ async function cancelPayPalSubscription(c,userId,ent){
   if(!cancelStatuses.has(sub.status))
    throw Object.assign(new Error("Cancellation requested but PayPal has not confirmed it yet. Try again shortly or contact support."),{status:503});
  }
+ if(billingOrder)await db(c,"nx_billing_orders?id=eq."+encodeURIComponent(billingOrder.id)+
+  "&user_id=eq."+encodeURIComponent(userId),{method:"PATCH",body:{status:sub.status,updated_at:new Date().toISOString()},prefer:"return=minimal"});
  await db(c,"nx_entitlements?user_id=eq."+encodeURIComponent(userId)+"&paypal_subscription_id=eq."+encodeURIComponent(id),{
   method:"PATCH",body:{subscription_status:sub.status,updated_at:new Date().toISOString()},prefer:"return=minimal"
  });
