@@ -5,7 +5,7 @@ color 0A
 set "ROOT=%~dp0"
 cd /d "%ROOT%"
 set "GITBRANCH=main"
-set "LOG=%TEMP%\\NEXUS-LOCAL-SETUP.log"
+set "LOG=%TEMP%\NEXUS-LOCAL-SETUP.log"
 echo [NexusSales AI] %date% %time% > "%LOG%"
 echo.
 echo ===============================================================
@@ -47,37 +47,6 @@ git merge --ff-only origin/main >> "%LOG%" 2>&1 || (
  goto :error
 )
 echo Updated local main successfully.
-:dependencies
-echo [3/6] Merging remote branches only into !INTEGRATION!...
-set /a MERGED=0
-set /a SKIPPED=0
-set /a PREVIOUS=0
-for /f "delims=" %%B in ('git for-each-ref --format^="%%(refname:short)" refs/remotes/origin') do (
- set "NEXT=%%B"
- if /i not "!NEXT!"=="origin/HEAD" if /i not "!NEXT!"=="origin/%GITBRANCH%" (
-  git merge-base --is-ancestor "!NEXT!" HEAD >nul 2>&1
-  if errorlevel 1 (
-   echo Attempting !NEXT!...
-   git merge --no-ff --no-edit "!NEXT!" >> "%LOG%" 2>&1
-   if errorlevel 1 (
-    echo [CONFLICT/SKIPPED] !NEXT!
-    echo SKIPPED !NEXT! >> "%LOG%"
-    git merge --abort >> "%LOG%" 2>&1
-    set /a SKIPPED+=1
-   ) else (
-    echo [MERGED] !NEXT!
-    set /a MERGED+=1
-   )
-  ) else set /a PREVIOUS+=1
- )
-)
-echo Results: merged !MERGED!, skipped conflicts !SKIPPED!, already present !PREVIOUS!.
-if not "!SKIPPED!"=="0" (
- echo Some branches could NOT be integrated safely. See %LOG%.
- echo You can continue testing the integration, but do NOT publish it.
-)
-:dependencies
-echo.
 echo [4/6] Checking local software...
 where node >nul 2>&1
 if errorlevel 1 (
