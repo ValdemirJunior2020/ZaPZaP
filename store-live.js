@@ -2,6 +2,56 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const slug=(()=>{const match=location.pathname.match(/^\/s\/([a-z0-9-]{3,50})\/?$/i);return match?match[1]:new URLSearchParams(location.search).get("slug")||new URLSearchParams(location.search).get("s")||""})();
 let employee=null,store=null,items=[],history=[],ready=false,working=false,chatClosed=false,sessionId=null,remaining=10,sourceCode=new URLSearchParams(location.search).get('src')||'';
+
+// Public storefront localization: trusted edge country first, then employee preference,
+// then browser language. No geolocation permission, IP storage, or external geocoding.
+let pageLocale="en";
+const terms={
+ en:{welcome:"WELCOME",readMore:"Read more",readLess:"Show less",products:"Products & services",contact:"Request information or an appointment",contactDescription:"Send your request to the business. If you used the chat, its history will be attached to your inquiry. Appointments require confirmation.",name:"Your name",email:"Email address",phone:"Phone number (or email above)",type:"Request type",message:"What can we help with?",send:"Send inquiry",information:"Information",appointment:"Appointment request",callback:"Call me back",quote:"Request quote",preferredTime:"Preferred appointment date/time",askQuote:"Request quote",askAppointment:"Schedule request",chatSend:"Send",askPlaceholder:"Ask about this business…",offer:"What do you offer?",pricing:"Pricing",hours:"Hours",footer:"Chats may be saved and shared with the business when you submit an inquiry. Appointments are requests only.",count:"offerings",one:"offering",askThis:"Ask about this",priceOnRequest:"Price on request",notListed:"This business has not listed any offerings yet. You can still contact them below.",unavailable:"Assistant temporarily unavailable",loading:"Looking that up…",welcomeChat:"Hi! Welcome to {name}! I can help with our services, pricing and business information. What would you like to know?",closed:"Chat finished · Send contact request",endNote:"Your chat limit has been reached. Leave your phone number or email and the business can continue helping.",received:"Your request has been received and saved for {name}. The business can review it and follow up."},
+ pt:{welcome:"BEM-VINDO",readMore:"Ver mais",readLess:"Ver menos",products:"Produtos e serviços",contact:"Solicitar informações ou atendimento",contactDescription:"Envie sua solicitação à empresa. O histórico do chat poderá ser associado ao pedido. Agendamentos precisam de confirmação.",name:"Seu nome",email:"E-mail",phone:"Telefone (ou e-mail)",type:"Tipo de solicitação",message:"Como podemos ajudar?",send:"Enviar solicitação",information:"Informações",appointment:"Solicitar agendamento",callback:"Solicitar retorno",quote:"Solicitar orçamento",preferredTime:"Data e horário preferidos",askQuote:"Solicitar orçamento",askAppointment:"Solicitar atendimento",chatSend:"Enviar",askPlaceholder:"Pergunte sobre a empresa…",offer:"O que vocês oferecem?",pricing:"Preços",hours:"Horários",footer:"As conversas podem ser associadas a uma solicitação enviada. Agendamentos precisam de confirmação.",count:"ofertas",one:"oferta",askThis:"Perguntar sobre isto",priceOnRequest:"Preço sob consulta",notListed:"Esta empresa ainda não cadastrou produtos ou serviços. Você pode entrar em contato abaixo.",unavailable:"Assistente temporariamente indisponível",loading:"Consultando…",welcomeChat:"Olá! Bem-vindo à {name}! Posso ajudar com serviços, preços e informações da empresa. Como posso ajudar?",closed:"Conversa encerrada · Envie uma solicitação",endNote:"Você atingiu o limite de mensagens. Deixe telefone ou e-mail para a empresa continuar o atendimento.",received:"Sua solicitação foi recebida pela empresa {name}."},
+ es:{welcome:"BIENVENIDO",readMore:"Ver más",readLess:"Ver menos",products:"Productos y servicios",contact:"Solicitar información o una cita",contactDescription:"Envía tu solicitud a la empresa. El historial del chat puede asociarse a tu mensaje. Las citas requieren confirmación.",name:"Tu nombre",email:"Correo electrónico",phone:"Teléfono (o correo)",type:"Tipo de solicitud",message:"¿Cómo podemos ayudarte?",send:"Enviar solicitud",information:"Información",appointment:"Solicitar cita",callback:"Solicitar llamada",quote:"Solicitar presupuesto",preferredTime:"Fecha y hora preferidas",askQuote:"Solicitar presupuesto",askAppointment:"Solicitar cita",chatSend:"Enviar",askPlaceholder:"Pregunta sobre la empresa…",offer:"¿Qué ofrecen?",pricing:"Precios",hours:"Horarios",footer:"Las conversaciones pueden asociarse a una solicitud. Las citas deben confirmarse.",count:"ofertas",one:"oferta",askThis:"Preguntar sobre esto",priceOnRequest:"Precio a consultar",notListed:"Esta empresa todavía no ha publicado productos o servicios. Puedes contactarla abajo.",unavailable:"Asistente temporalmente no disponible",loading:"Consultando…",welcomeChat:"¡Hola! Bienvenido a {name}. Puedo ayudarte con servicios, precios e información del negocio. ¿En qué puedo ayudarte?",closed:"Chat finalizado · Envía una solicitud",endNote:"Has alcanzado el límite de mensajes. Deja un teléfono o correo para que la empresa continúe atendiéndote.",received:"Tu solicitud ha sido recibida por {name}."}
+};
+const i18n=key=>(terms[pageLocale]||terms.en)[key]||terms.en[key]||key;
+const format=(key,name)=>i18n(key).replace("{name}",name||"");
+function resolveLocale(country,staffLanguage){
+ if(country==="BR")return"pt";
+ if(country==="ES")return"es";
+ const primary=String(staffLanguage||navigator.languages?.[0]||navigator.language||"").toLowerCase();
+ return primary.startsWith("pt")?"pt":primary.startsWith("es")?"es":"en";
+}
+function translateStore(){
+ document.documentElement.lang=pageLocale==="pt"?"pt-BR":pageLocale==="es"?"es-ES":"en";
+ const labels={welcomeTag:"welcome",productsHeading:"products",contactHeading:"contact",contactDescription:"contactDescription",nameLabel:"name",emailLabel:"email",phoneLabel:"phone",typeLabel:"type",messageLabel:"message",contactSend:"send",askQuote:"askQuote",askAppointment:"askAppointment",chatSend:"chatSend",chatFoot:"footer"};
+ for(const [id,key] of Object.entries(labels))if($(id))$(id).textContent=i18n(key);
+ const options={information:"information",appointment:"appointment",callback:"callback",quote:"quote"};
+ for(const [value,key] of Object.entries(options))$('requestType').querySelector('[value="'+value+'"]').textContent=i18n(key);
+ const preferred=$('preferredTimeWrap');if(preferred?.firstChild?.nodeType===Node.TEXT_NODE)preferred.firstChild.nodeValue=i18n("preferredTime");
+ const quick=document.querySelectorAll('[data-ask]');
+ [i18n("offer"),i18n("pricing"),i18n("hours")].forEach((value,i)=>{if(quick[i]){quick[i].textContent=value;quick[i].dataset.ask=pageLocale==="pt"?["Quais produtos ou serviços vocês oferecem?","Quais são os preços?","Qual é o horário de funcionamento?"][i]:pageLocale==="es"?["¿Qué productos o servicios ofrecen?","¿Cuáles son sus precios?","¿Cuál es su horario?"][i]:["What do you offer?","Can you explain your prices?","What are your business hours?"][i]}});
+ $("question").placeholder=i18n("askPlaceholder");
+ $("introToggle").textContent=i18n("readMore");
+}
+const INTRO_LIMIT=240;
+let introExpanded=false;
+function previewDescription(description,limit=INTRO_LIMIT){
+ const value=String(description||"").trim();
+ if(value.length<=limit)return{text:value,truncated:false};
+ let cut=value.lastIndexOf(" ",limit);
+ if(cut<Math.floor(limit*.65))cut=limit;
+ return{text:value.slice(0,cut).trimEnd()+"…",truncated:true};
+}
+function renderDescription(){
+ const full=String(store?.description||"").trim();
+ const value=full||({pt:"Conheça nossos produtos e serviços.",es:"Conoce nuestros productos y servicios.",en:"Explore our products and services."}[pageLocale]);
+ const preview=previewDescription(value);
+ const expanded=preview.truncated&&introExpanded;
+ $("intro").textContent=expanded?value:preview.text;
+ const button=$("introToggle");
+ button.classList.toggle("hidden",!preview.truncated);
+ button.textContent=i18n(expanded?"readLess":"readMore");
+ button.setAttribute("aria-expanded",String(expanded));
+}
+
 const sessionKey='nexus_chat_'+slug+'_'+sourceCode;
 try{sessionId=localStorage.getItem(sessionKey)||null}catch{}
 const showFailure=text=>{$("storeUnavailable").textContent=text;$("storeUnavailable").classList.remove("hidden");$("storeContent").classList.add("hidden")};
@@ -14,43 +64,14 @@ async function load(){
   if(!res.ok||!data.store)throw Error("This store is not available yet. Please contact the business directly.");
   store=data.store;items=data.offerings||[];ready=data.chatReady===true;
   employee=data.employee||null;
+  pageLocale=resolveLocale(data.visitorCountry,employee?.language);
+  translateStore();
   if(employee){
-   document.documentElement.lang=employee.language==="pt_BR"?"pt-BR":employee.language==="es_ES"?"es":"en";
-   const pt=employee.language==="pt_BR",es=employee.language==="es_ES";
    const box=$("employeeContact");box.classList.remove("hidden");
-   const label=document.createElement("strong");label.textContent=(pt?"Seu vendedor: ":es?"Tu vendedor: ":"Your salesperson: ")+employee.name+" ";
-   const link=document.createElement("a");link.href=employee.whatsappUrl;link.target="_blank";link.rel="noopener noreferrer";link.textContent=pt?"Falar no WhatsApp":es?"Hablar por WhatsApp":"Open WhatsApp";box.append(label,link);
-   $("question").placeholder=pt?"Pergunte sobre a loja…":es?"Pregunta sobre la tienda…":"Ask about this business…";
-   $("requestType").querySelector('[value="callback"]').textContent=pt?"Solicitar retorno do vendedor":es?"Solicitar llamada":"Request employee callback";
-   $("requestType").querySelector('[value="quote"]').textContent=pt?"Solicitar orçamento":es?"Solicitar presupuesto":"Request quote";
-   $("contactSend").textContent=pt?"Enviar solicitação":es?"Enviar solicitud":"Send inquiry";
-
-   if(pt||es){
-    const terms=pt?{
-     productsHeading:"Produtos e serviços",contactHeading:"Solicitar informações ou atendimento",
-     contactDescription:"Envie sua solicitação ao vendedor. Seu histórico de conversa será associado ao pedido quando disponível.",
-     nameLabel:"Seu nome",emailLabel:"E-mail",phoneLabel:"Telefone (ou e-mail)",
-     typeLabel:"Tipo de solicitação",messageLabel:"Como podemos ajudar?",
-     askQuote:"Solicitar orçamento",askAppointment:"Agendar atendimento",
-     chatSend:"Enviar",info:"Informações",appointment:"Solicitar atendimento"
-    }:{
-     productsHeading:"Productos y servicios",contactHeading:"Solicitar información o atención",
-     contactDescription:"Envía tu solicitud al vendedor. El historial del chat podrá asociarse con tu mensaje.",
-     nameLabel:"Tu nombre",emailLabel:"Correo electrónico",phoneLabel:"Teléfono (o correo)",
-     typeLabel:"Tipo de solicitud",messageLabel:"¿Cómo podemos ayudarte?",
-     askQuote:"Solicitar presupuesto",askAppointment:"Solicitar cita",
-     chatSend:"Enviar",info:"Información",appointment:"Solicitar cita"
-    };
-    for(const [id,value]of Object.entries(terms))if($(id))$(id).textContent=value;
-    $("requestType").querySelector('[value="information"]').textContent=terms.info;
-    $("requestType").querySelector('[value="appointment"]').textContent=terms.appointment;
-    const quick=document.querySelectorAll("[data-ask]");
-    if(quick[0])quick[0].textContent=pt?"O que vocês vendem?":"¿Qué ofrecen?";
-    if(quick[1])quick[1].textContent=pt?"Preços":"Precios";
-    if(quick[2])quick[2].textContent=pt?"Horários":"Horarios";
-    $("chatFoot").textContent=pt?"As conversas podem ser salvas quando você enviar uma solicitação. Agendamentos precisam de confirmação.":"Las conversaciones pueden guardarse al enviar una solicitud. Las citas requieren confirmación.";
-   }
-
+   const label=document.createElement("strong");
+   label.textContent=(pageLocale==="pt"?"Seu vendedor: ":pageLocale==="es"?"Tu vendedor: ":"Your salesperson: ")+employee.name+" ";
+   const link=document.createElement("a");link.href=employee.whatsappUrl;link.target="_blank";link.rel="noopener noreferrer";
+   link.textContent=pageLocale==="pt"?"Falar no WhatsApp":pageLocale==="es"?"Hablar por WhatsApp":"Open WhatsApp";box.replaceChildren(label,link);
   }
 
   remaining=store.chatMaxMessages||10;
@@ -60,20 +81,20 @@ async function load(){
   document.title=store.name+" · SmartStore";
   $("businessName").textContent=store.name;
   if(!data.qrSource)$("headline").textContent=store.headline||"Welcome to "+store.name;
-  $("intro").textContent=store.description||"Explore our products and services.";
+  introExpanded=false;renderDescription();
   const cover=safeUrl(store.store_image_url||"");
   if(cover)$("hero").style.backgroundImage="linear-gradient(90deg,#063d32c9,#063d3266),url("+JSON.stringify(cover)+")";
-  $("count").textContent=items.length+" offering"+(items.length===1?"":"s");
+  $("count").textContent=items.length+" "+(items.length===1?i18n("one"):i18n("count"));
   $("assistantName").textContent=store.agent_name||"Business AI Assistant";
-  $("chatStatus").textContent=ready?"Live AI · "+remaining+" messages available":"Assistant temporarily unavailable";
-  $("welcome").textContent=ready?(employee?.language==="pt_BR"?"Olá! Bem-vindo ao "+store.name+". Sou a assistente virtual de "+employee.name+". Como posso ajudar?":employee?.language==="es_ES"?"¡Hola! Bienvenido a "+store.name+". Soy el asistente de "+employee.name+". ¿En qué puedo ayudarte?":"Hi! Welcome to "+store.name+"! I can help with our services, pricing and business information. What would you like to know?"):"Our AI assistant is temporarily unavailable. Please use the contact form below to reach the business.";
+  $("chatStatus").textContent=ready?(pageLocale==="pt"?"IA ativa · "+remaining+" mensagens disponíveis":pageLocale==="es"?"IA activa · "+remaining+" mensajes disponibles":"Live AI · "+remaining+" messages available"):i18n("unavailable");
+  $("welcome").textContent=ready?format("welcomeChat",store.name):(pageLocale==="pt"?"O assistente está indisponível. Entre em contato pelo formulário abaixo.":pageLocale==="es"?"El asistente no está disponible. Usa el formulario de contacto.":"Our AI assistant is temporarily unavailable. Please use the contact form below to reach the business.");
   $("question").disabled=!ready;$("chatSend").disabled=!ready;
   document.querySelectorAll("[data-ask]").forEach(btn=>btn.disabled=!ready);
   $("products").innerHTML=items.length?items.map(p=>'<article class="item">'+
    (safeUrl(p.image_url)?'<img alt="" src="'+esc(p.image_url)+'">':'<div class="placeholder">✦</div>')+
-   '<div class="item-body"><h3>'+esc(p.name)+'</h3><span class="status">'+esc(p.type)+' · '+esc(p.status)+'</span><div class="price">'+esc(p.price_label||"Price on request")+'</div>'+
-   '<p>'+esc(p.description||"")+'</p><button class="btn" type="button" data-interested="'+esc(p.id)+'">Ask about this</button></div></article>').join(""):
-   '<div class="empty">This business has not listed any offerings yet. You can still contact them below.</div>';
+   '<div class="item-body"><h3>'+esc(p.name)+'</h3><span class="status">'+esc(p.type)+' · '+esc(p.status)+'</span><div class="price">'+esc(p.price_label||i18n("priceOnRequest"))+'</div>'+
+   '<p>'+esc(p.description||"")+'</p><button class="btn" type="button" data-interested="'+esc(p.id)+'">'+esc(i18n("askThis"))+'</button></div></article>').join(""):
+   '<div class="empty">'+esc(i18n("notListed"))+'</div>';
   document.querySelectorAll("[data-interested]").forEach(b=>b.onclick=()=>{
    const p=items.find(x=>x.id===b.dataset.interested);
    requestQuote(p?.name||"an offering");
@@ -86,7 +107,7 @@ function bubble(role,message){
 async function ask(question){
  if(!ready||working||chatClosed)return;question=String(question||"").trim().slice(0,700);if(!question)return;
  working=true;$("question").disabled=true;$("chatSend").disabled=true;
- bubble("user",question);$("question").value="";const pending=bubble("bot","Looking that up…");
+ bubble("user",question);$("question").value="";const pending=bubble("bot",i18n("loading"));
  try{
   const r=await fetch("/.netlify/functions/store-chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({slug,message:question,sessionId,sourceCode})});
   const data=await r.json().catch(()=>({}));
@@ -95,7 +116,7 @@ async function ask(question){
   pending.textContent=data.reply;
   if(data.sessionId){sessionId=data.sessionId;try{localStorage.setItem(sessionKey,sessionId)}catch{}}
   remaining=Number.isInteger(data.remaining)?data.remaining:remaining;
-  $('chatStatus').textContent=remaining+' messages remaining';
+  $('chatStatus').textContent=remaining+(pageLocale==='pt'?' mensagens restantes':pageLocale==='es'?' mensajes restantes':' messages remaining');
   if(data.limitReached)endChat();
   history.push({role:"user",content:question},{role:"assistant",content:data.reply});history=history.slice(-8);
  }catch{pending.textContent="I can't answer right now. Please send your question through the contact form and the business can follow up."}
@@ -103,8 +124,8 @@ async function ask(question){
 }
 function endChat(){
  chatClosed=true;$('question').disabled=true;$('chatSend').disabled=true;
- $('chatStatus').textContent='Chat finished · Send contact request';
- $('chatFoot').textContent='Your chat limit has been reached. Leave your phone number or email and the business can continue helping.';
+ $('chatStatus').textContent=i18n('closed');
+ $('chatFoot').textContent=i18n('endNote');
  $('contact').scrollIntoView({behavior:'smooth',block:'start'});
 }
 $('requestType').onchange=()=>{$('preferredTimeWrap').classList.toggle('hidden',$('requestType').value!=='appointment')};
@@ -122,7 +143,7 @@ async function submitInquiry(e){
   const r=await fetch("/.netlify/functions/store-inquiry",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({slug,name,email,phone,interest,sessionId,sourceCode,requestType:$("requestType").value,preferredTime:$("preferredTime").value,honeypot:$("hp").value})});
   const data=await r.json().catch(()=>({}));
   if(r.status!==201||data.accepted!==true)throw Error(data.error||"The message was not saved");
-  $("contactStatus").textContent=employee?.language==="pt_BR"?"Sua solicitação foi recebida pela loja e atribuída ao vendedor "+employee.name+".":"Your request has been received and saved for "+store.name+". The business can review it and follow up.";
+  $("contactStatus").textContent=employee&&pageLocale==="pt"?"Sua solicitação foi recebida pela loja e atribuída ao vendedor "+employee.name+".":format("received",store.name);
   $("contactForm").reset();
  }catch(e){$("contactStatus").textContent=e.message||"Your inquiry could not be saved. Please try again."}
  finally{send.disabled=false}
@@ -132,4 +153,5 @@ document.querySelectorAll("[data-ask]").forEach(btn=>btn.onclick=()=>ask(btn.dat
 $("askQuote").onclick=()=>{$("requestType").value="quote";requestQuote("a quote")};
 $("askAppointment").onclick=()=>{$("requestType").value="appointment";$("requestType").dispatchEvent(new Event("change"));requestQuote("an appointment")};
 $("contactForm").onsubmit=submitInquiry;
+$("introToggle").onclick=()=>{introExpanded=!introExpanded;renderDescription()};
 load();
