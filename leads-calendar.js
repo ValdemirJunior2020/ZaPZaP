@@ -10,7 +10,7 @@
  const addDays=(d,n)=>new Date(d.getFullYear(),d.getMonth(),d.getDate()+n);
  const appointments=w=>(w.appointments||[]).filter(a=>state.employee==="all"||a.employee_id===state.employee);
  const labels={requested:"Solicitado",confirmed:"Confirmado",cancelled:"Cancelado",completed:"Concluído",no_show:"Não compareceu"};
- const fmt=(d,opts)=>new Intl.DateTimeFormat("pt-BR",opts).format(d);
+ const fmt=(d,opts)=>new Intl.DateTimeFormat(({en:"en-US",pt:"pt-BR",es:"es-ES"})[window.NexusLanguage?.getLanguage?.()||"en"]||"en-US",opts).format(d);
  const labelDate=d=>fmt(d,{day:"2-digit",month:"short",year:"numeric"});
  const hours=d=>fmt(d,{hour:"2-digit",minute:"2-digit"});
  const localDateTime=d=>isoDay(d)+"T"+pad(d.getHours())+":"+pad(d.getMinutes());
@@ -39,7 +39,7 @@
   }else if(state.view==="week"){
    const first=startOfWeek(state.focus);days=Array.from({length:7},(_,i)=>addDays(first,i));
   }else{days=[new Date(state.focus.getFullYear(),state.focus.getMonth(),state.focus.getDate())]}
-  const week=["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
+  const week=Array.from({length:7},(_,i)=>fmt(addDays(new Date(2026,0,5),i),{weekday:"short"}));
   const month=state.view==="month";
   return '<div class="nx-cal-scroll"><div class="nx-cal-grid '+(month?"nx-month":state.view==="week"?"nx-week":"nx-day")+'">'+
  (month||state.view==="week"?week.map(x=>'<div class="nx-cal-weekday">'+x+'</div>').join(""):"")+
