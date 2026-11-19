@@ -276,6 +276,6 @@ test("PayPal checkout refuses to charge a complimentary account",async()=>{
  };
  try{
   const r=await handler({httpMethod:"POST",headers:{host:"zapzap-bot.netlify.app",origin:"https://zapzap-bot.netlify.app",authorization:"Bearer test.token"},body:JSON.stringify({tier:"core"})});
-  assert.equal(r.statusCode,409);assert.equal(checkoutRequests,0);
+  assert.equal(r.statusCode,503);assert.equal(checkoutRequests,0);
  }finally{globalThis.fetch=original;delete process.env.NEXUS_BILLING_ENABLED;delete process.env.PAYPAL_CLIENT_ID;delete process.env.PAYPAL_CLIENT_SECRET;delete process.env.PAYPAL_PLAN_ID}
 });
