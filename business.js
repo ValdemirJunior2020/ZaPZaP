@@ -300,11 +300,13 @@ function renderLinks(){
 }
 function renderPersonalAssistant(){
  const a=workspace?.personalAssistant||{},saved=Boolean(a.id),special=workspace?.personalAssistantSpecial===true;
- if(!workspace?.store)return '<div class="card"><h2>Build Your Personal Assistant</h2><p>Save your business profile in My Store first, then return here.</p></div>';
+ if(!workspace?.store)return '<div class="card"><div class="tag">PERSONAL AI</div><h2>Set up your private assistant workspace</h2><p>No business, storefront or phone number required. Enter the name visitors should associate with your assistant.</p><form id="personalWorkspaceForm"><label>Your name<input id="personalDisplayName" required minlength="2" maxlength="50" placeholder="Your name"></label><div class="actions"><button type="submit" class="primary">Continue to my assistant</button></div><p id="personalWorkspaceError" role="status"></p></form></div>';
  const name=a.display_name||(special?'Hope':'Alex');
  const style=a.personality||(special?'faithful_encourager':'friendly');
  const handle=a.handle||(special?'junior-ai':'my-assistant');
  const url=saved?location.origin+'/assistant/'+encodeURIComponent(handle):'';
+ const canShare=workspace?.access?.allowed===true&&a.enabled===true;
+ const canStartPersonalTrial=saved&&workspace?.access?.reason==="NOT_STARTED"&&a.enabled===true;
  const personalities=[...personalityOptions,...(special?[
  {id:'faithful_encourager',icon:'✝',title:'Faithful Encourager',desc:'Christian-inspired kindness and encouragement, only when welcomed.',best:'Exclusive bonus'},
  {id:'nexus_sales_expert',icon:'✦',title:'NexusSales AI Sales Expert',desc:'Sells NexusSales with ready-to-use product features, accurate pricing and opt-in lead capture.',best:'Exclusive · preloaded'}
@@ -326,7 +328,7 @@ function renderPersonalAssistant(){
  '<label class="personal-check"><input type="checkbox" id="paEnabled" '+(a.enabled===true||!saved?'checked':'')+'> Enable assistant for visitors</label>'+
  '<button class="primary" type="submit" id="paSave" '+(workspace.personalAssistantSchemaReady===false?'disabled':'')+'>'+(saved?'Save assistant':'Create assistant')+'</button></form>'+
  '<div class="personal-live-preview"><strong id="paPreviewName">'+htmlEsc(name)+'</strong><p id="paPreviewGreeting">'+htmlEsc(a.greeting||('Hi! I am '+name+', your AI assistant.'))+'</p><small>Profile preview; live replies require your Ollama connection.</small></div>'+
- (saved?'<div class="personal-share"><h3>Share your personal AI</h3><div class="link-input"><input id="personalLink" readonly value="'+htmlEsc(url)+'"><button id="copyPersonalLink" class="button" type="button">Copy</button></div><div class="link-actions"><a class="button" href="'+htmlEsc(url)+'" target="_blank" rel="noopener">Open assistant</a><a class="button" href="https://wa.me/?text='+encodeURIComponent('Meet '+name+', my AI assistant: '+url)+'" target="_blank" rel="noopener">Share by WhatsApp link</a></div></div>':'')+
+ (saved?'<div class="personal-share"><h3>Personal AI web link</h3><div class="link-input"><input id="personalLink" readonly value="'+htmlEsc(url)+'">'+(canShare?'<button id="copyPersonalLink" class="button" type="button">Copy</button>':'')+'</div>'+(canShare?'<div class="link-actions"><a class="button" href="'+htmlEsc(url)+'" target="_blank" rel="noopener">Open assistant</a><a class="button" href="https://wa.me/?text='+encodeURIComponent('Meet '+name+', my AI assistant: '+url)+'" target="_blank" rel="noopener">Share by WhatsApp link</a></div>':'<p class="hint">This address is reserved but not publicly active. Activate your trial with a working hosted AI, or complete a verified paid subscription, before sharing it.</p>')+(canStartPersonalTrial?'<div class="actions"><button type="button" class="primary" id="activatePersonalTrial">Activate my 48-hour AI trial</button><p id="personalTrialStatus" role="status"></p></div>':'')+'</div>':'')+
  '<p class="hint">Faithful Encourager is exclusive to your lifetime complimentary account. The assistant always identifies itself as AI. Opt-in leads appear in your existing Leads & Chats dashboard.</p></div>';
 }
 // Super-admin preview only. Pricing is not wired to PayPal or subscriptions.
@@ -475,6 +477,17 @@ function bindView(){
  if(viewName==="team"&&workspace?.teamAllowed===true)bindTeam();
  if(viewName==="brazil"&&workspace?.personalAssistantSpecial===true){$("marketCountry").onchange=updateMarketPreview;$("marketEmployees").oninput=updateMarketPreview;$("marketWidget").onchange=updateMarketPreview;updateMarketPreview()}
  if(viewName==="logs"&&workspace?.personalAssistantSpecial===true){$("refreshAiLogs").onclick=fetchAiLogs;fetchAiLogs()}
+ if(viewName==="personal"&&$("personalWorkspaceForm")){
+  $("personalWorkspaceForm").onsubmit=async event=>{
+   event.preventDefault();const button=event.target.querySelector('button[type="submit"]');
+   button.disabled=true;
+   try{
+    const created=await ownerApi("initialize_personal_workspace",{displayName:$("personalDisplayName").value.trim()});
+    if(!created.store?.id)throw Error("Personal workspace could not be verified.");
+    await loadWorkspace({throwOnError:true});viewName="personal";render();toast("Personal workspace created. Set up your assistant.");
+   }catch(error){const status=$("personalWorkspaceError");if(status)status.textContent=error.message;if(button.isConnected)button.disabled=false}
+  };
+ }
  if(viewName==="personal"&&$("personalBuilderForm")){
   const preview=()=>{$("paPreviewName").textContent=$("paName").value.trim()||"Your assistant";$("paPreviewGreeting").textContent=$("paGreeting").value.trim()||"Hi! I'm "+$("paName").value.trim()+", your AI assistant."};
   $("paName").oninput=preview;$("paGreeting").oninput=preview;
@@ -504,6 +517,15 @@ function bindView(){
     viewName="personal";render();
     toast(previous&&previous!==assistant.handle?"Personal link changed. Share your new link.":"Personal assistant saved and verified.");
    }catch(error){toast(error.message);if(button.isConnected)button.disabled=false}
+  };
+  if($("activatePersonalTrial"))$("activatePersonalTrial").onclick=async()=>{
+   const button=$("activatePersonalTrial"),status=$("personalTrialStatus");button.disabled=true;
+   if(status)status.textContent="Checking hosted AI before starting your 48-hour trial…";
+   try{
+    const result=await ownerApi("activate_personal",{});
+    if(result.activated!==true||result.access?.allowed!==true)throw Error("Activation could not be confirmed.");
+    await loadWorkspace({throwOnError:true});viewName="personal";render();toast("Your 48-hour personal AI trial is active.");
+   }catch(error){if(status?.isConnected)status.textContent=error.message;if(button.isConnected)button.disabled=false}
   };
   if($("copyPersonalLink"))$("copyPersonalLink").onclick=()=>navigator.clipboard.writeText($("personalLink").value).then(()=>toast("Link copied")).catch(()=>toast("Unable to copy"));
  }
