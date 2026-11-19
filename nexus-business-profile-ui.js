@@ -16,11 +16,12 @@
   if(!store||!pane||!document.querySelector('[data-view="store"].active'))return;
   document.getElementById('nxBusinessProfile')?.remove();
   const p=workspace.businessProfile||{};lang=window.NexusLanguage?.getLanguage?.()||p.interface_language||'en';const t=dict[lang]||dict.en;
+  const defaultTimezone=p.timezone||Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
   const card=document.createElement('section');card.className='nx-business-profile card';card.id='nxBusinessProfile';
   const ranges=days.map((d,i)=>{const a=p.weekly_hours?.[d]||[];const on=a.length>0;return `<div class="nx-bp-day"><label><input type="checkbox" data-nxbp-day="${d}" ${on?'checked':''}> ${t.labels[i]}</label><input type="time" data-nxbp-start="${d}" value="${h(a[0]?.open||'09:00')}" ${on?'':'disabled'}><input type="time" data-nxbp-end="${d}" value="${h(a[0]?.close||'17:00')}" ${on?'':'disabled'}></div>`}).join('');
   card.innerHTML=`<div class="nx-bp-heading"><div><h2>${t.heading}</h2><p>${t.note}</p></div></div>
   <form id="nxBpForm"><div class="nx-bp-grid">${field('Address',t.address,p.address)}${field('City',t.city,p.city)}${field('Region',t.region,p.region)}${field('Country',t.country,p.country)}${field('Phone',t.phone,p.phone,'tel')}${field('Website',t.website,p.website,'url')}</div>
-  <div class="nx-bp-grid"><label>${t.tz}<select id="nxBpTimezone"><option value="">Select / Selecionar</option>${[p.timezone,...Intl.supportedValuesOf('timeZone'),'UTC'].filter((x,i,a)=>x&&a.indexOf(x)===i).map(x=>`<option value="${h(x)}" ${x===p.timezone?'selected':''}>${h(x)}</option>`).join('')}</select></label>${field('Categories',t.category,(p.categories||[]).join(', '))}</div>
+  <div class="nx-bp-grid"><label>${t.tz}<select id="nxBpTimezone"><option value="">Select / Selecionar</option>${[defaultTimezone,...Intl.supportedValuesOf('timeZone'),'UTC'].filter((x,i,a)=>x&&a.indexOf(x)===i).map(x=>`<option value="${h(x)}" ${x===defaultTimezone?'selected':''}>${h(x)}</option>`).join('')}</select></label>${field('Categories',t.category,(p.categories||[]).join(', '))}</div>
   <label class="nx-bp-check"><input type="checkbox" id="nxBpOnline" ${p.online_only?'checked':''}> ${t.online}</label>
   <label class="nx-bp-check"><input type="checkbox" id="nxBpPublic" ${p.address_public?'checked':''}> ${t.public}</label>
   <h3>${t.hours}</h3><div class="nx-bp-days">${ranges}</div>
@@ -34,7 +35,7 @@
    const weekly_hours={};for(const d of days){const on=card.querySelector(`[data-nxbp-day="${d}"]`).checked;weekly_hours[d]=on?[{open:card.querySelector(`[data-nxbp-start="${d}"]`).value,close:card.querySelector(`[data-nxbp-end="${d}"]`).value}]:[]}
    const profile={address:get('Address'),city:get('City'),region:get('Region'),country:get('Country'),phone:get('Phone'),website:get('Website'),timezone:get('Timezone'),categories:get('Categories').split(',').map(s=>s.trim()).filter(Boolean),online_only:document.getElementById('nxBpOnline').checked,address_public:document.getElementById('nxBpPublic').checked,weekly_hours,closed_dates:get('Closed').split(',').map(s=>s.trim()).filter(Boolean),booking_duration_minutes:Number(get('Duration')),booking_notice_hours:Number(get('Notice'))};
    const btn=document.getElementById('nxBpSave'),feedback=document.getElementById('nxBpFeedback');btn.disabled=true;feedback.textContent=t.saving;
-   try{await api('save_business_profile',{profile});workspace.businessProfile=profile;feedback.textContent=t.saved;await refresh()}catch(err){feedback.textContent=(err?.message||t.error);btn.disabled=false}
+   try{const saved=await api('save_business_profile',{profile});if(!saved.businessProfile?.store_id)throw Error(t.error);workspace.businessProfile={...saved.businessProfile};await refresh({throwOnError:true});feedback.textContent=t.saved}catch(err){feedback.textContent=(err?.message||t.error)}finally{if(btn.isConnected)btn.disabled=false}
   };
  }
  window.NexusBusinessProfile={activate};
