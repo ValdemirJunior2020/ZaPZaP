@@ -83,7 +83,7 @@ export async function handler(event){
   diagStage="daily_quota";
   const dailyLimit=ent.is_complimentary===true?1000:personalMode&&ent.billing_tier==="personal"?100:ent.subscription_status==="ACTIVE"?1000:100;
   const used=await db(c,"rpc/nx_consume_chat_quota",{method:"POST",body:{p_store_id:store.id,p_cap:dailyLimit}});
-  if(used!==true)return json(429,{error:"Assistant message limit reached today"});
+  if(used!==true)return json(429,{code:"DAILY_LIMIT",limitReached:true,error:"The AI usage limit has been reached today. Contact the assistant owner directly or leave a contact request."});
   if(req.sessionId&&!uuid.test(req.sessionId))return json(400,{error:"Invalid chat session"});
   const cap=personalMode?ent.billing_tier==="personal"&&ent.subscription_status==="ACTIVE"?Math.min(10,assistant.max_messages):assistant.max_messages:Math.max(5,Math.min(30,Number(store.chat_max_messages)||10));
   // Cross-session daily budget; clearing local storage never grants unlimited Ollama use.
