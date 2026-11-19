@@ -55,14 +55,16 @@ export async function handler(event){
    const rows=await db(c,"nx_business_profiles?on_conflict=store_id",{method:"POST",
     body:{store_id:store.id,interface_language:language,updated_at:iso()},
     prefer:"resolution=merge-duplicates,return=representation"});
-   return json(200,{language:rows?.[0]?.interface_language||language});
+   if(rows?.[0]?.interface_language!==language)return json(503,{error:"Language preference could not be verified. Try saving again."});
+   return json(200,{language});
   }
   if(action==="save_business_profile"){
    if(!store)return json(400,{error:"Save your SmartStore before setting business hours"});
    let profile;
    try{profile=normalizeProfile(data.profile)}catch(e){return json(400,{error:e.message})}
    const rows=await db(c,"nx_business_profiles?on_conflict=store_id",{method:"POST",body:{store_id:store.id,...profile,updated_at:iso()},prefer:"resolution=merge-duplicates,return=representation"});
-   return json(200,{businessProfile:rows?.[0]||null});
+   if(!rows?.[0])return json(503,{error:"Business settings were not confirmed saved. Please retry."});
+   return json(200,{businessProfile:rows[0]});
   }
   if(ent.billing_tier==="personal"&&ent.subscription_status==="ACTIVE"&&!["save_store","save_personal_assistant"].includes(action))return json(403,{error:"Personal Assistant subscription does not include business management features"});
   if(action==="save_store"){
@@ -77,7 +79,12 @@ export async function handler(event){
     agent_name:str(i.agent_name,70)||"Business Assistant",store_image_url:domainUrl(i.store_image_url),
     color:/^#[a-fA-F0-9]{6}$/.test(i.color||"")?i.color:"#06aa77",updated_at:iso()};
    if(store){
-    if(requested!==store.slug)return json(409,{error:"Store links are permanent once created. Contact support to change yours."});
+    // Owners may rename their own SmartLink; UUID-based offerings, leads and QR records stay attached.
+    // Existing /s/old-slug URLs will no longer resolve, so the client requires explicit confirmation.
+    if(requested!==store.slug){
+     const taken=await db(c,"nx_stores?slug=eq."+encodeURIComponent(requested)+"&select=id");
+     if(taken.some(row=>row.id!==store.id))return json(409,{error:"That SmartLink name is already in use. Choose another."});
+    }
     const rows=await db(c,"nx_stores?id=eq."+encodeURIComponent(store.id)+"&owner_id=eq."+encodeURIComponent(user.id),{method:"PATCH",body:saved,prefer:"return=representation"});
     store=rows?.[0];
    }else{
@@ -142,13 +149,23 @@ export async function handler(event){
    if(publicPhone&&!/^\+[1-9][0-9]{7,14}$/.test(publicPhone))return json(400,{error:"Enter an international phone number such as +15551234567"});
    if(a.publishContactPhone===true&&!publicPhone)return json(400,{error:"Enter your phone number before enabling public phone contact"});
    const current=await db(c,"nx_personal_assistants?owner_id=eq."+encodeURIComponent(user.id)+"&select=id,handle");
-   if(current[0]&&current[0].handle!==handle)return json(409,{error:"Public link cannot be changed after creation"});
+   if(current[0]&&current[0].handle!==handle){
+    // The public handle is unique across accounts. Existing conversations remain linked
+    // by personal_assistant_id, which does not change on an owner-authorized rename.
+    const taken=await db(c,"nx_personal_assistants?handle=eq."+encodeURIComponent(handle)+"&select=id");
+    if(taken.some(other=>other.id!==current[0].id))return json(409,{error:"This personal link ID is already in use. Choose a different one."});
+   }
    const row={owner_id:user.id,store_id:store.id,handle,display_name:name,personality:a.personality,
     greeting:str(a.greeting,400),about:str(a.about,900),enabled:a.enabled===true,max_messages:maxMessages,max_minutes:maxMinutes,public_contact_phone:publicPhone,publish_contact_phone:a.publishContactPhone===true,updated_at:iso()};
    try{
     const result=await db(c,"nx_personal_assistants?on_conflict=owner_id",{method:"POST",body:row,prefer:"resolution=merge-duplicates,return=representation"});
-    return json(200,{assistant:result?.[0]});
-   }catch(error){if(/23505|duplicate|unique/i.test(error.message))return json(409,{error:"Link already in use"});throw error}
+    if(!result?.[0])return json(503,{error:"Personal assistant settings were not confirmed saved. Please retry."});
+    return json(200,{assistant:result[0]});
+   }catch(error){
+    if(/Public handle is permanent|Public handle cannot be changed/i.test(error.message))return json(409,{error:"Your database still blocks personal link changes. The owner must apply the reviewed handle-rename SQL update."});
+    if(/23505|duplicate|unique/i.test(error.message))return json(409,{error:"Link already in use"});
+    throw error
+   }
   }
   if(action==="save_chat_settings"){
    const count=Number(data.chatMaxMessages),minutes=Number(data.chatMaxMinutes);

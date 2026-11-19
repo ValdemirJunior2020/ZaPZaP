@@ -63,7 +63,7 @@ async function ownerApi(action,payload,allowRetry=true){
  if(!r.ok)throw Error(j.error||"Unable to save changes");
  return j;
 }
-async function loadWorkspace(){
+async function loadWorkspace({throwOnError=false}={}){
  try{
   workspace=await ownerApi();
   if(!workspace)throw Error("Unable to load account");
@@ -80,7 +80,8 @@ async function loadWorkspace(){
   text("sideName",workspace.store?.name||workspace.profile?.business_name||"Your business");
   document.querySelectorAll("[data-owner-only]").forEach(el=>el.hidden=workspace?.personalAssistantSpecial!==true);
   render();
- }catch(e){toast(e.message);if(/sign in|session|invalid login|unauthorized/i.test(e.message)){saveSession(null);setVisible(false)}else{setVisible(true);$("viewContent").innerHTML='<div class="alert">Business data is temporarily unavailable. Your account has not been logged out. Refresh the page to retry.</div>'}}
+  return true;
+ }catch(e){toast(e.message);if(/sign in|session|invalid login|unauthorized/i.test(e.message)){saveSession(null);setVisible(false)}else{setVisible(true);$("viewContent").innerHTML='<div class="alert">Business data is temporarily unavailable. Your account has not been logged out. Refresh the page to retry.</div>'}if(throwOnError)throw e;return false}
 }
 function showConfirmationEmail(email){
  const node=$("authMsg");node.textContent="";
@@ -119,6 +120,29 @@ function statusText(){
 function isEditable(){return workspace?.access?.reason!=="TRIAL_EXPIRED"&&workspace?.access?.reason!=="NO_ACCOUNT"}
 const htmlEsc=escapeHtml;
 const productName=p=>escapeHtml(p?.name||"Offering");
+
+// Preserve unsaved form values when the platform language is switched.
+// The language picker must not silently discard a partially edited SmartStore or assistant.
+function snapshotActiveInputs(){
+ const form=document.getElementById("viewContent");
+ if(!form)return [];
+ return [...form.querySelectorAll("input,select,textarea")].map((el,index)=>({
+  index,id:el.id,name:el.name,type:el.type,value:el.value,checked:el.checked,
+  start:typeof el.selectionStart==="number"&&/^(text|search|tel|url|email|textarea)$/i.test(el.type||el.tagName)?el.selectionStart:null
+ }));
+}
+function restoreActiveInputs(snapshot){
+ const root=document.getElementById("viewContent");
+ if(!root)return;
+ for(const field of snapshot){
+  const found=field.id?document.getElementById(field.id):null;
+  const el=found||[...root.querySelectorAll("input,select,textarea")][field.index];
+  if(!el||el.type!==field.type||el.name!==field.name)continue;
+  if(el.type==="checkbox"||el.type==="radio")el.checked=field.checked;
+  else el.value=field.value;
+ }
+}
+
 function render(){
  const titles={overview:["BUSINESS OVERVIEW","Your business command center","Set up and publish your SmartStore."],
  store:["BUSINESS SETTINGS","Set up your SmartStore","Teach the AI what your company does."],
@@ -168,7 +192,7 @@ function renderStore(){
  const s=workspace.store||{},p=workspace.profile||{};
  return '<div class="card"><form id="storeForm" class="detail-form">'+
  '<label>Business name<input id="storeName" maxlength="150" required value="'+htmlEsc(s.name||p.business_name||"")+'"></label>'+
- '<label>Permanent SmartLink name<input id="storeSlug" maxlength="48" required '+(s.id?'readonly':'')+' value="'+htmlEsc(s.slug||"")+'" placeholder="your-business"></label>'+
+ '<label>SmartLink name (editable)<input id="storeSlug" maxlength="48" required pattern="[a-z0-9]+(-[a-z0-9]+)*" title="Use lowercase letters, numbers and single hyphens" value="'+htmlEsc(s.slug||"")+'" placeholder="your-business"></label>'+
  '<label>Industry<input id="storeIndustry" maxlength="100" value="'+htmlEsc(s.industry||"")+'" placeholder="Marketing, plumbing, HVAC, retail, etc."></label>'+
  '<label>AI assistant name<input id="storeAgent" maxlength="70" value="'+htmlEsc(s.agent_name||"Business Assistant")+'"></label>'+
  personalityCards(s.ai_personality||"professional")+
@@ -176,7 +200,7 @@ function renderStore(){
  '<label class="wide">Business description and policies<textarea id="storeDescription" rows="5" maxlength="2500">'+htmlEsc(s.description||"")+'</textarea></label>'+
  '<label>Business hours<input id="storeHours" maxlength="280" value="'+htmlEsc(s.hours||"")+'" placeholder="Mon–Fri 8AM–5PM"></label>'+
  '<label>Store cover image URL (HTTPS)<input id="storeImage" type="url" value="'+htmlEsc(s.store_image_url||"")+'" placeholder="https://..."></label>'+
- '<div class="wide actions"><button class="primary" type="submit" '+(!isEditable()?'disabled':'')+'>Save business details</button></div></form>'+
+ '<div class="wide actions"><button class="primary" type="submit" '+(!isEditable()?'disabled':'')+'>Save business details</button><p id="storeSaveStatus" role="status" aria-live="polite"></p></div></form>'+
  '<p class="hint">Image URLs are saved in the database; the original image stays with its image host. Changes are reflected on the public store after publication.</p></div>';
 }
 function renderOfferings(){
@@ -220,7 +244,7 @@ async function submitTestBot(event,retry=true){
  const header=await authHeader();if(!header){toast("Please sign in again");return}
  button.disabled=true;field.disabled=true;
  testBotMessage("user",message);field.value="";
- const pending=testBotMessage("assistant","Asking your real AI…");
+ const pending=testBotMessage("assistant","Nexus AI is thinking…");
  text("testBotStatus","Connecting securely to your AI…");
  try{
   const r=await fetch("/.netlify/functions/owner-test-chat",{method:"POST",headers:header,body:JSON.stringify({message,history:testBotHistory.slice(-6)}),cache:"no-store",signal:AbortSignal.timeout(27000)});
@@ -283,7 +307,7 @@ function renderPersonalAssistant(){
  (workspace.personalAssistantSchemaReady===false?'<div class="setup-alert">The personal assistant database migration has not been applied. This builder is in review mode and saving is disabled.</div>':'')+
  '<form id="personalBuilderForm" class="personal-builder-form"><div class="personal-two">'+
  '<label>Assistant name<input id="paName" required minlength="2" maxlength="50" value="'+htmlEsc(name)+'" placeholder="Hope, Maya, Oliver"></label>'+
- '<label>Personal link ID<input id="paHandle" required minlength="3" maxlength="32" pattern="[a-z][a-z0-9-]{2,31}" '+(saved?'readonly':'')+' value="'+htmlEsc(handle)+'"></label></div>'+
+ '<label>Personal link ID (editable)<input id="paHandle" required minlength="3" maxlength="32" pattern="[a-z][a-z0-9-]{2,31}" title="Start with a letter; use lowercase letters, numbers or single hyphens" value="'+htmlEsc(handle)+'"></label></div>'+
  '<fieldset class="personality-fieldset"><legend>Choose a personality</legend><div class="personality-grid">'+
  personalities.map(p=>'<label class="personality-card"><input type="radio" name="paStyle" value="'+p.id+'" '+(style===p.id?'checked':'')+'><span class="personality-card-body"><span class="personality-icon">'+p.icon+'</span><strong>'+htmlEsc(p.title)+'</strong><small>'+htmlEsc(p.desc)+'</small><em>'+htmlEsc(p.best)+'</em></span></label>').join('')+'</div></fieldset>'+
  '<label>Welcome message<textarea id="paGreeting" rows="3" maxlength="400" placeholder="Hi! I am an AI assistant. How can I help you?">'+htmlEsc(a.greeting||'')+'</textarea></label>'+
@@ -456,11 +480,23 @@ function bindView(){
    }
   }));
   $("personalBuilderForm").onsubmit=async e=>{
-   e.preventDefault();const button=$("paSave");button.disabled=true;
+   e.preventDefault();
+   const button=$("paSave");
    const assistant={name:$("paName").value.trim(),handle:$("paHandle").value.trim().toLowerCase(),personality:document.querySelector('input[name="paStyle"]:checked')?.value,
     greeting:$("paGreeting").value.trim(),about:$("paAbout").value.trim(),maxMessages:Number($("paMessages").value),maxMinutes:Number($("paMinutes").value),contactPhone:$("paOwnerPhone").value.trim(),publishContactPhone:$("paPublishPhone").checked,enabled:$("paEnabled").checked};
-   try{await ownerApi("save_personal_assistant",{assistant});await loadWorkspace();viewName="personal";render();toast("Personal assistant saved")}
-   catch(error){toast(error.message);button.disabled=false}
+   const previous=workspace.personalAssistant?.handle||"";
+   if(previous&&previous!==assistant.handle){
+    if(!confirm("Change your personal assistant link from /assistant/"+previous+" to /assistant/"+assistant.handle+"?\\n\\nYour old shared link will stop working. You must send the new link to your contacts."))return;
+   }
+   button.disabled=true;
+   try{
+    const saved=await ownerApi("save_personal_assistant",{assistant});
+    if(saved.assistant?.handle!==assistant.handle)throw Error("Assistant link update could not be verified.");
+    await loadWorkspace({throwOnError:true});
+    if(workspace.personalAssistant?.handle!==assistant.handle)throw Error("Saved assistant link could not be verified. Refresh and try again.");
+    viewName="personal";render();
+    toast(previous&&previous!==assistant.handle?"Personal link changed. Share your new link.":"Personal assistant saved and verified.");
+   }catch(error){toast(error.message);if(button.isConnected)button.disabled=false}
   };
   if($("copyPersonalLink"))$("copyPersonalLink").onclick=()=>navigator.clipboard.writeText($("personalLink").value).then(()=>toast("Link copied")).catch(()=>toast("Unable to copy"));
  }
@@ -550,8 +586,14 @@ async function saveStore(e){
   ai_personality:document.querySelector('input[name="storePersonality"]:checked')?.value||"professional",
   headline:$("storeHeadline").value.trim(),description:$("storeDescription").value.trim(),
   hours:$("storeHours").value.trim(),store_image_url:$("storeImage").value.trim()};
- const button=e.target.querySelector("[type=submit]");button.disabled=true;
- try{await ownerApi("save_store",{store});await loadWorkspace();viewName="offerings";render();toast("Business saved")}catch(err){toast(err.message)}finally{button.disabled=false}
+ const previous=workspace.store?.slug||"";
+ if(previous&&previous!==cleanSlug(store.slug)){
+  const changed=cleanSlug(store.slug);
+  if(!changed||changed.length<3){toast("SmartLink name must contain at least three letters or numbers");return}
+  if(!confirm("Change your SmartLink from /s/"+previous+" to /s/"+changed+"?\\n\\nIMPORTANT: Your old link and QR codes will stop working. Update all places where you shared them. This cannot be automatically undone."))return;
+ }
+ const button=e.target.querySelector("[type=submit]");const status=$("storeSaveStatus");if(status)status.textContent="Saving business details…";button.disabled=true;
+ try{const response=await ownerApi("save_store",{store});if(!response.store?.id)throw Error("Save could not be verified. Please retry.");await loadWorkspace({throwOnError:true});if(workspace.store?.slug!==cleanSlug(store.slug)||workspace.store?.name!==store.name)throw Error("Saved details could not be verified. Please retry.");viewName="store";render();const message=previous&&previous!==workspace.store?.slug?"SmartLink updated. Replace your old links and QR codes.":"Business details saved and verified.";if($("storeSaveStatus"))$("storeSaveStatus").textContent=message;toast(message)}catch(err){if(status?.isConnected)status.textContent=err.message;toast(err.message)}finally{if(button.isConnected)button.disabled=false}
 }
 function editOffering(id){
  const p=(workspace.offerings||[]).find(x=>x.id===id)||{};
@@ -575,9 +617,10 @@ async function init(){
  $("authForm").onsubmit=submitAuth;$("logoutTop").onclick=signOut;$("logoutSide").onclick=signOut;
  $("dialogClose").onclick=closeDialog;$("offeringForm").onsubmit=saveOffering;
  $("dialogBackdrop").addEventListener("click",e=>{if(e.target===$("dialogBackdrop"))closeDialog()});
- document.querySelectorAll("[data-view]").forEach(e=>e.onclick=()=>{viewName=e.dataset.view;render()});
+ const nav=$("sideNav");
+ nav.addEventListener("click",event=>{const button=event.target.closest("button[data-view]");if(!button||!nav.contains(button))return;viewName=button.dataset.view;try{render()}catch(error){console.error("Sidebar navigation:",error);toast("Unable to open this page. Please refresh and try again.")}});
  window.NexusFlags?.render();
- window.addEventListener("nexus:language",()=>{if(workspace)render()});
+ window.addEventListener("nexus:language",()=>{if(!workspace)return;const inputs=snapshotActiveInputs();render();restoreActiveInputs(inputs);window.NexusLanguage?.apply()});
  await loadConfig();if(session()&&cfg)await loadWorkspace();else setVisible(false);
 }
 init();
