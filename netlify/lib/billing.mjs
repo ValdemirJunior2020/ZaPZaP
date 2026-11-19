@@ -6,7 +6,7 @@ const env=()=>({
  supabaseKey:process.env.NEXUS_SUPABASE_SECRET_KEY||process.env.NEXUS_SUPABASE_SERVICE_ROLE_KEY||"",
  clientId:process.env.PAYPAL_CLIENT_ID||"",secret:process.env.PAYPAL_CLIENT_SECRET||"",
  plan:process.env.PAYPAL_PLAN_ID||"",widgetPlan:process.env.PAYPAL_WIDGET_BUNDLE_PLAN_ID||"",webhookId:process.env.PAYPAL_WEBHOOK_ID||"",
- businessPlan:process.env.PAYPAL_BUSINESS_PLAN_ID||"",employeeGlobalPlan:process.env.PAYPAL_EXTRA_EMPLOYEE_GLOBAL_PLAN_ID||"",employeeBrazilPlan:process.env.PAYPAL_EXTRA_EMPLOYEE_BR_PLAN_ID||"",widgetAddonPlan:process.env.PAYPAL_WIDGET_ADDON_PLAN_ID||"",
+ businessPlan:process.env.PAYPAL_BUSINESS_PLAN_ID||"",employeeGlobalPlan:process.env.PAYPAL_EXTRA_EMPLOYEE_GLOBAL_PLAN_ID||"",employeeBrazilPlan:process.env.PAYPAL_EXTRA_EMPLOYEE_BR_PLAN_ID||"",widgetAddonPlan:process.env.PAYPAL_WIDGET_ADDON_PLAN_ID||"",personalPlan:process.env.PAYPAL_PERSONAL_BASIC_PLAN_ID||"",
  mode:process.env.PAYPAL_MODE==="live"?"live":"sandbox"
 });
 const api=cfg=>cfg.mode==="live"?"https://api-m.paypal.com":"https://api-m.sandbox.paypal.com";
@@ -35,7 +35,7 @@ async function db(c,path,{method="GET",body,prefer}={}){
  return data;
 }
 async function entitlement(c,id){
- const rows=await db(c,"nx_entitlements?user_id=eq."+encodeURIComponent(id)+"&select=user_id,trial_started_at,subscription_status,paypal_subscription_id,paypal_plan_id,is_complimentary");
+ const rows=await db(c,"nx_entitlements?user_id=eq."+encodeURIComponent(id)+"&select=user_id,trial_started_at,subscription_status,paypal_subscription_id,paypal_plan_id,is_complimentary,billing_tier,billing_region,billing_employee_limit,billing_widget");
  return rows?.[0]||null;
 }
 function access(ent){
@@ -47,10 +47,10 @@ function access(ent){
  return{allowed:paid||trial,reason:paid?"PAID":trial?"TRIAL":!ent.trial_started_at?"NOT_STARTED":"TRIAL_EXPIRED",trialEndsAt:Number.isFinite(end)?new Date(end).toISOString():null,trialHoursLeft:trial?Math.ceil((end-Date.now())/3600000):0,subscriptionStatus:ent.subscription_status,subscriptionId:ent.paypal_subscription_id||null,subscriptionPlan:ent.paypal_plan_id||null};
 }
 const pricing=Object.freeze({business:{amount:499,label:"NexusSales AI Business",includedEmployees:3},employee_global:{amount:50,label:"Additional employee outside Brazil"},employee_br:{amount:30,label:"Additional employee Brazil"},widget_addon:{amount:79,label:"Website AI chatbot add-on"}});
-function planId(c,tier){return tier==="core_widget"?c.widgetPlan:c.plan}
+function planId(c,tier){return tier==="business"?c.businessPlan:tier==="personal"?c.personalPlan:null}
 function widgetEnabled(c,ent){
  const a=access(ent);
- return a.allowed&&(a.reason==="TRIAL"||a.reason==="COMPLIMENTARY"||Boolean(c.widgetPlan&&ent?.paypal_plan_id===c.widgetPlan&&ent?.subscription_status==="ACTIVE"));
+ return a.allowed&&(a.reason==="TRIAL"||a.reason==="COMPLIMENTARY"||Boolean(ent?.subscription_status==="ACTIVE"&&(ent?.billing_widget===true||(c.widgetPlan&&ent?.paypal_plan_id===c.widgetPlan))));
 }
 async function paypalToken(c){
  if(!c.clientId||!c.secret)throw Object.assign(new Error("PayPal not configured"),{status:503});
@@ -58,9 +58,9 @@ async function paypalToken(c){
  if(!response.ok)throw new Error("PayPal authorization failed");
  const j=await response.json();if(!j.access_token)throw new Error("PayPal token unavailable");return j.access_token;
 }
-async function paypal(c,path,{method="GET",body}={}){
+async function paypal(c,path,{method="GET",body,requestId}={}){
  const token=await paypalToken(c);
- const response=await fetch(api(c)+path,{method,headers:{"Content-Type":"application/json",Authorization:"Bearer "+token,"Accept":"application/json","PayPal-Request-Id":crypto.randomUUID()},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(20000)});
+ const response=await fetch(api(c)+path,{method,headers:{"Content-Type":"application/json",Authorization:"Bearer "+token,"Accept":"application/json","PayPal-Request-Id":requestId||crypto.randomUUID()},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(20000)});
  const j=await response.json().catch(()=>({}));
  if(!response.ok)throw new Error("PayPal request failed ("+response.status+")");
  return j;
