@@ -5,7 +5,7 @@ import{normalizeProfile}from"../lib/nexus-business-profile.mjs";
 import{cancelSubscription,deleteAccount}from"../lib/account-lifecycle.mjs";
 import{widgetEnabled}from"../lib/billing.mjs";
 import{env,db,json,str,slug,domainUrl,userFrom,ownStore,offerings,ownerProfile,access,postOrigin,parse,safeError,aiReady,verifyHostedAI,iso}from "../lib/tenant.mjs";
-const teamEntitled=(user,ent)=>Boolean(user.id===SPECIAL_OWNER&&ent?.is_complimentary===true||(ent?.subscription_status==="ACTIVE"&&[process.env.NEXUS_PAYPAL_ENTERPRISE_BR_PLAN_ID,process.env.NEXUS_PAYPAL_ENTERPRISE_GLOBAL_PLAN_ID].filter(Boolean).includes(ent?.paypal_plan_id)));
+const teamEntitled=(user,ent)=>Boolean(user.id===SPECIAL_OWNER&&ent?.is_complimentary===true||(ent?.subscription_status==="ACTIVE"&&(ent?.billing_tier==="business"&&Number(ent.billing_employee_limit)>=3||[process.env.NEXUS_PAYPAL_ENTERPRISE_BR_PLAN_ID,process.env.NEXUS_PAYPAL_ENTERPRISE_GLOBAL_PLAN_ID].filter(Boolean).includes(ent?.paypal_plan_id))));
 const canEdit=ent=>Boolean(ent?.is_complimentary)||!ent?.trial_started_at||access(ent).allowed;
 const opts=["Product","Service","Package","Consultation","Custom quote"];
 const avail=["Available","Booking required","Request a quote","In stock","Out of stock","Contact for availability"];
@@ -64,6 +64,7 @@ export async function handler(event){
    const rows=await db(c,"nx_business_profiles?on_conflict=store_id",{method:"POST",body:{store_id:store.id,...profile,updated_at:iso()},prefer:"resolution=merge-duplicates,return=representation"});
    return json(200,{businessProfile:rows?.[0]||null});
   }
+  if(ent.billing_tier==="personal"&&ent.subscription_status==="ACTIVE"&&!["save_store","save_personal_assistant"].includes(action))return json(403,{error:"Personal Assistant subscription does not include business management features"});
   if(action==="save_store"){
    const i=data.store||{};
    const name=str(i.name,150);
@@ -98,8 +99,8 @@ export async function handler(event){
     const rows=await db(c,"nx_employees?id=eq."+encodeURIComponent(d.id)+"&store_id=eq."+encodeURIComponent(store.id),{method:"PATCH",body:{name,role,whatsapp,language:d.language,updated_at:iso()},prefer:"return=representation"});
     return json(200,{employee:rows[0]});
    }
-   const limit=user.id===SPECIAL_OWNER&&ent.is_complimentary===true?20:3;
-   if(employees.filter(x=>x.enabled&&!x.archived).length>=limit)return json(402,{error:"Os três funcionários incluídos estão completos. Cobrança de funcionários extras ainda não está ativada."});
+   const limit=user.id===SPECIAL_OWNER&&ent.is_complimentary===true?20:ent.billing_tier==="business"&&ent.subscription_status==="ACTIVE"?Math.max(3,Number(ent.billing_employee_limit)||3):3;
+   if(employees.filter(x=>x.enabled&&!x.archived).length>=limit)return json(402,{error:"Os três funcionários incluídos estão completos. Upgrade your subscription to add more employees."});
    const sources=await db(c,"nx_qr_sources?store_id=eq."+encodeURIComponent(store.id)+"&select=id&limit=101");
    if(sources.length>=100)return json(403,{error:"Limite de QR Codes atingido"});
    const qr=await db(c,"nx_qr_sources",{method:"POST",body:{store_id:store.id,label:"Vendedor: "+name,enabled:true},prefer:"return=representation"});
@@ -119,7 +120,7 @@ export async function handler(event){
    const employee=rows[0],enabled=data.enabled===true;
    if(action==="set_employee_enabled"&&enabled){
     const active=await db(c,"nx_employees?store_id=eq."+encodeURIComponent(store.id)+"&enabled=eq.true&archived=eq.false&select=id");
-    const limit=user.id===SPECIAL_OWNER&&ent.is_complimentary===true?20:3;
+    const limit=user.id===SPECIAL_OWNER&&ent.is_complimentary===true?20:ent.billing_tier==="business"&&ent.subscription_status==="ACTIVE"?Math.max(3,Number(ent.billing_employee_limit)||3):3;
     if(active.length>=limit)return json(402,{error:"Limite de funcionários ativos. Funcionários extras exigem pagamento confirmado."});
    }
    if(action==="delete_employee"){
