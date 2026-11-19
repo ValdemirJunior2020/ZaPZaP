@@ -82,7 +82,7 @@ test("Personal sales assistant provides owner's direct WhatsApp link without exp
  const html=await readFile("personal-chat.html","utf8");
  assert.match(api,/a.publish_contact_phone===true/);
  assert.match(api,/public_contact_phone/);
- assert.doesNotMatch(api,/wa.me\\/15616445874/);
+ assert.doesNotMatch(api,/15616445874/);
  assert.match(ui,/ownerWhatsAppUrl/);
  assert.match(ui,/AI configured/);
  assert.match(ui,/AI temporarily unavailable/);
