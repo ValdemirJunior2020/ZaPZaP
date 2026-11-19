@@ -3,6 +3,8 @@
 "use strict";
 const languages=Object.freeze({en:"English",es:"Español",pt:"Português"});
 const entries=[
+["Personal link ID (editable)","Identificador do link pessoal (editável)","Identificador del enlace personal (editable)"],
+
 ["Team / unassigned","Equipe / sem atribuição","Equipo / sin asignar"],
 ["Employee","Funcionário","Empleado"],
 ["View","Visualização","Vista"],
