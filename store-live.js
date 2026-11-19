@@ -66,7 +66,7 @@ async function load(){
   $("count").textContent=items.length+" offering"+(items.length===1?"":"s");
   $("assistantName").textContent=store.agent_name||"Business AI Assistant";
   $("chatStatus").textContent=ready?"Live AI · "+remaining+" messages available":"Assistant temporarily unavailable";
-  $("welcome").textContent=ready?(employee?.language==="pt_BR"?"Olá! Bem-vindo ao "+store.name+". Sou a assistente virtual de "+employee.name+". Como posso ajudar?":employee?.language==="es_ES"?"¡Hola! Bienvenido a "+store.name+". Soy el asistente de "+employee.name+". ¿En qué puedo ayudarte?":"Hi! Welcome to "+store.name+"! I can help with our services, pricing and business information. What would you like to know?"):"Our AI assistant is temporarily unavailable. Please use the contact form below to reach the business.";
+  $("welcome").textContent=ready?(employee?.language==="pt_BR"?"Olá! Sou o assistente virtual da "+store.name+(employee?.name?", atendendo com "+employee.name:"")+". Como posso ajudar?":employee?.language==="es_ES"?"¡Hola! Soy el asistente virtual de "+store.name+(employee?.name?", trabajando con "+employee.name:"")+". ¿En qué puedo ayudarte?":"Hi! I'm "+store.name+"'s AI assistant."+(employee?.name?" I'm here to help on behalf of "+employee.name+".":"")+" How can I help you today?"):"Our AI assistant is temporarily unavailable. Please use the contact form below to reach the business.";
   $("question").disabled=!ready;$("chatSend").disabled=!ready;
   document.querySelectorAll("[data-ask]").forEach(btn=>btn.disabled=!ready);
   $("products").innerHTML=items.length?items.map(p=>'<article class="item">'+
