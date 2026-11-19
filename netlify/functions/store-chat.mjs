@@ -17,7 +17,7 @@ export async function handler(event){
     const a=rows?.[0];if(!a)return json(404,{error:"Assistant unavailable"});
     const ent=await entitlement(c,a.owner_id);
     if(!access(ent).allowed)return json(404,{error:"Assistant unavailable"});
-    return json(200,{online:aiReady(),contactWhatsAppUrl:a.publish_contact_phone===true&&/^\+[1-9][0-9]{7,14}$/.test(a.public_contact_phone||"")?"https://wa.me/"+a.public_contact_phone.slice(1):null,assistant:{name:a.display_name,greeting:a.greeting,style:styleName(a.personality),limit:a.max_messages}});
+    return json(200,{online:aiReady(),contactPhone:a.publish_contact_phone===true&&/^\+[1-9][0-9]{7,14}$/.test(a.public_contact_phone||"")?a.public_contact_phone:null,contactWhatsAppUrl:a.publish_contact_phone===true&&/^\+[1-9][0-9]{7,14}$/.test(a.public_contact_phone||"")?"https://wa.me/"+a.public_contact_phone.slice(1):null,assistant:{name:a.display_name,greeting:a.greeting,style:styleName(a.personality),limit:a.max_messages}});
    }catch(e){console.error("Personal AI public config:",e.message);return json(503,{error:"Assistant temporarily unavailable"})}
   }
   if(event.queryStringParameters?.experience!==JUNIOR_EXPERIENCE)return json(200,{online:aiReady()});
