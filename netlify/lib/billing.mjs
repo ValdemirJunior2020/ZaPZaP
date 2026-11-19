@@ -46,7 +46,7 @@ function access(ent){
  const trial=["TRIAL","PENDING"].includes(ent.subscription_status)&&Number.isFinite(end)&&Date.now()<end;
  return{allowed:paid||trial,reason:paid?"PAID":trial?"TRIAL":!ent.trial_started_at?"NOT_STARTED":"TRIAL_EXPIRED",trialEndsAt:Number.isFinite(end)?new Date(end).toISOString():null,trialHoursLeft:trial?Math.ceil((end-Date.now())/3600000):0,subscriptionStatus:ent.subscription_status,subscriptionId:ent.paypal_subscription_id||null,subscriptionPlan:ent.paypal_plan_id||null};
 }
-const pricing=Object.freeze({business:{amount:499,label:"NexusSales AI Business",includedEmployees:3},employee_global:{amount:50,label:"Additional employee outside Brazil"},employee_br:{amount:30,label:"Additional employee Brazil"},widget_addon:{amount:79,label:"Website AI chatbot add-on"}});
+const pricing=Object.freeze({personal:{amount:15,label:"Personal Assistant Basic"},business:{amount:499,label:"NexusSales AI Business",includedEmployees:3},employee_global:{amount:50,label:"Additional employee outside Brazil"},employee_br:{amount:30,label:"Additional employee Brazil"},widget_addon:{amount:79,label:"Website AI chatbot add-on"}});
 function planId(c,tier){return tier==="business"?c.businessPlan:tier==="personal"?c.personalPlan:null}
 function widgetEnabled(c,ent){
  const a=access(ent);
