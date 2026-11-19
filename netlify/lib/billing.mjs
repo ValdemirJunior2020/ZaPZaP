@@ -6,6 +6,7 @@ const env=()=>({
  supabaseKey:process.env.NEXUS_SUPABASE_SECRET_KEY||process.env.NEXUS_SUPABASE_SERVICE_ROLE_KEY||"",
  clientId:process.env.PAYPAL_CLIENT_ID||"",secret:process.env.PAYPAL_CLIENT_SECRET||"",
  plan:process.env.PAYPAL_PLAN_ID||"",widgetPlan:process.env.PAYPAL_WIDGET_BUNDLE_PLAN_ID||"",webhookId:process.env.PAYPAL_WEBHOOK_ID||"",
+ businessPlan:process.env.PAYPAL_BUSINESS_PLAN_ID||"",employeeGlobalPlan:process.env.PAYPAL_EXTRA_EMPLOYEE_GLOBAL_PLAN_ID||"",employeeBrazilPlan:process.env.PAYPAL_EXTRA_EMPLOYEE_BR_PLAN_ID||"",widgetAddonPlan:process.env.PAYPAL_WIDGET_ADDON_PLAN_ID||"",
  mode:process.env.PAYPAL_MODE==="live"?"live":"sandbox"
 });
 const api=cfg=>cfg.mode==="live"?"https://api-m.paypal.com":"https://api-m.sandbox.paypal.com";
@@ -45,7 +46,7 @@ function access(ent){
  const trial=["TRIAL","PENDING"].includes(ent.subscription_status)&&Number.isFinite(end)&&Date.now()<end;
  return{allowed:paid||trial,reason:paid?"PAID":trial?"TRIAL":!ent.trial_started_at?"NOT_STARTED":"TRIAL_EXPIRED",trialEndsAt:Number.isFinite(end)?new Date(end).toISOString():null,trialHoursLeft:trial?Math.ceil((end-Date.now())/3600000):0,subscriptionStatus:ent.subscription_status,subscriptionId:ent.paypal_subscription_id||null,subscriptionPlan:ent.paypal_plan_id||null};
 }
-const pricing=Object.freeze({core:{amount:149,label:"NexusSales SmartLinks",widget:false},core_widget:{amount:228,label:"NexusSales + Website Widget",widget:true}});
+const pricing=Object.freeze({business:{amount:499,label:"NexusSales AI Business",includedEmployees:3},employee_global:{amount:50,label:"Additional employee outside Brazil"},employee_br:{amount:30,label:"Additional employee Brazil"},widget_addon:{amount:79,label:"Website AI chatbot add-on"}});
 function planId(c,tier){return tier==="core_widget"?c.widgetPlan:c.plan}
 function widgetEnabled(c,ent){
  const a=access(ent);
