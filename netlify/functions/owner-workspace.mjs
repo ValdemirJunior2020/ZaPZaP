@@ -24,7 +24,7 @@ export async function handler(event){
    let leads=store?await db(c,"nx_leads?store_id=eq."+encodeURIComponent(store.id)+"&select=id,customer_name,customer_email,customer_phone,interest,status,request_type,preferred_time,source_id,session_id,employee_id,created_at,updated_at&order=created_at.desc&limit=100"):[];
    const qrSources=store?await db(c,"nx_qr_sources?store_id=eq."+encodeURIComponent(store.id)+"&select=id,code,label,enabled,offering_id,scan_count,created_at&order=created_at.desc&limit=100"):[];
    let personalRows=[],personalSchemaReady=true;
-   if(store){try{personalRows=await db(c,"nx_personal_assistants?owner_id=eq."+encodeURIComponent(user.id)+"&store_id=eq."+encodeURIComponent(store.id)+"&select=id,handle,display_name,personality,greeting,about,enabled,max_messages,max_minutes")}catch(error){personalSchemaReady=false}}
+   if(store){try{personalRows=await db(c,"nx_personal_assistants?owner_id=eq."+encodeURIComponent(user.id)+"&store_id=eq."+encodeURIComponent(store.id)+"&select=id,handle,display_name,personality,greeting,about,enabled,max_messages,max_minutes,public_contact_phone,publish_contact_phone")}catch(error){personalSchemaReady=false}}
    if(store&&personalSchemaReady){try{
     leads=await db(c,"nx_leads?store_id=eq."+encodeURIComponent(store.id)+"&select=id,customer_name,customer_email,customer_phone,interest,status,request_type,preferred_time,source_id,session_id,employee_id,personal_assistant_id,created_at,updated_at&order=created_at.desc&limit=100");
    }catch(error){console.error("Personal lead fields unavailable:",error.message)}}
@@ -137,10 +137,13 @@ export async function handler(event){
    if(!validStyle(a.personality,user.id)||(a.personality===NEXUS_STYLE&&ent.is_complimentary!==true))return json(403,{error:"Personality unavailable for this account"});
    const maxMessages=Number(a.maxMessages),maxMinutes=Number(a.maxMinutes);
    if(!Number.isInteger(maxMessages)||maxMessages<5||maxMessages>30||!Number.isInteger(maxMinutes)||maxMinutes<5||maxMinutes>30)return json(400,{error:"Limits must be 5–30 messages and 5–30 minutes"});
+   const publicPhone=String(a.contactPhone||"").replace(/[\s()\-]/g,"");
+   if(publicPhone&&!/^\+[1-9][0-9]{7,14}$/.test(publicPhone))return json(400,{error:"Enter an international phone number such as +15551234567"});
+   if(a.publishContactPhone===true&&!publicPhone)return json(400,{error:"Enter your phone number before enabling public phone contact"});
    const current=await db(c,"nx_personal_assistants?owner_id=eq."+encodeURIComponent(user.id)+"&select=id,handle");
    if(current[0]&&current[0].handle!==handle)return json(409,{error:"Public link cannot be changed after creation"});
    const row={owner_id:user.id,store_id:store.id,handle,display_name:name,personality:a.personality,
-    greeting:str(a.greeting,400),about:str(a.about,900),enabled:a.enabled===true,max_messages:maxMessages,max_minutes:maxMinutes,updated_at:iso()};
+    greeting:str(a.greeting,400),about:str(a.about,900),enabled:a.enabled===true,max_messages:maxMessages,max_minutes:maxMinutes,public_contact_phone:publicPhone,publish_contact_phone:a.publishContactPhone===true,updated_at:iso()};
    try{
     const result=await db(c,"nx_personal_assistants?on_conflict=owner_id",{method:"POST",body:row,prefer:"resolution=merge-duplicates,return=representation"});
     return json(200,{assistant:result?.[0]});
