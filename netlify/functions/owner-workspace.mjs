@@ -149,7 +149,12 @@ export async function handler(event){
    if(publicPhone&&!/^\+[1-9][0-9]{7,14}$/.test(publicPhone))return json(400,{error:"Enter an international phone number such as +15551234567"});
    if(a.publishContactPhone===true&&!publicPhone)return json(400,{error:"Enter your phone number before enabling public phone contact"});
    const current=await db(c,"nx_personal_assistants?owner_id=eq."+encodeURIComponent(user.id)+"&select=id,handle");
-   if(current[0]&&current[0].handle!==handle)return json(409,{error:"Public link cannot be changed after creation"});
+   if(current[0]&&current[0].handle!==handle){
+    // The public handle is unique across accounts. Existing conversations remain linked
+    // by personal_assistant_id, which does not change on an owner-authorized rename.
+    const taken=await db(c,"nx_personal_assistants?handle=eq."+encodeURIComponent(handle)+"&select=id");
+    if(taken.some(other=>other.id!==current[0].id))return json(409,{error:"This personal link ID is already in use. Choose a different one."});
+   }
    const row={owner_id:user.id,store_id:store.id,handle,display_name:name,personality:a.personality,
     greeting:str(a.greeting,400),about:str(a.about,900),enabled:a.enabled===true,max_messages:maxMessages,max_minutes:maxMinutes,public_contact_phone:publicPhone,publish_contact_phone:a.publishContactPhone===true,updated_at:iso()};
    try{
