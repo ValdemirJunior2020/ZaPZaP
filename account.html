@@ -80,7 +80,7 @@ el("tierCore").onclick=()=>chooseTier("core");el("tierWidget").onclick=()=>choos
 function chooseTier(tier){selectedTier=tier;el("tierCore").setAttribute("aria-pressed",String(tier==="core"));el("tierWidget").setAttribute("aria-pressed",String(tier==="core_widget"));if(token())refresh();}
 function updateQuote(){
  const raw=el("quoteEmployees").value;
- const valid=/^\\d+$/.test(raw)&&Number(raw)>=3&&Number(raw)<=1000;
+ const valid=/^\d+$/.test(raw)&&Number(raw)>=3&&Number(raw)<=1000;
  const count=Number(raw);
  const price=el("quoteCountry").value==="BR"?30:50;
  const total=499+Math.max(0,count-3)*price+(el("quoteWidget").checked?79:0);
