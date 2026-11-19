@@ -193,7 +193,7 @@ function renderTestBot(){
  const st=workspace?.store,items=workspace?.offerings||[];
  const ready=Boolean(st&&isEditable());
  const sellingNexus=items.some(p=>String(p.name||"").trim().toLowerCase()==="nexus ai");
- const intro=st?(sellingNexus?"Hi! I am "+(st.agent_name||"your business assistant")+". Would you like an AI for your business, a personal assistant, or would you like me to tell you more about it? Explore the platform: https://za-p-za-p.vercel.app/":"Hi! I am "+(st.agent_name||"your business assistant")+". Ask me about "+st.name+"'s products and services."):"Save your business profile first to begin.";
+ const intro=st?(sellingNexus?"Hi! I'm "+st.name+"'s AI assistant. Would you like an AI for your business, a personal assistant, or more information about NexusSales AI? Explore the platform: https://za-p-za-p.vercel.app/":"Hi! I'm "+st.name+"'s AI assistant. I'm here to help with our products and services. How can I help you today?"):"Save your business profile first to begin.";
  const style=personalityOptions.find(p=>p.id===(st?.ai_personality||"professional"))||personalityOptions[0];
  return '<div class="testbot-wrap"><div class="testbot-setup card"><span class="tag">PRIVATE PREVIEW • ONLY YOU</span><h2>Your own AI. Your real business information.</h2><p>This is a private testing space. Your assistant uses the products, prices, description and hours you saved. Test it before publishing.</p>'+
  '<div class="testbot-status">'+(st?'✓ Business saved':'○ Save business details')+'</div>'+
