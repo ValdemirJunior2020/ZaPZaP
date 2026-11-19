@@ -4,8 +4,8 @@ import{normalizePersonality,personalityInstructions}from"./ai-personalities.mjs"
 
 function replyLanguage(message,preferred="en"){
  const v=String(message||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
- const pt=/\b(?:eu|quero|voce|voces|ola|oi|obrigad[oa]|preciso|preco|dono|proprietario|testando|somente|agendar|fazer|ajuda|nao|sim|bom dia|boa tarde|telefone)\b/.test(v);
- const es=/\b(?:hola|quiero|usted|ustedes|gracias|necesito|precio|dueno|puedo|puedes|cuanto|cuando|donde|telefono|cita|conocer)\b/.test(v);
+ const pt=/\b(?:eu|quero|voce|voces|ola|oi|obrigad[oa]|preciso|preco|quanto|custa|pode|servicos|produtos|dono|proprietario|testando|somente|agendar|fazer|ajuda|nao|sim|bom dia|boa tarde|telefone)\b/.test(v);
+ const es=/\b(?:hola|quiero|usted|ustedes|gracias|necesito|precio|cuesta|tienen|dueno|puedo|puedes|cuanto|cuando|donde|telefono|cita|conocer)\b/.test(v);
  if(pt&&!es)return "pt";
  if(es&&!pt)return "es";
  if(/\b(?:hello|thanks|please|price|business|owner|where|when|what|would|phone|can you|how much)\b/.test(v))return "en";
