@@ -55,14 +55,16 @@ export async function handler(event){
    const rows=await db(c,"nx_business_profiles?on_conflict=store_id",{method:"POST",
     body:{store_id:store.id,interface_language:language,updated_at:iso()},
     prefer:"resolution=merge-duplicates,return=representation"});
-   return json(200,{language:rows?.[0]?.interface_language||language});
+   if(rows?.[0]?.interface_language!==language)return json(503,{error:"Language preference could not be verified. Try saving again."});
+   return json(200,{language});
   }
   if(action==="save_business_profile"){
    if(!store)return json(400,{error:"Save your SmartStore before setting business hours"});
    let profile;
    try{profile=normalizeProfile(data.profile)}catch(e){return json(400,{error:e.message})}
    const rows=await db(c,"nx_business_profiles?on_conflict=store_id",{method:"POST",body:{store_id:store.id,...profile,updated_at:iso()},prefer:"resolution=merge-duplicates,return=representation"});
-   return json(200,{businessProfile:rows?.[0]||null});
+   if(!rows?.[0])return json(503,{error:"Business settings were not confirmed saved. Please retry."});
+   return json(200,{businessProfile:rows[0]});
   }
   if(ent.billing_tier==="personal"&&ent.subscription_status==="ACTIVE"&&!["save_store","save_personal_assistant"].includes(action))return json(403,{error:"Personal Assistant subscription does not include business management features"});
   if(action==="save_store"){
@@ -152,7 +154,8 @@ export async function handler(event){
     greeting:str(a.greeting,400),about:str(a.about,900),enabled:a.enabled===true,max_messages:maxMessages,max_minutes:maxMinutes,public_contact_phone:publicPhone,publish_contact_phone:a.publishContactPhone===true,updated_at:iso()};
    try{
     const result=await db(c,"nx_personal_assistants?on_conflict=owner_id",{method:"POST",body:row,prefer:"resolution=merge-duplicates,return=representation"});
-    return json(200,{assistant:result?.[0]});
+    if(!result?.[0])return json(503,{error:"Personal assistant settings were not confirmed saved. Please retry."});
+    return json(200,{assistant:result[0]});
    }catch(error){if(/23505|duplicate|unique/i.test(error.message))return json(409,{error:"Link already in use"});throw error}
   }
   if(action==="save_chat_settings"){
