@@ -23,6 +23,7 @@ function render(w){
  <p class="nx-intel-disclaimer">${h(t.note)}</p></section>`;
 }
 function activate(workspace){
+ locale=window.NexusLanguage?.getLanguage?.()||'en';
  const tabs=document.querySelector('.nx-lead-tabs');if(!tabs)return;
  let tab=document.getElementById('nxInsightsTab'),pane=document.getElementById('nxInsightsPane');
  if(!tab){tab=document.createElement('button');tab.id='nxInsightsTab';tab.type='button';tab.setAttribute('role','tab');tab.textContent='📊 Sales / Vendas';tabs.append(tab)}
