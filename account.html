@@ -13,20 +13,20 @@
 </section>
 <section class="card hidden" id="resetPanel"><h2>Reset your password</h2><p>Enter a new password to secure your account.</p><form id="resetPasswordForm"><label>New password<input id="newPassword" type="password" minlength="8" autocomplete="new-password" required></label><label>Confirm password<input id="confirmPassword" type="password" minlength="8" autocomplete="new-password" required></label><button class="btn" type="submit">Update password</button><p id="resetMessage" class="notice" role="status"></p></form></section>
 <section class="card hidden" id="billingPanel"><div class="tag">YOUR ACCOUNT</div><h2 id="accountEmail"></h2><div class="status" id="billingStatus">Checking trial…</div>
-<p id="trialDetails"></p><div class="included">Included in every plan: <strong>SmartStore, customized customer links, sharing by SMS and email, QR code, product and service catalog, and AI assistant.</strong></div><h3 style="margin:18px 0 6px">NexusSales AI Business – pricing preview</h3><p>US$499/month includes 3 employees. Only additional employees are billed separately. No payment is initiated here.</p>
+<p id="trialDetails"></p><div class="included">Included in every plan: <strong>SmartStore, customized customer links, sharing by SMS and email, QR code, product and service catalog, and AI assistant.</strong></div><h3 style="margin:18px 0 6px">Choose your NexusSales subscription</h3><p>Choose Business or Personal Assistant. You'll approve the exact monthly recurring amount on PayPal.</p><label>Plan<select id="quoteTier" style="padding:12px;width:100%;border:1px solid #d2e2d8;border-radius:9px"><option value="business">Business — $499/month including 3 employees</option><option value="personal">Personal Assistant — $15/month</option></select></label><div id="businessOptions">
 <div class="field"><label for="quoteCountry">Business location</label><select id="quoteCountry" style="padding:12px;width:100%;border:1px solid #d2e2d8;border-radius:9px"><option value="BR">Brazil ($30 per additional employee)</option><option value="GLOBAL">Outside Brazil ($50 per additional employee)</option></select></div>
 <div class="field"><label for="quoteEmployees">Total employees (first 3 included)</label><input id="quoteEmployees" type="number" value="3" min="3" max="1000" step="1"></div>
 <label style="display:flex;align-items:center;gap:10px"><input id="quoteWidget" type="checkbox" style="width:auto"> Include website AI chatbot (+US$79/month)</label>
-<div class="status" id="quoteTotal">Estimated recurring total: US$499/month</div>
+</div><div class="status" id="quoteTotal">Recurring total: US$499/month</div><label style="display:flex;gap:10px;margin:12px 0"><input id="billingConsent" type="checkbox" style="width:auto"> I understand and agree to recurring monthly PayPal charges at the total shown above, until cancelled.</label>
 <div class="planpick hidden"><button class="choice" id="tierCore" type="button" disabled>Retired plan</button><button class="choice" id="tierWidget" type="button" disabled>Retired plan</button></div>
-<div id="paymentNote" class="alert hidden"></div><button class="btn" id="subscribe" disabled>Live checkout not yet available</button><div class="line"></div><button class="linkbtn" id="signout">Sign out</button><p class="muted">Your 48-hour trial begins when your live AI store is published. PayPal approval does not grant paid access until a verified subscription webhook is received.</p></section>
+<div id="paymentNote" class="alert hidden"></div><button class="btn" id="subscribe" disabled>Checking PayPal LIVE checkout…</button><div class="line"></div><button class="linkbtn" id="signout">Sign out</button><p class="muted">Your 48-hour trial begins when your live AI store is published. PayPal approval does not grant paid access until a verified subscription webhook is received.</p></section>
 <div class="alert" style="margin-top:22px">Paid access activates only after PayPal confirms the subscription through a verified webhook. Subscribe only if you intend to begin recurring billing.</div>
 <section class="card hidden" id="accountSettings"><div class="tag">ACCOUNT & SECURITY</div><h2>Account Settings</h2><p>Manage your subscription and your account separately. Cancellation does not delete any business data.</p>
 <div class="tool-panel"><h3>Cancel PayPal subscription</h3><p>Stops future subscription renewals; does not refund previous payments or delete your NexusSales account.</p><button class="btn" type="button" id="cancelSubscription">Cancel subscription</button><p id="cancelStatus" class="notice" role="status"></p></div>
 <div class="tool-panel danger"><h3>Delete account and data</h3><p>Permanently removes your account, SmartStore, leads, QR codes and chat history. Your PayPal subscription must be cancelled before deletion. This cannot be undone.</p><button class="btn danger-button" id="showDelete" type="button">Delete my account…</button>
 <form class="hidden" id="deleteForm"><label>Type DELETE MY ACCOUNT<input id="deleteConfirmation" required autocomplete="off" placeholder="DELETE MY ACCOUNT"></label><label>Confirm your current password<input id="deletePassword" type="password" required minlength="8" autocomplete="current-password"></label><button class="btn danger-button" id="deleteAccountButton" type="submit">Permanently delete account</button></form><p id="deleteStatus" class="notice" role="status"></p></div></section></div>
 <script>
-const el=id=>document.getElementById(id);let cfg=null,signup=true,accessToken=null,selectedTier="core";
+const el=id=>document.getElementById(id);let cfg=null,signup=true,accessToken=null,selectedTier="core",billingState=null;
 const status=t=>el("configAlert").textContent=t;const authmsg=t=>el("authMessage").textContent=t;
 function showConfirmationEmail(email){
  const node=el("authMessage");node.textContent="";
@@ -50,8 +50,7 @@ async function refresh(){
  const comp=data.reason==="COMPLIMENTARY",paid=data.reason==="PAID",trial=data.reason==="TRIAL",notStarted=data.reason==="NOT_STARTED";
  el("billingStatus").textContent=comp?"✓ Lifetime complimentary access":paid?"✓ Subscription active":trial?"48-hour trial • "+data.trialHoursLeft+" hours remaining":notStarted?"Trial available — not started":"Your free trial has ended";
  el("trialDetails").textContent=comp?"Your lifetime complimentary account includes every feature. No payment or trial required.":notStarted?"Your 48-hour trial begins once the business's hosted AI is working and you publish the SmartStore.":paid?"Paid access is active.":trial?"Trial expires: "+ends+". You may subscribe at any time.":"Trial expired: "+ends+". A subscription is required for access.";
- el("subscribe").disabled=true;
- el("subscribe").textContent=comp?"No payment required":paid?"Existing subscription active":"Live checkout not yet available";
+ billingState=data;updateQuote();
  el("tierCore").disabled=comp||paid;el("tierWidget").disabled=comp||paid;
  if(comp||paid){el("tierCore").setAttribute("aria-pressed",String(!data.widgetEnabled));el("tierWidget").setAttribute("aria-pressed",String(data.widgetEnabled));}
  if(location.search.includes("billing=approved")){show("paymentNote",true);el("paymentNote").textContent="Your PayPal approval was received. Subscription access will activate when PayPal confirms it through a verified webhook."}
@@ -79,16 +78,35 @@ el("authForm").onsubmit=async e=>{e.preventDefault();if(!cfg)return;const email=
 el("tierCore").onclick=()=>chooseTier("core");el("tierWidget").onclick=()=>chooseTier("core_widget");
 function chooseTier(tier){selectedTier=tier;el("tierCore").setAttribute("aria-pressed",String(tier==="core"));el("tierWidget").setAttribute("aria-pressed",String(tier==="core_widget"));if(token())refresh();}
 function updateQuote(){
- const raw=el("quoteEmployees").value;
- const valid=/^\d+$/.test(raw)&&Number(raw)>=3&&Number(raw)<=1000;
- const count=Number(raw);
- const price=el("quoteCountry").value==="BR"?30:50;
- const total=499+Math.max(0,count-3)*price+(el("quoteWidget").checked?79:0);
- el("quoteTotal").textContent=valid?"Estimated recurring total: US$"+total.toLocaleString("en-US")+"/month. Checkout remains disabled.":"Enter a whole number between 3 and 1000.";
+ const tier=el("quoteTier").value;
+ el("businessOptions").classList.toggle("hidden",tier!=="business");
+ const raw=el("quoteEmployees").value.trim(),count=Number(raw),region=el("quoteCountry").value,widget=el("quoteWidget").checked;
+ const valid=tier==="personal"||(/^\d+$/.test(raw)&&Number.isInteger(count)&&count>=3&&count<=100);
+ const total=tier==="personal"?15:499+Math.max(0,count-3)*(region==="BR"?30:50)+(widget?79:0);
+ el("quoteTotal").textContent=valid?"Recurring total: US$"+total+"/month":"Enter a whole number of employees between 3 and 100.";
+ const ready=tier==="personal"?billingState?.personalCheckoutReady:billingState?.checkoutReady;
+ const free=billingState?.reason==="COMPLIMENTARY",paid=billingState?.reason==="PAID";
+ el("subscribe").disabled=!valid||!ready||free||paid||!el("billingConsent").checked;
+ el("subscribe").textContent=free?"No payment required":paid?"Existing subscription active":!ready?"PayPal LIVE checkout unavailable":"Continue to PayPal • $"+total+"/month";
 }
-["quoteCountry","quoteEmployees","quoteWidget"].forEach(id=>el(id).addEventListener("input",updateQuote));
+["quoteTier","quoteCountry","quoteEmployees","quoteWidget","billingConsent"].forEach(id=>el(id).addEventListener("input",updateQuote));
 updateQuote();
-el("subscribe").onclick=()=>{alert("Business billing is not enabled. No payment was initiated.")};
+el("subscribe").onclick=async()=>{
+ const button=el("subscribe");if(button.disabled)return;
+ const tier=el("quoteTier").value,employees=Number(el("quoteEmployees").value),region=el("quoteCountry").value,widget=el("quoteWidget").checked;
+ const price=tier==="personal"?15:499+Math.max(0,employees-3)*(region==="BR"?30:50)+(widget?79:0);
+ if(!confirm("Start a LIVE recurring subscription for US$"+price+"/month? PayPal will ask for your approval."))return;
+ button.disabled=true;
+ try{
+  const response=await fetch("/.netlify/functions/billing-checkout",{method:"POST",headers:bearer(),body:JSON.stringify({tier,employees,region,widget,consent:true})});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok||!data.approvalUrl)throw Error(data.error||"Verified PayPal checkout unavailable");
+  if(Number(data.monthlyUsd)!==price)throw Error("Server quote does not match displayed price");
+  const u=new URL(data.approvalUrl);
+  if(u.protocol!=="https:"||!(u.hostname==="paypal.com"||u.hostname.endsWith(".paypal.com")))throw Error("Invalid PayPal link");
+  location.assign(u.href);
+ }catch(e){alert(e.message);updateQuote()}
+};
 
 el("signout").onclick=()=>{sessionStorage.removeItem("nexus_account_access_token");sessionStorage.removeItem("nexus_account_email");sessionStorage.removeItem("nexus_owner_v1");show("billingPanel",false);show("accountSettings",false);show("authPanel",true)};
 init();
