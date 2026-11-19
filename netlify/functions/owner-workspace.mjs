@@ -161,7 +161,11 @@ export async function handler(event){
     const result=await db(c,"nx_personal_assistants?on_conflict=owner_id",{method:"POST",body:row,prefer:"resolution=merge-duplicates,return=representation"});
     if(!result?.[0])return json(503,{error:"Personal assistant settings were not confirmed saved. Please retry."});
     return json(200,{assistant:result[0]});
-   }catch(error){if(/23505|duplicate|unique/i.test(error.message))return json(409,{error:"Link already in use"});throw error}
+   }catch(error){
+    if(/Public handle is permanent|Public handle cannot be changed/i.test(error.message))return json(409,{error:"Your database still blocks personal link changes. The owner must apply the reviewed handle-rename SQL update."});
+    if(/23505|duplicate|unique/i.test(error.message))return json(409,{error:"Link already in use"});
+    throw error
+   }
   }
   if(action==="save_chat_settings"){
    const count=Number(data.chatMaxMessages),minutes=Number(data.chatMaxMinutes);
