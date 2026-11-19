@@ -18,9 +18,10 @@
 <div class="signup-card">
 <div class="tag">BUSINESS ACCOUNT</div><h2 id="authHeading">Create your business account</h2><p id="authSub">Enter your business information. No payment card required to register.</p>
 <div class="setup-alert" id="configMessage" role="status">Checking secure account service…</div>
+<div class="account-kind-picker" id="accountTypePicker" role="group" aria-label="Choose your account type"><button type="button" data-account-kind="business" aria-pressed="true">🏢 Business AI</button><button type="button" data-account-kind="personal" aria-pressed="false">✦ Personal AI</button></div>
 <form id="authForm" autocomplete="on">
-<div id="businessInputs"><label>Business name<input name="business" id="authBusiness" placeholder="e.g. Sunshine Marketing Studio" maxlength="150" required autocomplete="organization"></label>
-<label>Business phone number<input name="phone" id="authPhone" placeholder="e.g. +1 561 555 1234" type="tel" maxlength="30" required autocomplete="tel"></label></div>
+<div id="businessInputs"><label><span id="authNameLabel">Business name</span><input name="business" id="authBusiness" placeholder="e.g. Sunshine Marketing Studio" maxlength="150" required autocomplete="organization"></label>
+<label id="authPhoneWrap">Business phone number<input name="phone" id="authPhone" placeholder="e.g. +1 561 555 1234" type="tel" maxlength="30" required autocomplete="tel"></label></div>
 <label>Email address<input name="email" id="authEmail" placeholder="you@business.com" type="email" required autocomplete="email"></label>
 <label>Password<input name="password" id="authPassword" type="password" minlength="8" required autocomplete="new-password" placeholder="At least 8 characters"></label>
 <button id="authSubmit" class="primary" type="submit">Create account</button>
