@@ -1,7 +1,7 @@
 import{SPECIAL_OWNER,validHandle,personalMessages,styleName}from"../lib/personal-assistant.mjs";
 import{JUNIOR_OWNER_ID,JUNIOR_EXPERIENCE,juniorMessages}from"../lib/junior-assistant.mjs";
 import{allow,clientIp}from"../lib/abuse.mjs";
-import{businessMessages}from"../lib/business-ai.mjs";
+import{businessMessages,phoneReply}from"../lib/business-ai.mjs";
 import{queryWithMeta as aiQuery}from"../lib/ollama.mjs";
 import{env,json,str,parse,postOrigin,publishedStore,aiReady,db,entitlement,access}from"../lib/tenant.mjs";
 import{widgetEnabled}from"../lib/billing.mjs";
@@ -114,10 +114,13 @@ export async function handler(event){
   const assigned=qrSource?.id?(await db(c,"nx_employees?store_id=eq."+encodeURIComponent(store.id)+"&qr_source_id=eq."+encodeURIComponent(qrSource.id)+"&enabled=eq.true&select=name,role,language"))?.[0]:null;
   const linkedOffering=qrSource?.offering_id?items.find(item=>item.id===qrSource.offering_id)||null:null;
   const messages=personalMode?personalMessages(assistant,message,history):juniorMode?juniorMessages(message,history):businessMessages(store,items,message,history,qrSource?{label:qrSource.label,offering:linkedOffering}:null);
+  let approvedPhoneReply=null;
   if(!personalMode&&!juniorMode){
+   approvedPhoneReply=phoneReply(message,null);
    try{
     const profile=(await db(c,"nx_business_profiles?store_id=eq."+encodeURIComponent(store.id)+"&select=address,city,region,country,phone,phone_public,online_only,address_public,timezone,categories,weekly_hours,closed_dates,booking_duration_minutes"))?.[0];
     if(profile){
+     approvedPhoneReply=phoneReply(message,profile);
      const now=new Intl.DateTimeFormat("en-US",{timeZone:profile.timezone,dateStyle:"full",timeStyle:"short"}).format(new Date());
      const publicFacts={timezone:profile.timezone,localBusinessTime:now,weeklyHours:profile.weekly_hours,closedDates:profile.closed_dates,onlineOnly:profile.online_only,categories:profile.categories,
       ...(profile.phone_public===true&&/^\+[1-9][0-9]{7,14}$/.test(profile.phone||'')?{publicPhone:profile.phone}:{}),
@@ -131,7 +134,7 @@ export async function handler(event){
   diagStage="message_save";
   await db(c,"nx_chat_messages",{method:"POST",body:{session_id:claim.sessionId,store_id:store.id,role:"user",content:message},prefer:"return=minimal"});
   diagStage="ai_gateway";
-  const ai=await aiQuery(messages,{maxTokens:450,timeoutMs:50000,allowFallback:true,tenantKey:store.id});
+  const ai=approvedPhoneReply?{text:approvedPhoneReply,source:"verified-contact"}:await aiQuery(messages,{maxTokens:450,timeoutMs:50000,allowFallback:true,tenantKey:store.id});
   const answer=ai.text;
   diagStage="reply_save";
   await db(c,"nx_chat_messages",{method:"POST",body:{session_id:claim.sessionId,store_id:store.id,role:"assistant",content:answer},prefer:"return=minimal"});
