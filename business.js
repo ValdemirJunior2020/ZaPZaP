@@ -63,7 +63,7 @@ async function ownerApi(action,payload,allowRetry=true){
  if(!r.ok)throw Error(j.error||"Unable to save changes");
  return j;
 }
-async function loadWorkspace(){
+async function loadWorkspace({throwOnError=false}={}){
  try{
   workspace=await ownerApi();
   if(!workspace)throw Error("Unable to load account");
@@ -80,7 +80,8 @@ async function loadWorkspace(){
   text("sideName",workspace.store?.name||workspace.profile?.business_name||"Your business");
   document.querySelectorAll("[data-owner-only]").forEach(el=>el.hidden=workspace?.personalAssistantSpecial!==true);
   render();
- }catch(e){toast(e.message);if(/sign in|session|invalid login|unauthorized/i.test(e.message)){saveSession(null);setVisible(false)}else{setVisible(true);$("viewContent").innerHTML='<div class="alert">Business data is temporarily unavailable. Your account has not been logged out. Refresh the page to retry.</div>'}}
+  return true;
+ }catch(e){toast(e.message);if(/sign in|session|invalid login|unauthorized/i.test(e.message)){saveSession(null);setVisible(false)}else{setVisible(true);$("viewContent").innerHTML='<div class="alert">Business data is temporarily unavailable. Your account has not been logged out. Refresh the page to retry.</div>'}if(throwOnError)throw e;return false}
 }
 function showConfirmationEmail(email){
  const node=$("authMsg");node.textContent="";
@@ -119,6 +120,29 @@ function statusText(){
 function isEditable(){return workspace?.access?.reason!=="TRIAL_EXPIRED"&&workspace?.access?.reason!=="NO_ACCOUNT"}
 const htmlEsc=escapeHtml;
 const productName=p=>escapeHtml(p?.name||"Offering");
+
+// Preserve unsaved form values when the platform language is switched.
+// The language picker must not silently discard a partially edited SmartStore or assistant.
+function snapshotActiveInputs(){
+ const form=document.getElementById("viewContent");
+ if(!form)return [];
+ return [...form.querySelectorAll("input,select,textarea")].map((el,index)=>({
+  index,id:el.id,name:el.name,type:el.type,value:el.value,checked:el.checked,
+  start:typeof el.selectionStart==="number"&&/^(text|search|tel|url|email|textarea)$/i.test(el.type||el.tagName)?el.selectionStart:null
+ }));
+}
+function restoreActiveInputs(snapshot){
+ const root=document.getElementById("viewContent");
+ if(!root)return;
+ for(const field of snapshot){
+  const found=field.id?document.getElementById(field.id):null;
+  const el=found||[...root.querySelectorAll("input,select,textarea")][field.index];
+  if(!el||el.type!==field.type||el.name!==field.name)continue;
+  if(el.type==="checkbox"||el.type==="radio")el.checked=field.checked;
+  else el.value=field.value;
+ }
+}
+
 function render(){
  const titles={overview:["BUSINESS OVERVIEW","Your business command center","Set up and publish your SmartStore."],
  store:["BUSINESS SETTINGS","Set up your SmartStore","Teach the AI what your company does."],
@@ -557,7 +581,7 @@ async function saveStore(e){
   if(!confirm("Change your SmartLink from /s/"+previous+" to /s/"+changed+"?\\n\\nIMPORTANT: Your old link and QR codes will stop working. Update all places where you shared them. This cannot be automatically undone."))return;
  }
  const button=e.target.querySelector("[type=submit]");button.disabled=true;
- try{await ownerApi("save_store",{store});await loadWorkspace();viewName="offerings";render();toast(previous&&previous!==workspace.store?.slug?"SmartLink updated. Replace your old links and QR codes.":"Business saved")}catch(err){toast(err.message)}finally{button.disabled=false}
+ try{const response=await ownerApi("save_store",{store});if(!response.store?.id)throw Error("Save could not be verified. Please retry.");await loadWorkspace({throwOnError:true});if(workspace.store?.slug!==cleanSlug(store.slug)||workspace.store?.name!==store.name)throw Error("Saved details could not be verified. Please retry.");viewName="store";render();toast(previous&&previous!==workspace.store?.slug?"SmartLink updated. Replace your old links and QR codes.":"Business details saved and verified.")}catch(err){toast(err.message)}finally{if(button.isConnected)button.disabled=false}
 }
 function editOffering(id){
  const p=(workspace.offerings||[]).find(x=>x.id===id)||{};
@@ -581,9 +605,10 @@ async function init(){
  $("authForm").onsubmit=submitAuth;$("logoutTop").onclick=signOut;$("logoutSide").onclick=signOut;
  $("dialogClose").onclick=closeDialog;$("offeringForm").onsubmit=saveOffering;
  $("dialogBackdrop").addEventListener("click",e=>{if(e.target===$("dialogBackdrop"))closeDialog()});
- document.querySelectorAll("[data-view]").forEach(e=>e.onclick=()=>{viewName=e.dataset.view;render()});
+ const nav=$("sideNav");
+ nav.addEventListener("click",event=>{const button=event.target.closest("button[data-view]");if(!button||!nav.contains(button))return;viewName=button.dataset.view;try{render()}catch(error){console.error("Sidebar navigation:",error);toast("Unable to open this page. Please refresh and try again.")}});
  window.NexusFlags?.render();
- window.addEventListener("nexus:language",()=>{if(workspace)render()});
+ window.addEventListener("nexus:language",()=>{if(!workspace)return;const inputs=snapshotActiveInputs();render();restoreActiveInputs(inputs);window.NexusLanguage?.apply()});
  await loadConfig();if(session()&&cfg)await loadWorkspace();else setVisible(false);
 }
 init();
