@@ -21,7 +21,10 @@ export async function handler(event){
    }
   }catch(error){console.error("QR scan counter:",error.message)}}
 
-  return json(200,{store:{slug:store.slug,name:store.name,industry:store.industry,headline:store.headline,description:store.description,hours:store.hours,agent_name:store.agent_name,color:store.color,store_image_url:store.store_image_url,chatMaxMessages:store.chat_max_messages||10,chatMaxMinutes:store.chat_max_minutes||10,appointmentsEnabled:store.appointments_enabled!==false},
+  const requestHeaders=event.headers||{};
+  // Vercel and Cloudflare supply the country at the edge. Never trust query parameters for location.
+  const visitorCountry=String(requestHeaders["x-vercel-ip-country"]||requestHeaders["X-Vercel-IP-Country"]||requestHeaders["cf-ipcountry"]||requestHeaders["CF-IPCountry"]||"").trim().toUpperCase();
+  return json(200,{visitorCountry:/^[A-Z]{2}$/.test(visitorCountry)?visitorCountry:null,store:{slug:store.slug,name:store.name,industry:store.industry,headline:store.headline,description:store.description,hours:store.hours,agent_name:store.agent_name,color:store.color,store_image_url:store.store_image_url,chatMaxMessages:store.chat_max_messages||10,chatMaxMinutes:store.chat_max_minutes||10,appointmentsEnabled:store.appointments_enabled!==false},
    qrSource:source?{code:source.code,label:source.label,offeringId:source.offering_id}:null,employee,
    offerings:items.map(x=>({id:x.id,name:x.name,type:x.type,description:x.description,price_label:x.price_label,status:x.status,image_url:x.image_url})),
    chatReady:aiReady()});
