@@ -1,6 +1,7 @@
 import {env,json,userFrom,ownStore,offerings,postOrigin,parse,aiReady,access} from "../lib/tenant.mjs";
 import {allow,clientIp} from "../lib/abuse.mjs";
 import {businessMessages} from "../lib/business-ai.mjs";
+import {db} from "../lib/tenant.mjs";
 import {queryWithMeta as aiQuery,readiness} from "../lib/ollama.mjs";
 
 // Owner-only sandbox. The business and catalog are ALWAYS loaded using
@@ -30,6 +31,14 @@ export async function handler(event){
   if(!await allow(c,"owner_test_ip",clientIp(event),20,60))return json(429,{error:"Too many requests from this connection."});
   const history=Array.isArray(input.history)?input.history.slice(-6):[];
   const messages=businessMessages(store,items,message,history);
+  const selectedLanguage=["en","es","pt"].includes(input.interfaceLanguage)?input.interfaceLanguage:"en";
+  messages[0].content+=" PREFERRED BUSINESS UI LANGUAGE: "+({pt:"Brazilian Portuguese",es:"Spanish",en:"English"})[selectedLanguage]+". Respond in the visitor's language when clearly different.";
+  try{
+   const profile=(await db(c,"nx_business_profiles?store_id=eq."+encodeURIComponent(store.id)+"&select=phone,phone_public"))?.[0];
+   if(profile?.phone_public===true&&/^\+[1-9][0-9]{7,14}$/.test(profile.phone||""))messages[0].content+=" OWNER APPROVED PUBLIC PHONE: "+profile.phone+". You may provide this phone only when the customer asks for contact details.";
+   else messages[0].content+=" OWNER PHONE PRIVATE: Do not reveal, guess, or invent the owner's number. Direct visitors to the business contact form.";
+  }catch{messages[0].content+=" OWNER PHONE PRIVATE: Do not reveal or invent contact numbers.";}
+
   const result=await aiQuery(messages,{maxTokens:350,timeoutMs:22000,allowFallback:true,tenantKey:store.id});
   return json(200,{reply:result.text,source:result.source,trialStarted:false,published:store.published});
  }catch(error){
