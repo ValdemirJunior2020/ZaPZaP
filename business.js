@@ -425,7 +425,7 @@ function renderLeads(){
  const metric=(label,num,caption)=>'<div class="lead-metric"><small>'+label+'</small><strong>'+num+'</strong><span>'+caption+'</span></div>';
  return '<div class="lead-metrics">'+metric('Total leads',leads.length,'People to follow up')+
  metric('New inquiries',newCount,'Awaiting response')+metric('Appointment requests',appointments,'Require confirmation')+
- metric('QR-sourced leads',qrLeads,'Attributed to printed codes')+'</div>'+'<div class="nx-lead-tabs" role="tablist" aria-label="Leads & Chats views"><button type="button" role="tab" data-lead-pane="leads">Leads &amp; Chats</button><button type="button" role="tab" data-lead-pane="calendar">📅 Calendar / Agenda</button></div><div id="leadListPane">'+
+ metric('QR-sourced leads',qrLeads,'Attributed to printed codes')+'</div>'+'<div class="nx-lead-tabs" role="tablist" aria-label="Leads & Chats views"><button type="button" role="tab" data-lead-pane="leads">Leads &amp; Chats</button><button type="button" role="tab" data-lead-pane="calendar">📅 Calendar / Agenda</button><button type="button" role="tab" id="nxHistoryTab" aria-selected="false">Chat history</button></div><div id="leadListPane">'+
  '<div class="card lead-center"><div class="lead-bar"><div><h2>Lead Center</h2><p>Every customer request, follow-up and linked AI transcript in one place.</p></div>'+
  '<select id="leadFilter" aria-label="Filter leads"><option value="all">All leads</option><option value="New">New</option><option value="Contacted">Contacted</option><option value="Appointment Requested">Appointment requested</option><option value="Booked">Booked</option><option value="Won">Won</option><option value="Lost">Lost</option></select></div>'+
  (leads.length?'<div class="lead-list">'+leads.map(l=>{
@@ -435,7 +435,7 @@ function renderLeads(){
  '<span class="lead-avatar">'+htmlEsc((l.customer_name||'?').slice(0,1).toUpperCase())+'</span><span class="lead-main"><strong>'+htmlEsc(l.customer_name)+'</strong><small>'+htmlEsc(l.interest.slice(0,100))+'</small><small>'+htmlEsc(l.personal_assistant_id?('Personal AI • '+(workspace.personalAssistant?.display_name||'Assistant')):(source?.label||'SmartStore / website'))+' • '+htmlEsc((workspace.employees||[]).find(e=>e.id===l.employee_id)?.name||'')+' • '+htmlEsc(date)+'</small></span>'+
  '<span class="lead-right"><span class="lead-status">'+htmlEsc(l.status)+'</span><small>'+htmlEsc(l.customer_phone||l.customer_email||'No contact')+'</small></span></button>'
  }).join('')+'</div>':'<div class="empty">No leads yet. Publish a QR code and ask a customer to submit an inquiry.</div>')+
- '</div><div class="card lead-detail hidden" id="leadDetail" aria-live="polite"></div></div><div id="leadCalendarPane" class="hidden"></div>';
+ '</div><div class="card lead-detail hidden" id="leadDetail" aria-live="polite"></div></div><div id="leadCalendarPane" class="hidden"></div><div id="nxHistoryPane" class="hidden"></div>';
 }
 function qrSourceUrl(code){return smartUrl()+'?src='+encodeURIComponent(code)}
 function renderQrSources(){
@@ -526,6 +526,7 @@ function bindView(){
   });
   window.NexusCalendar?.activate(workspace,ownerApi,loadWorkspace);
   window.NexusInsights?.activate(workspace);
+  window.NexusConversationHistory?.activate(workspace,ownerApi);
  }
  if(viewName==="links"&&workspace.store){
   const qrForm=$("qrForm");if(qrForm)qrForm.onsubmit=async event=>{
