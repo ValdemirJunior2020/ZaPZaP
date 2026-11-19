@@ -5,11 +5,13 @@ import{handler as demoChat}from"../netlify/functions/demo-chat.mjs";
 import{handler as publicConfig}from"../netlify/functions/public-config.mjs";
 import{handler as publicStore}from"../netlify/functions/public-store.mjs";
 import{handler as widgetConfig}from"../netlify/functions/widget-config.mjs";
+import{handler as assistantPage}from"../netlify/functions/assistant-page.mjs";
 const handlers=Object.freeze({
  "demo-chat":demoChat,
  "public-config":publicConfig,
  "public-store":publicStore,
- "widget-config":widgetConfig
+ "widget-config":widgetConfig,
+ "assistant-page":assistantPage
 });
 export default async function handler(request,response){
  const url=new URL(request.url,"https://vercel.internal");
