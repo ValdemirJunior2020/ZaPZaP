@@ -23,10 +23,12 @@ function normalizeProfile(input){
  const categories=Array.isArray(v.categories)?v.categories:[];
  if(categories.length>15||categories.some(x=>typeof x!=='string'||x.length>70))throw Error('Invalid business categories');
  const address=clean(v.address,250),city=clean(v.city,100),region=clean(v.region,100),country=clean(v.country,100);
- const phone=clean(v.phone,35),website=clean(v.website,250);
+ const phone=clean(v.phone,35).replace(/[\s()\-]/g,''),website=clean(v.website,250);
+ if(phone&&!/^\+[1-9][0-9]{7,14}$/.test(phone))throw Error('Use an international phone number such as +15551234567');
+ if(v.phone_public===true&&!phone)throw Error('Enter a phone number before enabling AI phone sharing');
  if(website){let u;try{u=new URL(website)}catch{}if(!u||!['http:','https:'].includes(u.protocol))throw Error('Invalid website address')}
  return{timezone:tz,address,city,region,country,phone,website,online_only:v.online_only===true,
-  address_public:v.address_public===true,weekly_hours:hours,closed_dates:[...new Set(holidays)].sort(),
+  address_public:v.address_public===true,phone_public:v.phone_public===true,weekly_hours:hours,closed_dates:[...new Set(holidays)].sort(),
   categories:[...new Set(categories.map(x=>x.trim()).filter(Boolean))],booking_duration_minutes:[15,30,45,60,90,120].includes(Number(v.booking_duration_minutes))?Number(v.booking_duration_minutes):30,
   booking_notice_hours:Number.isInteger(v.booking_notice_hours)&&v.booking_notice_hours>=0&&v.booking_notice_hours<=168?v.booking_notice_hours:2};
 }
