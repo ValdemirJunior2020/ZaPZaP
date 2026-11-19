@@ -3,6 +3,65 @@
 "use strict";
 const languages=Object.freeze({en:"English",es:"Español",pt:"Português"});
 const entries=[
+["Industry","Setor","Sector"],
+["SmartLink name (editable)","Nome do SmartLink (editável)","Nombre del SmartLink (editable)"],
+["AI assistant name","Nome do assistente de IA","Nombre del asistente de IA"],
+["AI personality","Personalidade da IA","Personalidad de la IA"],
+["Choose how your assistant communicates","Escolha como seu assistente se comunica","Elige cómo se comunica tu asistente"],
+["Professional Consultant","Consultor profissional","Consultor profesional"],
+["Friendly Guide","Guia amigável","Guía amigable"],
+["Sales Specialist","Especialista em vendas","Especialista en ventas"],
+["Premium Concierge","Concierge premium","Conserje prémium"],
+["Fast & Direct","Rápido e direto","Rápido y directo"],
+["Confident, accurate and consultative. Great for most businesses.","Confiante, preciso e consultivo. Ideal para a maioria das empresas.","Seguro, preciso y consultivo. Ideal para la mayoría de las empresas."],
+["Warm, patient and easy to understand. Great for retail and family services.","Acolhedor, paciente e fácil de entender. Ideal para comércio e serviços familiares.","Cálido, paciente y fácil de entender. Ideal para comercios y servicios familiares."],
+["Discovers needs, explains benefits and offers a helpful next step.","Identifica necessidades, explica vantagens e sugere o próximo passo.","Detecta necesidades, explica ventajas y sugiere el siguiente paso."],
+["Attentive, polished and discreet. Great for luxury and premium services.","Atencioso, sofisticado e discreto. Ideal para serviços premium.","Atento, elegante y discreto. Ideal para servicios prémium."],
+["Short, clear answers with minimal small talk.","Respostas curtas e claras, sem conversa desnecessária.","Respuestas cortas y claras, sin charlas innecesarias."],
+["Recommended default","Padrão recomendado","Opción recomendada"],
+["Approachable","Acolhedor","Cercano"],
+["Lead conversion","Conversão de leads","Conversión de clientes potenciales"],
+["White-glove service","Atendimento exclusivo","Atención exclusiva"],
+["Quick responses","Respostas rápidas","Respuestas rápidas"],
+["All personalities use your saved business facts. They never invent prices, discounts, guarantees or confirmed appointments. Save, then test the tone under Test My AI.","Todas as personalidades usam os dados salvos da empresa. Elas não inventam preços, descontos, garantias nem agendamentos confirmados. Salve e teste o estilo em Testar Minha IA.","Todas las personalidades usan los datos guardados de la empresa. No inventan precios, descuentos, garantías ni citas confirmadas. Guarda y prueba el estilo en Probar mi IA."],
+["Store headline","Chamada principal da loja","Título principal de la tienda"],
+["Business description and policies","Descrição e políticas da empresa","Descripción y políticas de la empresa"],
+["Store cover image URL (HTTPS)","URL da imagem de capa (HTTPS)","URL de la imagen de portada (HTTPS)"],
+["Save business details","Salvar dados da empresa","Guardar datos de la empresa"],
+["Image URLs are saved in the database; the original image stays with its image host. Changes are reflected on the public store after publication.","As URLs das imagens são salvas no banco de dados. Os arquivos originais ficam no servidor de origem. As alterações aparecem na loja publicada.","Las URL de imágenes se guardan en la base de datos. Los archivos originales permanecen en el servidor de origen. Los cambios aparecen en la tienda publicada."],
+["Your store","Sua loja","Tu tienda"],
+["Published storefront","Loja publicada","Tienda publicada"],
+["Live","No ar","En línea"],
+["Not live","Fora do ar","Sin publicar"],
+["Complete setup to publish your business.","Conclua a configuração para publicar sua empresa.","Completa la configuración para publicar tu negocio."],
+["Your SmartLink is available to customers.","Seu SmartLink está disponível aos clientes.","Tu SmartLink está disponible para los clientes."],
+["Offerings","Produtos e serviços","Productos y servicios"],
+["Products, services and consultations","Produtos, serviços e consultas","Productos, servicios y consultas"],
+["Customer inquiries","Solicitações de clientes","Consultas de clientes"],
+["Leads linked to this business","Leads vinculados a esta empresa","Clientes potenciales vinculados a este negocio"],
+["Get ready to sell","Prepare-se para vender","Prepárate para vender"],
+["Configure business","Configurar empresa","Configurar empresa"],
+["Add products or services","Adicionar produtos ou serviços","Añadir productos o servicios"],
+["View SmartLink","Ver SmartLink","Ver SmartLink"],
+["Test My AI","Testar minha IA","Probar mi IA"],
+["TEST MY AI","TESTAR MINHA IA","PROBAR MI IA"],
+["Talk to your own AI salesperson","Converse com seu vendedor de IA","Habla con tu vendedor de IA"],
+["Preview real answers from your business catalog before publishing.","Veja respostas reais do seu catálogo antes de publicar.","Prueba respuestas reales de tu catálogo antes de publicar."],
+["WEBSITE CHATBOT","CHATBOT PARA SITE","CHATBOT PARA SITIO WEB"],
+["Add Chatbot to Your Website","Adicionar chatbot ao meu site","Añadir chatbot a mi sitio web"],
+["One script to add your AI salesperson to your own website.","Um código para adicionar seu vendedor de IA ao site.","Un código para añadir tu vendedor de IA al sitio web."],
+["Create trackable QR codes for storefronts, vehicles, services and products.","Crie QR Codes rastreáveis para lojas, veículos, serviços e produtos.","Crea códigos QR rastreables para tiendas, vehículos, servicios y productos."],
+["Customize your named AI, personality, and personal contact link.","Personalize o nome da IA, a personalidade e o link de contato.","Personaliza el nombre de la IA, su personalidad y el enlace de contacto."],
+["Recent chat failures, stages, and diagnostic reference IDs.","Falhas recentes do chat, etapas e IDs de diagnóstico.","Fallos recientes del chat, etapas e identificadores de diagnóstico."],
+["SUPER ADMIN","SUPERADMINISTRADOR","SUPERADMINISTRADOR"],
+["Brazil & Global Plans","Planos do Brasil e globais","Planes de Brasil y globales"],
+["Proposed team and personal-assistant packages; billing is not enabled.","Planos propostos para equipes e assistentes pessoais; cobrança não ativada.","Planes propuestos para equipos y asistentes personales; cobro no activado."],
+["Business saved","Empresa salva","Empresa guardada"],
+["Business details saved and verified.","Dados da empresa salvos e verificados.","Datos de la empresa guardados y verificados."],
+["Brazil · Super Admin","Brasil · Superadministrador","Brasil · Superadministrador"],
+["ACCOUNT SETTINGS","CONFIGURAÇÕES DA CONTA","CONFIGURACIÓN DE CUENTA"],
+["Nexus AI is thinking…","Nexus AI está pensando…","Nexus AI está pensando…"],
+["Store cover image URL (HTTPS)","URL da imagem de capa da loja (HTTPS)","URL de imagen de portada de la tienda (HTTPS)"],
 ["Overview","Visão geral","Resumen"],
 ["My Store","Minha empresa","Mi empresa"],
 ["Products & Services","Produtos e serviços","Productos y servicios"],
@@ -142,8 +201,15 @@ function t(english){const e=byEn.get(String(english));return e?e[locale==='pt'?1
 function original(text){return byEn.get(text)||byLocalized.get(text)}
 function changeNode(node){
  const current=node.nodeValue;if(!current||!current.trim())return;
- const trimmed=current.trim(),entry=original(trimmed);if(!entry)return;
- const target=entry[locale==='pt'?1:locale==='es'?2:0];
+ const trimmed=current.trim();
+ let entry=original(trimmed),prefix="";
+ if(!entry){
+  // Sidebar buttons carry Unicode icons before their names.
+  const decorated=trimmed.match(/^([^A-Za-zÀ-ÿ]*)([A-Za-zÀ-ÿ].*)$/u);
+  if(decorated){entry=original(decorated[2]);prefix=decorated[1]}
+ }
+ if(!entry)return;
+ const target=prefix+entry[locale==='pt'?1:locale==='es'?2:0];
  if(trimmed!==target)node.nodeValue=current.replace(trimmed,target);
 }
 function apply(){
