@@ -220,7 +220,7 @@ async function submitTestBot(event,retry=true){
  const header=await authHeader();if(!header){toast("Please sign in again");return}
  button.disabled=true;field.disabled=true;
  testBotMessage("user",message);field.value="";
- const pending=testBotMessage("assistant","Asking your real AI…");
+ const pending=testBotMessage("assistant","Nexus AI is thinking…");
  text("testBotStatus","Connecting securely to your AI…");
  try{
   const r=await fetch("/.netlify/functions/owner-test-chat",{method:"POST",headers:header,body:JSON.stringify({message,history:testBotHistory.slice(-6)}),cache:"no-store",signal:AbortSignal.timeout(27000)});
