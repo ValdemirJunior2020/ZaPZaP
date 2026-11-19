@@ -17,7 +17,7 @@ async function publishedStore(c,storeSlug){
  if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(storeSlug)||storeSlug.length>50)return null;
  const stores=await db(c,"nx_stores?slug=eq."+encodeURIComponent(storeSlug)+"&published=eq.true&select=*");
  const store=stores?.[0];if(!store)return null;
- const ent=await entitlement(c,store.owner_id);if(!access(ent).allowed)return null;
+ const ent=await entitlement(c,store.owner_id);if(!access(ent).allowed||(ent?.subscription_status==="ACTIVE"&&ent?.billing_tier==="personal"))return null;
  return {store,ent,items:await offerings(c,store.id)};
 }
 function headers(event){return{"Content-Type":"application/json","Cache-Control":"no-store"}}
