@@ -5,7 +5,7 @@ import{renderAssistantPage}from"../netlify/lib/assistant-share-preview.mjs";
 test("personal AI share preview includes a unique crawler-readable title and Open Graph tags",async()=>{
  const template=await readFile(new URL("../personal-chat.html",import.meta.url),"utf8");
  const html=renderAssistantPage(template,{name:"Junior",handle:"junior-ai"});
- assert.match(html,/<title>Hi, I'm Junior, your AI assistant\. How can I help you\?<\/title>/);
+ assert.match(html,/<title>Hi, I&#39;m Junior, your AI assistant\. How can I help you\?<\/title>/);
  assert.match(html,/<meta property="og:title" content="Hi, I&#39;m Junior, your AI assistant\. How can I help you\?">/);
  assert.match(html,/og:url" content="https:\/\/za-p-za-p\.vercel\.app\/assistant\/junior-ai/);
  assert.match(html,/id="askForm"/);
