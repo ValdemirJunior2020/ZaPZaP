@@ -644,6 +644,7 @@ async function init(){
  authFields();$("authSubmit").disabled=true;
  $("switchAuth").onclick=()=>{signingUp=!signingUp;authFields();text("authMsg","");if(cfg)text("configMessage",signingUp?"Account service connected. Create a new account to begin.":"Account connection ready. Log in with your existing NexusSales email and password.")};
  document.querySelectorAll("[data-account-kind]").forEach(button=>button.onclick=()=>{accountKind=button.dataset.accountKind==="personal"?"personal":"business";signingUp=true;authFields()});
+ document.querySelectorAll("[data-start-kind]").forEach(button=>button.onclick=()=>{accountKind=button.dataset.startKind==="personal"?"personal":"business";signingUp=true;authFields();$("signupArea").scrollIntoView({behavior:"smooth"})});
   $("signInTop").onclick=()=>{signingUp=false;authFields();$("signupArea").scrollIntoView({behavior:"smooth"})};
  $("authForm").onsubmit=submitAuth;$("logoutTop").onclick=signOut;$("logoutSide").onclick=signOut;
  $("dialogClose").onclick=closeDialog;$("offeringForm").onsubmit=saveOffering;
