@@ -33,11 +33,13 @@ export async function handler(event){
  if(raw.consent!==true)return json(400,{error:"Confirm the monthly price and recurring payment before continuing"});
  const configured=planId(c,quote.tier);
  if(!configured)return json(503,{error:"This subscription plan is not configured"});
+ let preparedOrderId=null,subscriptionCreateRequested=false;
  try{
   const user=await authenticate(event,c),ent=await entitlement(c,user.id);
   if(!ent)return json(503,{error:"Billing account is not initialized"});
   if(ent.is_complimentary===true)return json(409,{error:"Your complimentary account requires no subscription"});
   if(ent.subscription_status==="ACTIVE")return json(409,{error:"An active PayPal subscription already exists; change plans through support"});
+  if(ent.paypal_subscription_id&&["PENDING","APPROVED"].includes(ent.subscription_status))return json(409,{error:"An earlier PayPal subscription is awaiting approval. Cancel it before starting another subscription."});
   const existing=await db(c,"nx_billing_orders?user_id=eq."+encodeURIComponent(user.id)+
    "&status=in.(PREPARING,PENDING,APPROVED,ACTIVE)&select=*&order=created_at.desc&limit=1");
   if(existing.length){
@@ -57,6 +59,7 @@ export async function handler(event){
    return json(503,{error:"The PayPal LIVE base plan does not match our advertised monthly price"});
   const rows=await db(c,"nx_billing_orders",{method:"POST",body:{user_id:user.id,...quote,status:"PREPARING"},prefer:"return=representation"});
   const row=rows?.[0];if(!row||!uuid.test(row.id))throw new Error("Billing order could not be prepared");
+  preparedOrderId=row.id;
   let selected=configured;
   if(quote.tier==="business"&&quote.monthly_usd!==pricing.business.amount){
    if(!/^PROD-[A-Z0-9]+$/i.test(base.product_id||""))throw new Error("PayPal product missing on base plan");
@@ -75,6 +78,7 @@ export async function handler(event){
    body:{paypal_plan_id:selected,updated_at:new Date().toISOString()},prefer:"return=minimal"});
   const origin="https://"+(event.headers.host||"");
   if(!/^https:\/\/[a-z0-9.-]+$/i.test(origin))throw new Error("Invalid site origin");
+  subscriptionCreateRequested=true;
   const sub=await paypal(c,"/v1/billing/subscriptions",{method:"POST",requestId:row.id,body:{
    plan_id:selected,custom_id:row.id,
    application_context:{brand_name:"NexusSales AI",user_action:"SUBSCRIBE_NOW",shipping_preference:"NO_SHIPPING",
@@ -86,6 +90,12 @@ export async function handler(event){
    body:{paypal_subscription_id:sub.id,status:"PENDING",updated_at:new Date().toISOString()},prefer:"return=minimal"});
   return json(200,{approvalUrl,monthlyUsd:quote.monthly_usd,employees:quote.employee_count,
     widget:quote.website_widget,currency:"USD"});
- }catch(e){console.error("Live PayPal checkout:",e.message);
-  return json(e.status||503,{error:e.status===401?"Sign in to continue":"Unable to start verified PayPal checkout. No new payment was approved."})}
+ }catch(e){
+  console.error("Live PayPal checkout:",e.message);
+  // Retry only when no PayPal subscription creation was attempted; otherwise keep pending for manual reconciliation.
+  if(preparedOrderId&&!subscriptionCreateRequested)await db(c,"nx_billing_orders?id=eq."+encodeURIComponent(preparedOrderId),{
+   method:"PATCH",body:{status:"FAILED",updated_at:new Date().toISOString()},prefer:"return=minimal"
+  }).catch(()=>{});
+  return json(e.status||503,{error:e.status===401?"Sign in to continue":"Unable to start verified PayPal checkout. No new payment was approved."});
+ }
 }
