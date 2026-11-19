@@ -1,7 +1,7 @@
 const $=id=>document.getElementById(id);
 const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const cleanSlug=s=>String(s||"").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9-]/g,"-").replace(/-+/g,"-").replace(/^-|-$/g,"").slice(0,48);
-let cfg=null,signingUp=false,viewName="overview",workspace=null,busy=false;
+let cfg=null,signingUp=false,accountKind="business",viewName="overview",workspace=null,busy=false;
 const sessionKey="nexus_owner_v1";
 const session=()=>{try{return JSON.parse(sessionStorage.getItem(sessionKey)||"null")}catch{return null}};
 const saveSession=s=>{if(s)sessionStorage.setItem(sessionKey,JSON.stringify(s));else sessionStorage.removeItem(sessionKey)};
@@ -13,10 +13,16 @@ function setVisible(loggedIn){
  $("workspace").classList.toggle("hidden",!loggedIn);$("topnav").classList.toggle("hidden",loggedIn);$("accountTop").classList.toggle("hidden",!loggedIn);
 }
 function authFields(){
+ const personal=accountKind==="personal";
+ $("accountTypePicker").classList.toggle("hidden",!signingUp);
  $("businessInputs").classList.toggle("hidden",!signingUp);
- $("authBusiness").required=signingUp;$("authPhone").required=signingUp;
- text("authHeading",signingUp?"Create your business account":"Welcome back");
- text("authSub",signingUp?"Add your business details to get started. Your 48-hour trial begins when your AI store goes live.":"Sign in to your business workspace.");
+ $("authPhoneWrap").classList.toggle("hidden",!signingUp||personal);
+ $("authBusiness").required=signingUp;$("authPhone").required=signingUp&&!personal;
+ text("authNameLabel",personal?"Your name":"Business name");
+ $("authBusiness").placeholder=personal?"Your name":"e.g. Sunshine Marketing Studio";
+ document.querySelectorAll("[data-account-kind]").forEach(button=>button.setAttribute("aria-pressed",String(button.dataset.accountKind===accountKind)));
+ text("authHeading",signingUp?(personal?"Create your personal AI account":"Create your business account"):"Welcome back");
+ text("authSub",signingUp?(personal?"Start with your own AI web assistant. No business or payment card is required. Your 48-hour trial begins only when you activate the working assistant.":"Add your business details to get started. Your 48-hour trial begins when your AI store goes live."):"Sign in to NexusSales AI.");
  text("authSubmit",signingUp?"Create account":"Sign in");
  text("switchAuth",signingUp?"Already have an account? Log in":"New to NexusSales? Create an account");
  $("authPassword").setAttribute("autocomplete",signingUp?"new-password":"current-password");
@@ -67,6 +73,7 @@ async function loadWorkspace({throwOnError=false}={}){
  try{
   workspace=await ownerApi();
   if(!workspace)throw Error("Unable to load account");
+  if(workspace.accountKind==="personal"&&viewName==="overview")viewName="personal";
   setVisible(true);
   const currentLanguage=workspace.businessProfile?.interface_language||"en";
   window.NexusLanguage?.restoreLanguage(currentLanguage);
@@ -94,11 +101,11 @@ async function submitAuth(e){
  e.preventDefault();if(busy||!cfg)return;
  const email=$("authEmail").value.trim(),password=$("authPassword").value;
  const name=$("authBusiness").value.trim(),phone=$("authPhone").value.trim();
- if(signingUp&&(name.length<2||phone.replace(/\D/g,"").length<7)){text("authMsg","Enter a business name and valid phone number.");return}
+ if(signingUp&&(name.length<2||(accountKind==="business"&&phone.replace(/\D/g,"").length<7))){text("authMsg",accountKind==="personal"?"Enter your name (at least two characters).":"Enter a business name and valid phone number.");return}
  busy=true;$("authSubmit").disabled=true;text("authMsg","Connecting…");
  try{
   const j=await authRequest(signingUp?"/auth/v1/signup":"/auth/v1/token?grant_type=password",
-   {email,password,...(signingUp?{data:{business_name:name,phone}}:{})});
+   {email,password,...(signingUp?{data:accountKind==="personal"?{display_name:name,account_kind:"personal"}:{business_name:name,phone,account_kind:"business"}}:{})});
   if(!j.access_token){
    showConfirmationEmail(email);
    return;
@@ -614,7 +621,8 @@ async function saveOffering(e){
 async function init(){
  authFields();$("authSubmit").disabled=true;
  $("switchAuth").onclick=()=>{signingUp=!signingUp;authFields();text("authMsg","");if(cfg)text("configMessage",signingUp?"Account service connected. Create a new account to begin.":"Account connection ready. Log in with your existing NexusSales email and password.")};
- $("signInTop").onclick=()=>{signingUp=false;authFields();$("signupArea").scrollIntoView({behavior:"smooth"})};
+ document.querySelectorAll("[data-account-kind]").forEach(button=>button.onclick=()=>{accountKind=button.dataset.accountKind==="personal"?"personal":"business";signingUp=true;authFields()});
+  $("signInTop").onclick=()=>{signingUp=false;authFields();$("signupArea").scrollIntoView({behavior:"smooth"})};
  $("authForm").onsubmit=submitAuth;$("logoutTop").onclick=signOut;$("logoutSide").onclick=signOut;
  $("dialogClose").onclick=closeDialog;$("offeringForm").onsubmit=saveOffering;
  $("dialogBackdrop").addEventListener("click",e=>{if(e.target===$("dialogBackdrop"))closeDialog()});
