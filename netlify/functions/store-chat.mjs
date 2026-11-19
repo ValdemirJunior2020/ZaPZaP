@@ -13,11 +13,11 @@ export async function handler(event){
    try{
     const handle=String(event.queryStringParameters.assistantHandle||"");
     if(!validHandle(handle))return json(404,{error:"Assistant unavailable"});
-    const c=env(),rows=await db(c,"nx_personal_assistants?handle=eq."+encodeURIComponent(handle)+"&enabled=eq.true&select=id,owner_id,store_id,display_name,personality,greeting,max_messages");
+    const c=env(),rows=await db(c,"nx_personal_assistants?handle=eq."+encodeURIComponent(handle)+"&enabled=eq.true&select=id,owner_id,store_id,display_name,personality,greeting,max_messages,public_contact_phone,publish_contact_phone");
     const a=rows?.[0];if(!a)return json(404,{error:"Assistant unavailable"});
     const ent=await entitlement(c,a.owner_id);
     if(!access(ent).allowed)return json(404,{error:"Assistant unavailable"});
-    return json(200,{online:aiReady(),contactWhatsAppUrl:a.owner_id===SPECIAL_OWNER&&ent.is_complimentary===true?"https://wa.me/15616445874":null,assistant:{name:a.display_name,greeting:a.greeting,style:styleName(a.personality),limit:a.max_messages}});
+    return json(200,{online:aiReady(),contactWhatsAppUrl:a.publish_contact_phone===true&&/^\+[1-9][0-9]{7,14}$/.test(a.public_contact_phone||"")?"https://wa.me/"+a.public_contact_phone.slice(1):null,assistant:{name:a.display_name,greeting:a.greeting,style:styleName(a.personality),limit:a.max_messages}});
    }catch(e){console.error("Personal AI public config:",e.message);return json(503,{error:"Assistant temporarily unavailable"})}
   }
   if(event.queryStringParameters?.experience!==JUNIOR_EXPERIENCE)return json(200,{online:aiReady()});
@@ -81,11 +81,11 @@ export async function handler(event){
   diagOwnerId=store.owner_id;diagStoreId=store.id;
   if(juniorMode&&(store.owner_id!==JUNIOR_OWNER_ID||ent.is_complimentary!==true))return json(403,{error:"This assistant belongs to a different business"});
   diagStage="daily_quota";
-  const dailyLimit=ent.is_complimentary===true?1000:ent.subscription_status==="ACTIVE"?1000:100;
+  const dailyLimit=ent.is_complimentary===true?1000:personalMode&&ent.billing_tier==="personal"?100:ent.subscription_status==="ACTIVE"?1000:100;
   const used=await db(c,"rpc/nx_consume_chat_quota",{method:"POST",body:{p_store_id:store.id,p_cap:dailyLimit}});
   if(used!==true)return json(429,{error:"Assistant message limit reached today"});
   if(req.sessionId&&!uuid.test(req.sessionId))return json(400,{error:"Invalid chat session"});
-  const cap=personalMode?assistant.max_messages:Math.max(5,Math.min(30,Number(store.chat_max_messages)||10));
+  const cap=personalMode?ent.billing_tier==="personal"&&ent.subscription_status==="ACTIVE"?Math.min(10,assistant.max_messages):assistant.max_messages:Math.max(5,Math.min(30,Number(store.chat_max_messages)||10));
   // Cross-session daily budget; clearing local storage never grants unlimited Ollama use.
   if(!await allow(c,"customer_daily",store.id+":"+clientIp(event),Math.max(30,cap*2),86400))return json(429,{code:"DAILY_LIMIT",limitReached:true,error:"The daily chat limit has been reached. Please leave your phone number or email for the business."});
   const minutes=personalMode?assistant.max_minutes:Math.max(5,Math.min(30,Number(store.chat_max_minutes)||10));
@@ -103,7 +103,7 @@ export async function handler(event){
       p_store_id:store.id,p_session_id:req.sessionId||null,
       p_source_code:str(req.sourceCode,80),p_limit:cap,p_minutes:minutes
     }});
-  if(!claim?.allowed)return json(429,{code:"SESSION_LIMIT",limitReached:true,error:"This conversation has ended. Please leave your contact details so the business can follow up."});
+  if(!claim?.allowed)return json(429,{code:"SESSION_LIMIT",limitReached:true,error:"Your AI conversation limit is reached. Contact the owner directly using the button below or leave a message."});
   diagStage="history";
   const previous=await db(c,"nx_chat_messages?session_id=eq."+encodeURIComponent(claim.sessionId)+"&store_id=eq."+encodeURIComponent(store.id)+"&select=role,content&order=id.desc&limit=8");
   const history=(previous||[]).reverse().map(x=>({role:x.role,content:x.content}));
