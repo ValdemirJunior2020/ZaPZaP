@@ -307,7 +307,7 @@ function renderPersonalAssistant(){
  (workspace.personalAssistantSchemaReady===false?'<div class="setup-alert">The personal assistant database migration has not been applied. This builder is in review mode and saving is disabled.</div>':'')+
  '<form id="personalBuilderForm" class="personal-builder-form"><div class="personal-two">'+
  '<label>Assistant name<input id="paName" required minlength="2" maxlength="50" value="'+htmlEsc(name)+'" placeholder="Hope, Maya, Oliver"></label>'+
- '<label>Personal link ID<input id="paHandle" required minlength="3" maxlength="32" pattern="[a-z][a-z0-9-]{2,31}" '+(saved?'readonly':'')+' value="'+htmlEsc(handle)+'"></label></div>'+
+ '<label>Personal link ID (editable)<input id="paHandle" required minlength="3" maxlength="32" pattern="[a-z][a-z0-9-]{2,31}" title="Start with a letter; use lowercase letters, numbers or single hyphens" value="'+htmlEsc(handle)+'"></label></div>'+
  '<fieldset class="personality-fieldset"><legend>Choose a personality</legend><div class="personality-grid">'+
  personalities.map(p=>'<label class="personality-card"><input type="radio" name="paStyle" value="'+p.id+'" '+(style===p.id?'checked':'')+'><span class="personality-card-body"><span class="personality-icon">'+p.icon+'</span><strong>'+htmlEsc(p.title)+'</strong><small>'+htmlEsc(p.desc)+'</small><em>'+htmlEsc(p.best)+'</em></span></label>').join('')+'</div></fieldset>'+
  '<label>Welcome message<textarea id="paGreeting" rows="3" maxlength="400" placeholder="Hi! I am an AI assistant. How can I help you?">'+htmlEsc(a.greeting||'')+'</textarea></label>'+
@@ -480,11 +480,23 @@ function bindView(){
    }
   }));
   $("personalBuilderForm").onsubmit=async e=>{
-   e.preventDefault();const button=$("paSave");button.disabled=true;
+   e.preventDefault();
+   const button=$("paSave");
    const assistant={name:$("paName").value.trim(),handle:$("paHandle").value.trim().toLowerCase(),personality:document.querySelector('input[name="paStyle"]:checked')?.value,
     greeting:$("paGreeting").value.trim(),about:$("paAbout").value.trim(),maxMessages:Number($("paMessages").value),maxMinutes:Number($("paMinutes").value),contactPhone:$("paOwnerPhone").value.trim(),publishContactPhone:$("paPublishPhone").checked,enabled:$("paEnabled").checked};
-   try{await ownerApi("save_personal_assistant",{assistant});await loadWorkspace();viewName="personal";render();toast("Personal assistant saved")}
-   catch(error){toast(error.message);button.disabled=false}
+   const previous=workspace.personalAssistant?.handle||"";
+   if(previous&&previous!==assistant.handle){
+    if(!confirm("Change your personal assistant link from /assistant/"+previous+" to /assistant/"+assistant.handle+"?\\n\\nYour old shared link will stop working. You must send the new link to your contacts."))return;
+   }
+   button.disabled=true;
+   try{
+    const saved=await ownerApi("save_personal_assistant",{assistant});
+    if(saved.assistant?.handle!==assistant.handle)throw Error("Assistant link update could not be verified.");
+    await loadWorkspace({throwOnError:true});
+    if(workspace.personalAssistant?.handle!==assistant.handle)throw Error("Saved assistant link could not be verified. Refresh and try again.");
+    viewName="personal";render();
+    toast(previous&&previous!==assistant.handle?"Personal link changed. Share your new link.":"Personal assistant saved and verified.");
+   }catch(error){toast(error.message);if(button.isConnected)button.disabled=false}
   };
   if($("copyPersonalLink"))$("copyPersonalLink").onclick=()=>navigator.clipboard.writeText($("personalLink").value).then(()=>toast("Link copied")).catch(()=>toast("Unable to copy"));
  }
