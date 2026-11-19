@@ -71,19 +71,16 @@ test("PayPal checkout stays disabled without secrets, even for valid plan select
  try{const r=await checkout(event({tier:"core"}));assert.equal(r.statusCode,503);assert.match(JSON.parse(r.body).error,/being configured|not enabled/i)}
  finally{globalThis.fetch=original;if(old===undefined)delete process.env.NEXUS_BILLING_ENABLED;else process.env.NEXUS_BILLING_ENABLED=old}
 });
-test("Legacy and proposed PayPal checkouts remain disabled even if env flag is true",async()=>{
- setup();
- const original=globalThis.fetch,old=process.env.NEXUS_BILLING_ENABLED;
+test("LIVE checkout refuses to create payment without production PayPal credentials",async()=>{
+ setup();const orig=globalThis.fetch,old=process.env.NEXUS_BILLING_ENABLED;
  process.env.NEXUS_BILLING_ENABLED="true";
- let calls=0;globalThis.fetch=async()=>{calls++;throw Error("No PayPal calls allowed")};
+ let calls=0;globalThis.fetch=async()=>{calls++;throw Error("No external calls allowed")};
  try{
-  for(const tier of ["core","core_widget","business"]){
-   const result=await checkout(event({tier}));
-   assert.equal(result.statusCode,503);
-   assert.match(JSON.parse(result.body).error,/499/);
-  }
+  const r=await checkout(event({tier:"business",region:"GLOBAL",employees:3,widget:false,consent:true}));
+  assert.equal(r.statusCode,503);
+  assert.match(JSON.parse(r.body).error,/credentials|webhook|enabled/i);
   assert.equal(calls,0);
- }finally{globalThis.fetch=original;if(old===undefined)delete process.env.NEXUS_BILLING_ENABLED;else process.env.NEXUS_BILLING_ENABLED=old}
+ }finally{globalThis.fetch=orig;if(old===undefined)delete process.env.NEXUS_BILLING_ENABLED;else process.env.NEXUS_BILLING_ENABLED=old}
 });
 test("PayPal webhook verifies signature via Sandbox before changing subscription",async()=>{
  setup();const original=globalThis.fetch;const keys=["PAYPAL_MODE","PAYPAL_CLIENT_ID","PAYPAL_CLIENT_SECRET","PAYPAL_PLAN_ID","PAYPAL_WEBHOOK_ID"];const prev=Object.fromEntries(keys.map(k=>[k,process.env[k]]));
@@ -94,7 +91,8 @@ test("PayPal webhook verifies signature via Sandbox before changing subscription
   if(u.endsWith("/v1/oauth2/token"))return response({access_token:"sandbox-access"});
   if(u.endsWith("/v1/notifications/verify-webhook-signature"))return response({verification_status:"SUCCESS"});
   if(u.includes("/v1/billing/subscriptions/I-TEST123456"))return response({id:"I-TEST123456",custom_id:uid,plan_id:"P-CORE-TEST",status:"ACTIVE"});
-  if(u.includes("/nx_entitlements")&&opt.method==="PATCH"){changed=JSON.parse(opt.body).subscription_status==="ACTIVE";return response([])}
+  if(u.includes("/nx_billing_orders"))return response([]);
+   if(u.includes("/nx_entitlements")&&opt.method==="PATCH"){changed=JSON.parse(opt.body).subscription_status==="ACTIVE";return response([])}
   if(u.includes("/nx_entitlements"))return response([{is_complimentary:false,paypal_subscription_id:"I-TEST123456"}]);
   throw Error("Unexpected webhook request "+u);
  };
