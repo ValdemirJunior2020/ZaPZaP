@@ -59,14 +59,14 @@ test("NexusSales sales personality is exclusive to the owner",()=>{
  assert.equal(validStyle(NEXUS_STYLE,SPECIAL_OWNER),true);
  assert.equal(validStyle(NEXUS_STYLE,"22222222-2222-4222-8222-222222222222"),false);
  assert.match(SALES_GREETING,/NexusSales AI/);
- assert.match(SALES_ABOUT,/149\/month/);
- assert.match(SALES_ABOUT,/228\/month/);
+ assert.match(SALES_ABOUT,/499\/month/);
+ assert.match(SALES_ABOUT,/79\/month/);
 });
 test("NexusSales sales persona knows the actual product, pricing and consent rules",()=>{
  const system=personalMessages({owner_id:SPECIAL_OWNER,display_name:"Maya",personality:NEXUS_STYLE}, "What can it do?")[0].content;
- for(const item of ["SmartStore","SmartLinks","QR codes","149 USD per month","228 USD per month","48-hour trial","separate contact form","Do not invent"])assert.ok(system.includes(item),item);
+ for(const item of ["SmartStore","SmartLinks","QR codes","499 USD per month","79 USD per month","48-hour trial","separate contact form","Do not invent"])assert.ok(system.includes(item),item);
  const spoof=personalMessages({owner_id:"22222222-2222-4222-8222-222222222222",display_name:"Maya",personality:NEXUS_STYLE}, "hi")[0].content;
- assert.doesNotMatch(spoof,/149 USD per month/);
+ assert.doesNotMatch(spoof,/499 USD per month/);
 });
 test("Sales Expert tile preloads copy while backend requires complimentary owner",async()=>{
  const [ui,api]=await Promise.all([readFile("business.js","utf8"),readFile("netlify/functions/owner-workspace.mjs","utf8")]);
@@ -110,12 +110,12 @@ test("AI error diagnostics show safe reference IDs without logging private chat 
 
 test("Super admin Brazil pricing is consistent and does not enable charging",async()=>{
  const {PLANNED_CATALOG,proposedEnterpriseTotal}=await import("../netlify/lib/market-plans.mjs");
- assert.equal(PLANNED_CATALOG.enterpriseBaseUsd,500);
+ assert.equal(PLANNED_CATALOG.enterpriseBaseUsd,499);
  assert.equal(PLANNED_CATALOG.includedEmployees,3);
- assert.equal(proposedEnterpriseTotal("BR",3).monthlyTotal,500);
- assert.equal(proposedEnterpriseTotal("BR",5).monthlyTotal,560);
- assert.equal(proposedEnterpriseTotal("US",5).monthlyTotal,560);
- assert.equal(proposedEnterpriseTotal("PT",4).monthlyTotal,530);
+ assert.equal(proposedEnterpriseTotal("BR",3).monthlyTotal,499);
+ assert.equal(proposedEnterpriseTotal("BR",5).monthlyTotal,559);
+ assert.equal(proposedEnterpriseTotal("US",5).monthlyTotal,599);
+ assert.equal(proposedEnterpriseTotal("PT",4).monthlyTotal,549);
  assert.equal(PLANNED_CATALOG.personalUsd,30);
  assert.equal(PLANNED_CATALOG.playfulUsd,15);
  assert.equal(PLANNED_CATALOG.playfulPersonalities,5);
