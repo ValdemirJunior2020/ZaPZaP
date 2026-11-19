@@ -2,10 +2,11 @@ const $=id=>document.getElementById(id);
 const handle=decodeURIComponent(location.pathname.split("/").filter(Boolean).pop()||"");
 const valid=/^[a-z][a-z0-9-]{2,31}$/.test(handle)&&!/--|-$/.test(handle);
 const key="nexus_personal_session_"+handle;
-let sessionId=null,ready=false,closed=false,busy=false,assistant=null,ownerWhatsAppUrl=null;
+let sessionId=null,ready=false,closed=false,busy=false,assistant=null,ownerWhatsAppUrl=null,ownerPhone=null;
 try{sessionId=localStorage.getItem(key)||null}catch{}
 function bubble(type,text){const div=document.createElement("div");div.className="bubble "+type;div.textContent=String(text||"").slice(0,2500);$("feed").append(div);$("feed").scrollTop=$("feed").scrollHeight;return div}
 function showWhatsApp(){
+ if(ownerPhone){const call=$("ownerCall");if(call){call.href="tel:"+ownerPhone;call.textContent="📞 Call owner: "+ownerPhone;call.hidden=false}}
  if(!ownerWhatsAppUrl)return;
  for(const id of ["ownerWhatsApp","ownerQuickWhatsApp"]){
   const link=$(id);if(link){link.href=ownerWhatsAppUrl;link.hidden=false}
@@ -20,6 +21,7 @@ async function init(){
   const data=await r.json().catch(()=>({}));
   if(!r.ok||!data.assistant)throw Error("Assistant unavailable");
   assistant=data.assistant;
+  ownerPhone=/^\+[1-9][0-9]{7,14}$/.test(data.contactPhone||"")?data.contactPhone:null;
   ownerWhatsAppUrl=/^https:\/\/wa\.me\/[1-9][0-9]{7,14}$/.test(data.contactWhatsAppUrl||"")?data.contactWhatsAppUrl:null;
   $("heroName").textContent=assistant.name;
   $("chatName").textContent=assistant.name+" · AI";
