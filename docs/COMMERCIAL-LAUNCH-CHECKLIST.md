@@ -19,6 +19,7 @@
 | P0 | Always-on AI | Ollama is supplied by a protected HTTPS gateway connected to an owner-operated system | Verify uptime monitoring, worker auto-restart, fallback behavior, incident response and realistic availability claims |
 | P0 | WhatsApp auto replies | Meta webhook and queued sender code exist, but Vercel retry endpoint has no scheduled production call configured | Establish approved Meta Business integration, opt-in/templates where required, scheduler, delivery monitoring, opt-out; do not sell this feature as live until demonstrated |
 | P1 | Chat retention | Chat sessions and messages were observed in Supabase even without leads; history feature was in QA branch | Test new owner-only history view, delete scope, restore/backup handling and retention disclosures |
+| P1 | Personal-only onboarding | Release candidate adds signup choice, private account setup and an explicit 48-hour trial activation after hosted AI responds | Real new personal user must complete signup, email verification, assistant creation, activation, public chat and expiration tests |
 | P1 | Mobile sharing | Personal link social title and storefront preview exist in source | Test WhatsApp, iOS Safari, Android Chrome; current preview may be cached |
 | P1 | Multi-tenant security | Server-scoped DB access and RLS enabled; 18 RLS-without-policy lints reflect service-only tables | Audit privileged function access, ensure no direct customer write roles, test owner A cannot see owner B data |
 | P1 | Auth | Supabase advisor warns leaked-password protection disabled | Enable if available, validate sign-up, verification, recovery, account deletion |
@@ -27,7 +28,7 @@
 | P1 | Future Netlify move | netlify.toml previously published repository root | Corrected in this release branch to publish the allowlisted public build only. No transfer requested |
 
 ## Final acceptance tests before first paid customer
-1. New owner registers and receives verification email, signs in and sees own dashboard.
+1. New Business owner registers and receives verification email, signs in and sees own dashboard. A separate Personal user registers without a mandatory business phone, creates a private assistant workspace, activates their own AI trial, and shares a working web link.
 2. Owner completes SmartStore and creates assistant; saved values survive refresh and language changes.
 3. Customer opens mobile SmartLink, receives an actual AI response from a hosted worker.
 4. Anonymous chat appears in **Chat history** even when a visitor sends only "oi"; owner can delete it, with confirmation; no cross-tenant access.
