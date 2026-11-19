@@ -92,7 +92,7 @@ const localApiName=fnMatch?.[1]||(url.pathname.startsWith("/api/")?url.pathname.
 if(localApiName&&Object.hasOwn(localHandlers,localApiName))return await localFunction(req,res,url,localApiName);
 if(url.pathname.startsWith('/api/'))return result(res,501,{error:'Integration not configured; no production messaging or billing occurs in this demo'});
 if(req.method!=='GET'&&req.method!=='HEAD')return result(res,405,{error:'Method not allowed'});
-const assistantMatch=url.pathname.match(/^\\/assistant\\/([a-z][a-z0-9-]{2,31})$/);
+const assistantMatch=url.pathname.match(/^\/assistant\/([a-z][a-z0-9-]{2,31})$/);
 if(assistantMatch){url.searchParams.set("handle",assistantMatch[1]);return await localFunction(req,res,url,"assistant-page")}
 let pathname=decodeURIComponent(url.pathname);
 if(pathname==="/assistant")pathname="/junior.html";
