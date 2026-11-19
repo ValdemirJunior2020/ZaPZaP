@@ -116,12 +116,13 @@ export async function handler(event){
   const messages=personalMode?personalMessages(assistant,message,history):juniorMode?juniorMessages(message,history):businessMessages(store,items,message,history,qrSource?{label:qrSource.label,offering:linkedOffering}:null);
   if(!personalMode&&!juniorMode){
    try{
-    const profile=(await db(c,"nx_business_profiles?store_id=eq."+encodeURIComponent(store.id)+"&select=address,city,region,country,online_only,address_public,timezone,categories,weekly_hours,closed_dates,booking_duration_minutes"))?.[0];
+    const profile=(await db(c,"nx_business_profiles?store_id=eq."+encodeURIComponent(store.id)+"&select=address,city,region,country,phone,phone_public,online_only,address_public,timezone,categories,weekly_hours,closed_dates,booking_duration_minutes"))?.[0];
     if(profile){
      const now=new Intl.DateTimeFormat("en-US",{timeZone:profile.timezone,dateStyle:"full",timeStyle:"short"}).format(new Date());
      const publicFacts={timezone:profile.timezone,localBusinessTime:now,weeklyHours:profile.weekly_hours,closedDates:profile.closed_dates,onlineOnly:profile.online_only,categories:profile.categories,
+      ...(profile.phone_public===true&&/^\+[1-9][0-9]{7,14}$/.test(profile.phone||'')?{publicPhone:profile.phone}:{}),
       ...(profile.address_public?{publicAddress:[profile.address,profile.city,profile.region,profile.country].filter(Boolean).join(", ")}:{} )};
-     messages[0].content+=" VERIFIED BUSINESS OPERATING PROFILE: "+JSON.stringify(publicFacts).slice(0,3500)+". Use this timezone and opening hours for questions. The scheduling form can check a customer-proposed time for conflicts; it does NOT confirm a booking. Invite the visitor to submit the appointment request and do not invent available times.";
+     messages[0].content+=" VERIFIED BUSINESS OPERATING PROFILE: "+JSON.stringify(publicFacts).slice(0,3500)+". Share the publicPhone only when explicitly present and requested by the visitor. If absent, never invent or reveal any owner phone number. Use this timezone and opening hours for questions. The scheduling form can check a customer-proposed time for conflicts; it does NOT confirm a booking. Invite the visitor to submit the appointment request and do not invent available times.";
     }
    }catch(e){console.warn("Business-hours context unavailable:",e.message)}
   }
