@@ -80,7 +80,7 @@ async function load(){
   $("storeUnavailable").classList.add("hidden");$("storeContent").classList.remove("hidden");
   document.title=store.name+" · SmartStore";
   $("businessName").textContent=store.name;
-  if(!data.qrSource)$("headline").textContent=store.headline||"Welcome to "+store.name;
+  if(!data.qrSource)$("headline").textContent=store.headline||(pageLocale==="pt"?"Bem-vindo à "+store.name:pageLocale==="es"?"Bienvenido a "+store.name:"Welcome to "+store.name);
   introExpanded=false;renderDescription();
   const cover=safeUrl(store.store_image_url||"");
   if(cover)$("hero").style.backgroundImage="linear-gradient(90deg,#063d32c9,#063d3266),url("+JSON.stringify(cover)+")";
