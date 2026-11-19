@@ -223,12 +223,12 @@ async function submitTestBot(event,retry=true){
  const pending=testBotMessage("assistant","Asking your real AI…");
  text("testBotStatus","Connecting securely to your AI…");
  try{
-  const r=await fetch("/.netlify/functions/owner-test-chat",{method:"POST",headers:header,body:JSON.stringify({message,history:testBotHistory.slice(-6)}),cache:"no-store",signal:AbortSignal.timeout(27000)});
+  const r=await fetch("/.netlify/functions/owner-test-chat",{method:"POST",headers:header,body:JSON.stringify({message,history:testBotHistory.slice(-6),interfaceLanguage:window.NexusLanguage?.getLanguage?.()||"en"}),cache:"no-store",signal:AbortSignal.timeout(27000)});
   const data=await r.json().catch(()=>({}));
   if(r.status===401&&retry&&await refreshAuth()){
    const newHeader=await authHeader();
    if(!newHeader)throw Error("Your session expired. Please sign in again.");
-   const again=await fetch("/.netlify/functions/owner-test-chat",{method:"POST",headers:newHeader,body:JSON.stringify({message,history:testBotHistory.slice(-6)}),cache:"no-store",signal:AbortSignal.timeout(27000)});
+   const again=await fetch("/.netlify/functions/owner-test-chat",{method:"POST",headers:newHeader,body:JSON.stringify({message,history:testBotHistory.slice(-6),interfaceLanguage:window.NexusLanguage?.getLanguage?.()||"en"}),cache:"no-store",signal:AbortSignal.timeout(27000)});
    const againData=await again.json().catch(()=>({}));
    if(!again.ok)throw Error(againData.error||"Your assistant is temporarily unavailable. Please try again.");
    if(!againData.reply||!["ollama","ollama-lite","openai"].includes(againData.source))throw Error("AI did not return a verified response");
