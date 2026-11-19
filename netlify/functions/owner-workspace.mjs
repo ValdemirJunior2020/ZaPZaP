@@ -47,7 +47,7 @@ export async function handler(event){
    return json(200,{logs:logs||[]});
   }
   if(["save_employee","set_employee_enabled","delete_employee"].includes(action)&&!teamEntitled(user,ent))return json(403,{error:"A gestão de equipe requer o novo plano Empresarial confirmado. Os planos antigos permanecem inalterados."});
-  if(!canEdit(ent)&&!["pause","disable_widget","lead_history","update_lead"].includes(action))return json(402,{error:"Your trial has ended. Subscribe to continue.",access:access(ent)});
+  if(!canEdit(ent)&&!["pause","disable_widget","lead_history","update_lead","list_conversations","conversation_history","delete_conversation"].includes(action))return json(402,{error:"Your trial has ended. Subscribe to continue.",access:access(ent)});
   if(action==="set_interface_language"){
    if(!store)return json(400,{error:"Create your business first"});
    const language=String(data.language||"").trim().toLowerCase();
@@ -237,6 +237,28 @@ export async function handler(event){
    }
    const changed=await db(c,"nx_appointments?id=eq."+encodeURIComponent(id)+"&store_id=eq."+encodeURIComponent(store.id),{method:"PATCH",body:{status,updated_at:iso()},prefer:"return=representation"});
    return json(200,{appointment:changed?.[0]});
+  }
+  // Chat history is independent of lead capture. Store-scoped and owner-authenticated.
+  // Expired sessions remain recorded until an owner explicitly deletes them.
+  if(action==="list_conversations"){
+   const offset=Math.max(0,Math.min(100000,Number.isInteger(data.offset)?data.offset:0));
+   const sessions=await db(c,"nx_chat_sessions?store_id=eq."+encodeURIComponent(store.id)+"&select=id,started_at,expires_at,closed_at,message_count,personal_assistant_id,source_id&order=started_at.desc&limit=50&offset="+offset);
+   return json(200,{sessions:sessions||[],hasMore:(sessions||[]).length===50,nextOffset:offset+(sessions||[]).length});
+  }
+  if(["conversation_history","delete_conversation"].includes(action)){
+   const sessionId=String(data.sessionId||"");
+   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId))return json(400,{error:"Invalid conversation ID"});
+   const rows=await db(c,"nx_chat_sessions?id=eq."+encodeURIComponent(sessionId)+"&store_id=eq."+encodeURIComponent(store.id)+"&select=id,started_at,personal_assistant_id");
+   if(!rows?.[0])return json(404,{error:"Conversation not found"});
+   if(action==="conversation_history"){
+    const messages=await db(c,"nx_chat_messages?session_id=eq."+encodeURIComponent(sessionId)+"&store_id=eq."+encodeURIComponent(store.id)+"&select=role,content,created_at&order=id.asc&limit=200");
+    return json(200,{session:rows[0],messages:messages||[]});
+   }
+   if(data.confirm!==true)return json(400,{error:"Confirm conversation deletion first"});
+   // FK CASCADE removes its messages; linked lead is retained with session_id=NULL.
+   const removed=await db(c,"nx_chat_sessions?id=eq."+encodeURIComponent(sessionId)+"&store_id=eq."+encodeURIComponent(store.id),{method:"DELETE",prefer:"return=representation"});
+   if(!removed?.length)return json(404,{error:"Conversation was not deleted"});
+   return json(200,{deleted:true,sessionId});
   }
   if(action==="lead_history"){
    if(!/^[0-9a-f-]{36}$/i.test(data.id||""))return json(400,{error:"Invalid lead"});
