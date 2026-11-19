@@ -77,7 +77,12 @@ export async function handler(event){
     agent_name:str(i.agent_name,70)||"Business Assistant",store_image_url:domainUrl(i.store_image_url),
     color:/^#[a-fA-F0-9]{6}$/.test(i.color||"")?i.color:"#06aa77",updated_at:iso()};
    if(store){
-    if(requested!==store.slug)return json(409,{error:"Store links are permanent once created. Contact support to change yours."});
+    // Owners may rename their own SmartLink; UUID-based offerings, leads and QR records stay attached.
+    // Existing /s/old-slug URLs will no longer resolve, so the client requires explicit confirmation.
+    if(requested!==store.slug){
+     const taken=await db(c,"nx_stores?slug=eq."+encodeURIComponent(requested)+"&select=id");
+     if(taken.some(row=>row.id!==store.id))return json(409,{error:"That SmartLink name is already in use. Choose another."});
+    }
     const rows=await db(c,"nx_stores?id=eq."+encodeURIComponent(store.id)+"&owner_id=eq."+encodeURIComponent(user.id),{method:"PATCH",body:saved,prefer:"return=representation"});
     store=rows?.[0];
    }else{
