@@ -95,10 +95,10 @@
   });
   const list=document.getElementById("leadListPane"),cal=document.getElementById("leadCalendarPane");
   if(list)list.classList.toggle("hidden",state.pane!=="leads");
-  if(cal){cal.classList.toggle("hidden",state.pane!=="calendar");if(state.pane==="calendar"){cal.innerHTML=render(w);bind(w,api,refresh)}}
+  if(cal){cal.classList.toggle("hidden",state.pane!=="calendar");if(state.pane==="calendar"){cal.innerHTML=render(w);bind(w,api,refresh);window.NexusLanguage?.apply()}}
  }
  function bind(w,api,refresh){
-  const mount=()=>{document.getElementById("leadCalendarPane").innerHTML=render(w);bind(w,api,refresh)};
+  const mount=()=>{document.getElementById("leadCalendarPane").innerHTML=render(w);bind(w,api,refresh);window.NexusLanguage?.apply()};
   const nav=document.querySelectorAll("[data-cal-nav]");
   nav.forEach(button=>button.onclick=()=>{
    const direction=button.dataset.calNav;
