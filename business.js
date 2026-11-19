@@ -168,7 +168,7 @@ function renderStore(){
  const s=workspace.store||{},p=workspace.profile||{};
  return '<div class="card"><form id="storeForm" class="detail-form">'+
  '<label>Business name<input id="storeName" maxlength="150" required value="'+htmlEsc(s.name||p.business_name||"")+'"></label>'+
- '<label>Permanent SmartLink name<input id="storeSlug" maxlength="48" required '+(s.id?'readonly':'')+' value="'+htmlEsc(s.slug||"")+'" placeholder="your-business"></label>'+
+ '<label>SmartLink name (editable)<input id="storeSlug" maxlength="48" required pattern="[a-z0-9]+(-[a-z0-9]+)*" title="Use lowercase letters, numbers and single hyphens" value="'+htmlEsc(s.slug||"")+'" placeholder="your-business"></label>'+
  '<label>Industry<input id="storeIndustry" maxlength="100" value="'+htmlEsc(s.industry||"")+'" placeholder="Marketing, plumbing, HVAC, retail, etc."></label>'+
  '<label>AI assistant name<input id="storeAgent" maxlength="70" value="'+htmlEsc(s.agent_name||"Business Assistant")+'"></label>'+
  personalityCards(s.ai_personality||"professional")+
@@ -550,8 +550,14 @@ async function saveStore(e){
   ai_personality:document.querySelector('input[name="storePersonality"]:checked')?.value||"professional",
   headline:$("storeHeadline").value.trim(),description:$("storeDescription").value.trim(),
   hours:$("storeHours").value.trim(),store_image_url:$("storeImage").value.trim()};
+ const previous=workspace.store?.slug||"";
+ if(previous&&previous!==cleanSlug(store.slug)){
+  const changed=cleanSlug(store.slug);
+  if(!changed||changed.length<3){toast("SmartLink name must contain at least three letters or numbers");return}
+  if(!confirm("Change your SmartLink from /s/"+previous+" to /s/"+changed+"?\\n\\nIMPORTANT: Your old link and QR codes will stop working. Update all places where you shared them. This cannot be automatically undone."))return;
+ }
  const button=e.target.querySelector("[type=submit]");button.disabled=true;
- try{await ownerApi("save_store",{store});await loadWorkspace();viewName="offerings";render();toast("Business saved")}catch(err){toast(err.message)}finally{button.disabled=false}
+ try{await ownerApi("save_store",{store});await loadWorkspace();viewName="offerings";render();toast(previous&&previous!==workspace.store?.slug?"SmartLink updated. Replace your old links and QR codes.":"Business saved")}catch(err){toast(err.message)}finally{button.disabled=false}
 }
 function editOffering(id){
  const p=(workspace.offerings||[]).find(x=>x.id===id)||{};
