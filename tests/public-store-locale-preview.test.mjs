@@ -123,3 +123,15 @@ test("Embedded website chatbot animates thinking dots and replaces them with act
  assert.match(widget,/id="message"[^>]*placeholder=/);
  assert.match(widget,/id="send"[^>]*>Send<\/button>/);
 });
+
+test("Embedded widget displays real Contact Support button on chat limit and opens copy popup",async()=>{
+ const [widget,server,popup]=await Promise.all([read("widget-chat.html"),read("netlify/functions/store-chat.mjs"),read("nexus-support.js")]);
+ assert.match(widget,/id="contactSupport"[^>]*data-nexus-support[^>]*hidden>Contact Support<\/button>/);
+ assert.match(widget,/src="\/nexus-support\.js" defer/);
+ assert.match(widget,/el\("contactSupport"\)\.hidden=false/);
+ assert.match(widget,/Chat limit reached · Contact Support/);
+ assert.match(widget,/Contact Support using the button below, or leave an inquiry/);
+ assert.doesNotMatch(widget,/pending\.textContent=data\.error/);
+ assert.match(server,/Contact Support using the button below, or leave an inquiry/);
+ assert.match(popup,/navigator\.clipboard\.writeText\(address\)/);
+});

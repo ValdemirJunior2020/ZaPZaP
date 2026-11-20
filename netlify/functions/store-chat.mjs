@@ -103,7 +103,7 @@ export async function handler(event){
       p_store_id:store.id,p_session_id:req.sessionId||null,
       p_source_code:str(req.sourceCode,80),p_limit:cap,p_minutes:minutes
     }});
-  if(!claim?.allowed)return json(429,{code:"SESSION_LIMIT",limitReached:true,error:"Your AI conversation limit is reached. Contact the owner directly using the button below or leave a message."});
+  if(!claim?.allowed)return json(429,{code:"SESSION_LIMIT",limitReached:true,error:"Your AI conversation limit has been reached. Contact Support using the button below, or leave an inquiry."});
   diagStage="history";
   const previous=await db(c,"nx_chat_messages?session_id=eq."+encodeURIComponent(claim.sessionId)+"&store_id=eq."+encodeURIComponent(store.id)+"&select=role,content&order=id.desc&limit=8");
   const history=(previous||[]).reverse().map(x=>({role:x.role,content:x.content}));
