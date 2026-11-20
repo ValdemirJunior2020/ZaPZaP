@@ -7,9 +7,11 @@ export const NEXUS_PRICE_URL="https://za-p-za-p.vercel.app/#pricing";
 const validPhone=p=>/^\+[1-9][0-9]{7,14}$/.test(String(p||""));
 export async function publicSalesContact(c,store){
  if(!store?.id||!store?.owner_id)return null;
- const rows=await db(c,"nx_personal_assistants?store_id=eq."+encodeURIComponent(store.id)+"&owner_id=eq."+encodeURIComponent(store.owner_id)+"&publish_contact_phone=eq.true&select=public_contact_phone&limit=1");
- const value=rows?.[0]?.public_contact_phone;
- return validPhone(value)?value:null;
+ try{
+  const rows=await db(c,"nx_personal_assistants?store_id=eq."+encodeURIComponent(store.id)+"&owner_id=eq."+encodeURIComponent(store.owner_id)+"&publish_contact_phone=eq.true&select=public_contact_phone&limit=1");
+  const value=rows?.[0]?.public_contact_phone;
+  return validPhone(value)?value:null;
+ }catch(error){console.warn("Public contact preference unavailable:",error?.status||"unknown");return null}
 }
 const phoneIntent=s=>{
  const t=String(s||"").toLowerCase();
@@ -17,6 +19,7 @@ const phoneIntent=s=>{
  const request=/\b(?:give|send|share|what(?:'s| is)|can i|may i|could i|i need|how (?:can|do)|do you have|need|want|provide)\b|\b(?:qual|quero|pode|me (?:de|dê|passa|informe)|como|tem|preciso|cu[aá]l|dame|puedo|tienes|necesito)\b/i;
  return contact.test(t)&&request.test(t);
 };
+export const needsPublicPhone=message=>phoneIntent(message);
 const buyIntent=s=>/(?:\b(?:where (?:can|do) i (?:buy|purchase|pay|subscribe|sign up)|how (?:can|do) i (?:pay|buy|purchase|subscribe|sign up)|i (?:want|need|would like) to (?:buy|purchase|pay|subscribe|sign up)|ready to (?:buy|pay|subscribe)|(?:buy|purchase|subscribe|pay) (?:now|online|here)|payment link|checkout link|sign.?up link)\b|\b(?:onde (?:posso )?(?:comprar|pagar|assinar)|como (?:posso|faço para) (?:comprar|pagar|assinar)|quero (?:comprar|pagar|assinar)|link (?:de |para )?(?:pagamento|compra|assinatura)|d[oó]nde (?:puedo )?(?:comprar|pagar|suscribirme)|c[oó]mo (?:puedo )?(?:comprar|pagar|suscribirme)|quiero (?:comprar|pagar|suscribirme))\b)/i.test(String(s||""));
 const detectLanguage=t=>/\b(?:onde|como|quero|pagar|comprar|assinar|ligar|telefone|n[uú]mero|pode|me dê|me de|qual)\b/i.test(t)?"pt":/\b(?:d[oó]nde|c[oó]mo|quiero|comprar|pagar|suscribirme|tel[eé]fono|llamar|dame)\b/i.test(t)?"es":"en";
 export function verifiedSalesAnswer(message,phone){
