@@ -107,7 +107,13 @@ function bubble(role,message){
 async function ask(question){
  if(!ready||working||chatClosed)return;question=String(question||"").trim().slice(0,700);if(!question)return;
  working=true;$("question").disabled=true;$("chatSend").disabled=true;
- bubble("user",question);$("question").value="";const pending=bubble("bot",i18n("loading"));
+ bubble("user",question);$("question").value="";const pending=bubble("bot","");
+  pending.classList.add("thinking-bubble");
+  pending.setAttribute("aria-label",i18n("loading"));
+  const dots=document.createElement("span");dots.className="thinking-dots";dots.setAttribute("aria-hidden","true");
+  for(let i=0;i<3;i++)dots.appendChild(document.createElement("i"));
+  const label=document.createElement("span");label.className="thinking-label";label.textContent=i18n("loading");
+  pending.append(dots,label);
  try{
   const r=await fetch("/.netlify/functions/store-chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({slug,message:question,sessionId,sourceCode})});
   const data=await r.json().catch(()=>({}));

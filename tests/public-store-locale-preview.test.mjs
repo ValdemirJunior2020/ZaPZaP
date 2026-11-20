@@ -73,3 +73,15 @@ test("AI chat composers support multiline Shift+Enter and Enter-to-send across s
   assert.match(js,/requestSubmit\(\)/);
  }
 });
+
+test("SmartStore uses a compact animated thinking indicator and replaces it with the AI reply",async()=>{
+ const [html,js]=await Promise.all([read("store.html"),read("store-live.js")]);
+ assert.match(html,/\.thinking-dots i\{[^}]*animation:thinking-pulse/);
+ assert.match(html,/@keyframes thinking-pulse/);
+ assert.match(html,/prefers-reduced-motion:reduce/);
+ assert.match(js,/pending\.classList\.add\("thinking-bubble"\)/);
+ assert.match(js,/pending\.setAttribute\("aria-label",i18n\("loading"\)\)/);
+ assert.match(js,/dots\.setAttribute\("aria-hidden","true"\)/);
+ assert.match(js,/pending\.append\(dots,label\)/);
+ assert.match(js,/pending\.textContent=data\.reply/);
+});
