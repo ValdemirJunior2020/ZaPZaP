@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 650" role="img" aria-label="Marketing Analysis editorial marketing illustration">
+<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#DAE1E9"/><stop offset="1" stop-color="#EAF2EB"/></linearGradient><filter id="drop"><feDropShadow dx="0" dy="18" stdDeviation="25" flood-color="#45576B" flood-opacity=".13"/></filter></defs>
+<rect width="1100" height="650" fill="url(#bg)"/>
+<circle cx="975" cy="55" r="250" fill="#fff" opacity=".19"/><circle cx="205" cy="585" r="215" fill="#648DA0" opacity=".08"/>
+<path d="M0 516Q250 466 522 570T1100 515" stroke="#fff" stroke-width="3" fill="none" opacity=".65"/>
+<g stroke="#45576B" opacity=".12"><path d="M58 71v8"/><path d="M85 71v8"/><path d="M112 71v8"/><path d="M139 71v8"/><path d="M166 71v8"/><path d="M193 71v8"/><path d="M220 71v8"/><path d="M247 71v8"/></g>
+<rect x="65" y="83" width="70" height="5" rx="3" fill="#648DA0" opacity=".8"/>
+<text x="65" y="158" font-family="Arial,Helvetica,sans-serif" font-size="20" letter-spacing="5" fill="#45576B" font-weight="700" opacity=".68">JULIE CAROLINE</text>
+<text x="65" y="282" font-family="Georgia,'Times New Roman',serif" font-size="55" fill="#45576B" font-weight="bold">Marketing Analysis</text>
+<text x="66" y="332" font-family="Arial,Helvetica,sans-serif" font-size="21" fill="#45576B" opacity=".77">Fresh perspective on your brand</text>
+<rect x="65" y="391" width="112" height="42" rx="20" fill="#648DA0" opacity=".18"/>
+<text x="87" y="418" font-family="Arial,Helvetica,sans-serif" font-size="17" fill="#45576B" font-weight="700">Explore →</text>
+<g filter="url(#drop)"><g transform="translate(670 185)"><rect width="335" height="290" rx="25" fill="#fff" opacity=".86"/><path d="M50 224h224" stroke="#45576B" opacity=".18" stroke-width="7"/><path d="M82 202v-56M149 202V92M216 202v-81" stroke="#648DA0" opacity=".49" stroke-width="34" stroke-linecap="round"/><circle cx="217" cy="110" r="71" stroke="#45576B" stroke-width="14" fill="none"/><path d="m270 161 72 74" stroke="#45576B" stroke-width="17" stroke-linecap="round"/></g></g>
+<text x="66" y="593" font-family="Arial,Helvetica,sans-serif" font-size="14" letter-spacing="4" fill="#45576B" opacity=".55">BRANDING &amp; MARKETING STUDIO</text></svg>

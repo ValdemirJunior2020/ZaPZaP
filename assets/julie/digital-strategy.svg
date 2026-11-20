@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 650" role="img" aria-label="Digital Strategy editorial marketing illustration">
+<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#D5E5EE"/><stop offset="1" stop-color="#F7E9E7"/></linearGradient><filter id="drop"><feDropShadow dx="0" dy="18" stdDeviation="25" flood-color="#344E68" flood-opacity=".13"/></filter></defs>
+<rect width="1100" height="650" fill="url(#bg)"/>
+<circle cx="975" cy="55" r="250" fill="#fff" opacity=".19"/><circle cx="205" cy="585" r="215" fill="#5289A8" opacity=".08"/>
+<path d="M0 516Q250 466 522 570T1100 515" stroke="#fff" stroke-width="3" fill="none" opacity=".65"/>
+<g stroke="#344E68" opacity=".12"><path d="M58 71v8"/><path d="M85 71v8"/><path d="M112 71v8"/><path d="M139 71v8"/><path d="M166 71v8"/><path d="M193 71v8"/><path d="M220 71v8"/><path d="M247 71v8"/></g>
+<rect x="65" y="83" width="70" height="5" rx="3" fill="#5289A8" opacity=".8"/>
+<text x="65" y="158" font-family="Arial,Helvetica,sans-serif" font-size="20" letter-spacing="5" fill="#344E68" font-weight="700" opacity=".68">JULIE CAROLINE</text>
+<text x="65" y="282" font-family="Georgia,'Times New Roman',serif" font-size="68" fill="#344E68" font-weight="bold">Digital Strategy</text>
+<text x="66" y="332" font-family="Arial,Helvetica,sans-serif" font-size="21" fill="#344E68" opacity=".77">Insights • Campaigns • Direction</text>
+<rect x="65" y="391" width="112" height="42" rx="20" fill="#5289A8" opacity=".18"/>
+<text x="87" y="418" font-family="Arial,Helvetica,sans-serif" font-size="17" fill="#344E68" font-weight="700">Explore →</text>
+<g filter="url(#drop)"><g transform="translate(630 177)"><rect width="390" height="290" rx="25" fill="#fff" opacity=".86"/><path d="M67 214V92M143 214V137M219 214V74M295 214V50" stroke="#5289A8" stroke-width="40" stroke-linecap="round" opacity=".62"/><path d="m45 168 98-40 78-46 89-42" fill="none" stroke="#344E68" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="310" cy="40" r="11" fill="#344E68"/></g></g>
+<text x="66" y="593" font-family="Arial,Helvetica,sans-serif" font-size="14" letter-spacing="4" fill="#344E68" opacity=".55">BRANDING &amp; MARKETING STUDIO</text></svg>

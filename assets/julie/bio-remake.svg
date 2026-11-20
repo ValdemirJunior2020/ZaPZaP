@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 650" role="img" aria-label="Bio Rewrite editorial marketing illustration">
+<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#F5DBE4"/><stop offset="1" stop-color="#F6E8E5"/></linearGradient><filter id="drop"><feDropShadow dx="0" dy="18" stdDeviation="25" flood-color="#784F67" flood-opacity=".13"/></filter></defs>
+<rect width="1100" height="650" fill="url(#bg)"/>
+<circle cx="975" cy="55" r="250" fill="#fff" opacity=".19"/><circle cx="205" cy="585" r="215" fill="#BF809B" opacity=".08"/>
+<path d="M0 516Q250 466 522 570T1100 515" stroke="#fff" stroke-width="3" fill="none" opacity=".65"/>
+<g stroke="#784F67" opacity=".12"><path d="M58 71v8"/><path d="M85 71v8"/><path d="M112 71v8"/><path d="M139 71v8"/><path d="M166 71v8"/><path d="M193 71v8"/><path d="M220 71v8"/><path d="M247 71v8"/></g>
+<rect x="65" y="83" width="70" height="5" rx="3" fill="#BF809B" opacity=".8"/>
+<text x="65" y="158" font-family="Arial,Helvetica,sans-serif" font-size="20" letter-spacing="5" fill="#784F67" font-weight="700" opacity=".68">JULIE CAROLINE</text>
+<text x="65" y="282" font-family="Georgia,'Times New Roman',serif" font-size="68" fill="#784F67" font-weight="bold">Bio Rewrite</text>
+<text x="66" y="332" font-family="Arial,Helvetica,sans-serif" font-size="21" fill="#784F67" opacity=".77">Your story, beautifully told</text>
+<rect x="65" y="391" width="112" height="42" rx="20" fill="#BF809B" opacity=".18"/>
+<text x="87" y="418" font-family="Arial,Helvetica,sans-serif" font-size="17" fill="#784F67" font-weight="700">Explore →</text>
+<g filter="url(#drop)"><g transform="translate(650 164)"><rect x="35" y="10" width="328" height="318" rx="26" fill="#fff" opacity=".89"/><circle cx="152" cy="111" r="54" fill="#BF809B" opacity=".40"/><path d="M63 232c13-68 173-71 187 0" fill="#BF809B" opacity=".42"/><path d="M79 270h200" stroke="#784F67" stroke-width="8" opacity=".31" stroke-linecap="round"/><path d="m284 165 50-52 23 22-53 51-34 12Z" fill="#BF809B"/><path d="m334 113 14-14 25 24-16 12" fill="#784F67" opacity=".64"/></g></g>
+<text x="66" y="593" font-family="Arial,Helvetica,sans-serif" font-size="14" letter-spacing="4" fill="#784F67" opacity=".55">BRANDING &amp; MARKETING STUDIO</text></svg>
