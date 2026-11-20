@@ -135,3 +135,20 @@ test("Embedded widget displays real Contact Support button on chat limit and ope
  assert.match(server,/Contact Support using the button below, or leave an inquiry/);
  assert.match(popup,/navigator\.clipboard\.writeText\(address\)/);
 });
+
+test("Widget Support popup script is allowed by iframe CSP and conversation stays visible after limit",async()=>{
+ const [widget,netlify]=await Promise.all([read("widget-chat.html"),read("netlify.toml")]);
+ const widgetPolicy=netlify.match(/for = "\/widget-chat\.html"[\s\S]*?Content-Security-Policy = "([^"]+)"/)?.[1];
+ assert.ok(widgetPolicy,"widget CSP exists");
+ assert.match(widgetPolicy,/script-src 'self' 'unsafe-inline'/);
+ assert.match(widget,/src="\/nexus-support\.js" defer/);
+ assert.match(widget,/\.feed\{flex:1 1 auto;min-height:150px;overflow-y:auto/);
+ assert.match(widget,/\.lead-form\{[^}]*max-height:min\(220px,35dvh\)/);
+ assert.match(widget,/\.form\[hidden\]\{display:none\}/);
+ assert.match(widget,/el\("form"\)\.hidden=true/);
+ assert.match(widget,/el\("leadForm"\)\.classList\.remove\("open"\)/);
+ assert.match(widget,/el\("leadToggle"\)\.setAttribute\("aria-expanded","false"\)/);
+ assert.match(widget,/el\("contactSupport"\)\.hidden=false/);
+ assert.match(widget,/el\("leadToggle"\)\.onclick=\(\)=>/);
+ assert.match(widget,/feed\.scrollTop=feed\.scrollHeight/);
+});
