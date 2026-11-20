@@ -1,4 +1,4 @@
-import {publicSalesContact,verifiedSalesAnswer,verifiedSalesInstructions} from "../lib/verified-sales-routing.mjs";
+import {publicSalesContact,needsPublicPhone,verifiedSalesAnswer,verifiedSalesInstructions} from "../lib/verified-sales-routing.mjs";
 import{SPECIAL_OWNER,validHandle,personalMessages,styleName}from"../lib/personal-assistant.mjs";
 import{JUNIOR_OWNER_ID,JUNIOR_EXPERIENCE,juniorMessages}from"../lib/junior-assistant.mjs";
 import{allow,clientIp}from"../lib/abuse.mjs";
@@ -114,7 +114,7 @@ export async function handler(event){
   const qrSource=qrRows?.[0]||null;
   const assigned=qrSource?.id?(await db(c,"nx_employees?store_id=eq."+encodeURIComponent(store.id)+"&qr_source_id=eq."+encodeURIComponent(qrSource.id)+"&enabled=eq.true&select=name,role,language"))?.[0]:null;
   const linkedOffering=qrSource?.offering_id?items.find(item=>item.id===qrSource.offering_id)||null:null;
-  const contactPhone=!personalMode&&!juniorMode?await publicSalesContact(c,store):null;
+  const contactPhone=!personalMode&&!juniorMode&&needsPublicPhone(message)?await publicSalesContact(c,store):null;
   const verifiedReply=!personalMode&&!juniorMode?verifiedSalesAnswer(message,contactPhone):null;
   const messages=verifiedReply?null:personalMode?personalMessages(assistant,message,history):juniorMode?juniorMessages(message,history):businessMessages(store,items,message,history,qrSource?{label:qrSource.label,offering:linkedOffering}:null);
   if(messages&&!personalMode&&!juniorMode)messages[0].content+=verifiedSalesInstructions(contactPhone);
