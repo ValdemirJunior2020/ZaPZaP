@@ -25,6 +25,26 @@
     X-Robots-Tag = "noindex, nofollow, noarchive"
     Content-Security-Policy = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self' https://*.supabase.co; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"
 
+# Match the public assistant URLs that were previously served by Vercel.
+# Do not forward private user data through redirect query strings.
+[[redirects]]
+  from = "/assistant/:handle"
+  to = "/.netlify/functions/assistant-page?handle=:handle"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/assistant"
+  to = "/junior.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/junior"
+  to = "/junior.html"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/s/:slug"
   to = "/store.html"
