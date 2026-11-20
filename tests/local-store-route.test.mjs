@@ -12,6 +12,7 @@ test("local server serves public SmartStore at /s/:slug without redirecting to /
   for(let i=0;i<30;i++){try{response=await fetch("http://127.0.0.1:"+port+"/s/junior");break}catch{await new Promise(resolve=>setTimeout(resolve,100))}}
   assert.ok(response,"local HTTP server should start");
   assert.equal(response.status,200);
+  assert.equal(response.headers.get("x-nexus-local-store"),"v2");
   assert.match(response.headers.get("content-type")||"","text/html");
   const html=await response.text();
   assert.match(html,/id="introToggle"/);
