@@ -262,12 +262,12 @@ async function submitTestBot(event,retry=true){
    const again=await fetch("/.netlify/functions/owner-test-chat",{method:"POST",headers:newHeader,body:JSON.stringify({message,history:testBotHistory.slice(-6)}),cache:"no-store",signal:AbortSignal.timeout(27000)});
    const againData=await again.json().catch(()=>({}));
    if(!again.ok)throw Error((againData.error||"AI testing failed")+(againData.code?" ["+againData.code+"]":""));
-   if(!againData.reply||!["ollama","ollama-lite","openai"].includes(againData.source))throw Error("AI did not return a verified response");
+   if(!againData.reply||!["ollama","ollama-lite","openai","verified_business"].includes(againData.source))throw Error("AI did not return a verified response");
    pending.textContent=againData.reply;
    testBotHistory.push({role:"user",content:message},{role:"assistant",content:againData.reply});
   }else{
    if(!r.ok)throw Error((data.error||"AI testing failed")+(data.code?" ["+data.code+"]":""));
-   if(!data.reply||!["ollama","ollama-lite","openai"].includes(data.source))throw Error("AI did not return a verified response");
+   if(!data.reply||!["ollama","ollama-lite","openai","verified_business"].includes(data.source))throw Error("AI did not return a verified response");
    pending.textContent=data.reply;
    testBotHistory.push({role:"user",content:message},{role:"assistant",content:data.reply});
   }
