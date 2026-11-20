@@ -86,11 +86,19 @@ test("SmartStore uses a compact animated thinking indicator and replaces it with
  assert.match(js,/pending\.textContent=data\.reply/);
 });
 
-test("Nexus AI Support is accessible on public pages, owner workspace, account billing and SmartStore",async()=>{
+test("Nexus AI Support opens an accessible copy-email dialog rather than launching mail",async()=>{
  const pages=await Promise.all(["index.html","business.html","store.html","account.html"].map(read));
+ const popup=await read("nexus-support.js");
+ const build=await read("scripts/build-vercel.mjs");
  for(const html of pages){
-  assert.match(html,/mailto:nexusai\.helpdesk@gmail\.com\?subject=Nexus%20AI%20Support/);
-  assert.match(html,/>Support(?:<|:)|>Nexus AI Support</);
+   assert.match(html,/data-nexus-support/);
+   assert.match(html,/src="\/nexus-support\.js"/);
+   assert.doesNotMatch(html,/mailto:nexusai\.helpdesk@gmail\.com/);
  }
- for(const html of pages.slice(0,2))assert.match(html,/class="support-link"/);
+ assert.match(popup,/dialog\.showModal\(\)/);
+ assert.match(popup,/navigator\.clipboard\.writeText\(address\)/);
+ assert.match(popup,/nexusai\.helpdesk@gmail\.com/);
+ assert.match(popup,/dialog\.close\(\)/);
+ assert.match(popup,/aria-live="polite"/);
+ assert.match(build,/"nexus-support\.js"/);
 });

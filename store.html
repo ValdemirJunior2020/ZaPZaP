@@ -44,7 +44,7 @@
 .thinking-label{font-size:11px;color:#668b77}
 @keyframes thinking-pulse{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
 @media(prefers-reduced-motion:reduce){.thinking-dots i{animation:none;opacity:.7}}
-</style></head><body>
+.nx-support-footer-button{border:0;background:transparent;color:#078b64;text-decoration:underline;cursor:pointer;font:inherit;font-weight:700}</style></head><body>
 <header><b id="businessName">NexusSales SmartStore</b><small>Powered by NexusSales AI</small></header>
 <main class="wrap"><div class="notice" id="storeUnavailable">Loading this business…</div>
 <div id="storeContent" class="hidden"><section class="cover" id="hero"><div><div class="tag" id="welcomeTag">WELCOME</div><h1 id="headline"></h1><p id="intro"></p><button id="introToggle" type="button" class="intro-toggle hidden" aria-controls="intro" aria-expanded="false">Read more</button></div></section>
@@ -62,5 +62,5 @@
 <label><span id="messageLabel">What can we help with?</span><textarea id="customerMessage" maxlength="1500" required></textarea></label>
 <label class="hidden">Leave this blank<input id="hp" tabindex="-1" autocomplete="off"></label>
 <button id="contactSend" class="btn" type="submit">Send inquiry</button><div id="contactStatus" class="form-msg" aria-live="polite"></div></form></section></div></main>
-<div class="footer">NexusSales AI • Digital storefront and AI-powered customer assistance · <a href="mailto:nexusai.helpdesk@gmail.com?subject=Nexus%20AI%20Support" aria-label="Email Nexus AI platform support">Nexus AI Support</a></div>
-<script src="/nexus-slot-ui.js" defer></script><script type="module" src="/store-live.js"></script></body></html>
+<div class="footer">NexusSales AI • Digital storefront and AI-powered customer assistance · <button type="button" data-nexus-support aria-haspopup="dialog" class="nx-support-footer-button">Nexus AI Support</button></div>
+<script src="/nexus-slot-ui.js" defer></script><script type="module" src="/store-live.js"></script><script src="/nexus-support.js" defer></script></body></html>
