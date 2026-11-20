@@ -109,3 +109,17 @@ test("Nexus AI homepage embeds the active owner chatbot widget exactly once",asy
  assert.equal(homepage.split(embed).length-1,1);
  assert.match(homepage,/src="https:\/\/zapzap-bot\.netlify\.app\/widget\.js"/);
 });
+
+test("Embedded website chatbot animates thinking dots and replaces them with actual replies",async()=>{
+ const widget=await read("widget-chat.html");
+ assert.match(widget,/\.thinking-dots i\{[^}]*animation:thinking-pulse/);
+ assert.match(widget,/@keyframes thinking-pulse/);
+ assert.match(widget,/prefers-reduced-motion:reduce/);
+ assert.match(widget,/pending\.classList\.add\("thinking-bubble"\)/);
+ assert.match(widget,/pending\.setAttribute\("aria-label","One moment, Nexus AI is thinking"\)/);
+ assert.match(widget,/pending\.append\(dots,label\)/);
+ assert.match(widget,/pending\.textContent=data\.reply/);
+ assert.match(widget,/pending\.textContent="I can't answer right now/);
+ assert.match(widget,/id="message"[^>]*placeholder=/);
+ assert.match(widget,/id="send"[^>]*>Send<\/button>/);
+});
