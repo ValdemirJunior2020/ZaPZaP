@@ -95,6 +95,9 @@ if(req.method!=='GET'&&req.method!=='HEAD')return result(res,405,{error:'Method 
 const assistantMatch=url.pathname.match(/^\/assistant\/([a-z][a-z0-9-]{2,31})$/);
 if(assistantMatch){url.searchParams.set("handle",assistantMatch[1]);return await localFunction(req,res,url,"assistant-page")}
 let pathname=decodeURIComponent(url.pathname);
+// Match the Netlify/Vercel public storefront rewrite in local development.
+// Preserve the original /s/:slug URL so store-live.js resolves the tenant correctly.
+if(/^\/s\/[a-z0-9-]{3,50}\/?$/i.test(pathname))pathname="/store.html";
 if(pathname==="/assistant")pathname="/junior.html";
 else if(/^\/assistant\/[a-z][a-z0-9-]{2,31}$/.test(pathname))pathname="/personal-chat.html";
 const file=path.resolve(root,'.'+(pathname==='/'?'/index.html':pathname));if(!file.startsWith(root+path.sep))return result(res,403,{error:'Forbidden'});if(file.includes(path.sep+'.')||/\.(env|sql|md|toml)$/i.test(file))return result(res,404,{error:'Not found'});let info;try{info=await stat(file)}catch{return result(res,404,{error:'Not found'})}if(!info.isFile())return result(res,404,{error:'Not found'});const content=await readFile(file);res.writeHead(200,{'Content-Type':TYPES[path.extname(file)]||'application/octet-stream','X-Content-Type-Options':'nosniff','Cache-Control':'public, max-age=120'});res.end(req.method==='HEAD'?undefined:content)
