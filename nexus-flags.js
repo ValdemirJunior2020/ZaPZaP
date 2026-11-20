@@ -9,6 +9,28 @@ const flags={
 const names={en:"English",es:"Español",pt:"Português"};
 const header={en:"Platform language",es:"Idioma de la plataforma",pt:"Idioma da plataforma"};
 const status={en:"Language saved",es:"Idioma guardado",pt:"Idioma salvo"};
+function renderHeader(){
+ const header=document.querySelector(".top");
+ if(!header)return;
+ let root=document.getElementById("nxHeaderLanguages");
+ if(!root){
+  root=document.createElement("div");
+  root.id="nxHeaderLanguages";
+  root.className="nx-header-languages";
+  root.setAttribute("role","group");
+  root.setAttribute("aria-label","Website language / Idioma do site / Idioma del sitio");
+  const nav=document.getElementById("topnav"),account=document.getElementById("accountTop");
+  if(nav)header.insertBefore(root,nav);
+  else if(account)header.insertBefore(root,account);
+  else header.appendChild(root);
+ }
+ const code=window.NexusLanguage?.getLanguage?.()||"en";
+ root.innerHTML=Object.keys(names).map(lang=>'<button type="button" data-nx-header-language="'+lang+'" class="nx-header-language" lang="'+(lang==="pt"?"pt-BR":lang)+'" aria-pressed="'+String(code===lang)+'" aria-label="'+names[lang]+'" title="'+names[lang]+'"><span class="nx-locale-icon">'+flags[lang]+'</span><span>'+names[lang]+'</span></button>').join("");
+ root.querySelectorAll("button").forEach(button=>button.addEventListener("click",()=>{
+  if(button.dataset.nxHeaderLanguage===window.NexusLanguage?.getLanguage?.())return;
+  window.NexusLanguage?.setLanguage?.(button.dataset.nxHeaderLanguage);
+ }));
+}
 function render(){
  const nav=document.getElementById("sideNav");if(!nav)return;
  let root=document.getElementById("nxLocaleBox");
@@ -38,7 +60,8 @@ function render(){
   }
  }));
 }
-window.NexusFlags={render};
-window.addEventListener("nexus:language",()=>{if(document.getElementById("sideNav"))render()});
-if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",render);else render();
+window.NexusFlags={render,renderHeader};
+window.addEventListener("nexus:language",()=>{renderHeader();if(document.getElementById("sideNav"))render()});
+function init(){renderHeader();render()}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
 })();

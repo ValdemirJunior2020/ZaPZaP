@@ -18,3 +18,13 @@
 .nx-wg-state{font-size:13px;font-weight:800;margin:14px 0;color:#146c50}
 .nx-wg-code{display:block;box-sizing:border-box;width:100%;padding:12px;border-radius:12px;border:1px solid #bddac7;background:#f8fdf9;color:#204938;font-family:monospace;resize:vertical}
 @media(max-width:650px){.nx-wg-prices{grid-template-columns:1fr}.nx-locale-icon{width:36px;height:36px}}
+
+/* Marketing header: colorful 3-language selector, independent of login state. */
+.nx-header-languages{display:flex;align-items:center;justify-content:center;gap:5px;margin-left:auto;flex-shrink:0}
+.nx-header-language{display:inline-flex;align-items:center;gap:6px;padding:5px 7px;border:1px solid transparent;border-radius:12px;background:transparent;color:#235948;font-weight:800;font-size:10px;white-space:nowrap;cursor:pointer}
+.nx-header-language .nx-locale-icon{width:27px;height:27px;box-shadow:inset 0 -3px 5px #0002,0 2px 5px #16442c24}
+.nx-header-language:hover{background:#f0f9f3}
+.nx-header-language[aria-pressed="true"]{border-color:#6bd1a4;background:#e7f8ee;color:#075a3f}
+.nx-header-language:focus-visible{outline:3px solid #08a978;outline-offset:2px}
+@media(max-width:850px){.top{flex-wrap:wrap}.nx-header-languages{order:3;width:100%;margin:0;justify-content:flex-end}.nx-header-language{padding:4px 6px}}
+@media(max-width:490px){.nx-header-languages{justify-content:center}.nx-header-language{font-size:9px}.nx-header-language .nx-locale-icon{width:26px;height:26px}.top{padding-left:12px;padding-right:12px}#topnav{gap:10px}}
