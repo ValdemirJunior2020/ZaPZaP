@@ -12,6 +12,14 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
 
+# Route application /api endpoints to Netlify Functions.
+# The local server already supports /api paths; Netlify needs an explicit rewrite.
+[[redirects]]
+  from = "/api/:function"
+  to = "/.netlify/functions/:function"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/admin"
   to = "/admin.html"
