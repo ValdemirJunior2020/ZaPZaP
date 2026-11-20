@@ -1,3 +1,4 @@
+import {publicSalesContact,verifiedSalesAnswer,verifiedSalesInstructions} from "../lib/verified-sales-routing.mjs";
 import {env,json,userFrom,ownStore,offerings,postOrigin,parse,aiReady,access} from "../lib/tenant.mjs";
 import {allow,clientIp} from "../lib/abuse.mjs";
 import {businessMessages} from "../lib/business-ai.mjs";
@@ -28,8 +29,12 @@ export async function handler(event){
   if(!await allow(c,"owner_test_daily",user.id,20,86400))return json(429,{error:"You've used your 20 test questions for today."});
   if(!await allow(c,"owner_test_minute",user.id,4,60))return json(429,{error:"Please wait a minute before testing again."});
   if(!await allow(c,"owner_test_ip",clientIp(event),20,60))return json(429,{error:"Too many requests from this connection."});
+  const contactPhone=await publicSalesContact(c,store);
+  const grounded=verifiedSalesAnswer(message,contactPhone);
+  if(grounded)return json(200,{reply:grounded,source:"verified_business",trialStarted:false,published:store.published});
   const history=Array.isArray(input.history)?input.history.slice(-6):[];
   const messages=businessMessages(store,items,message,history);
+  messages[0].content+=verifiedSalesInstructions(contactPhone);
   const result=await aiQuery(messages,{maxTokens:350,timeoutMs:22000,allowFallback:true,tenantKey:store.id});
   return json(200,{reply:result.text,source:result.source,trialStarted:false,published:store.published});
  }catch(error){
