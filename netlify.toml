@@ -1,7 +1,7 @@
 [build]
   publish = "public"
   command = "npm run test:ci && node scripts/build-vercel.mjs"
-  environment = { NODE_VERSION = "22", SECRETS_SCAN_OMIT_KEYS = "NEXUS_OLLAMA_MODEL,NEXUS_SUPABASE_URL" }
+  environment = { NODE_VERSION = "22", SECRETS_SCAN_OMIT_KEYS = "NEXUS_OLLAMA_MODEL,NEXUS_SUPABASE_URL,PAYPAL_BUSINESS_PLAN_ID,PAYPAL_EXTRA_EMPLOYEE_GLOBAL_PLAN_ID,PAYPAL_PERSONAL_BASIC_PLAN_ID,PAYPAL_EXTRA_EMPLOYEE_BR_PLAN_ID,PAYPAL_WIDGET_ADDON_PLAN_ID" }
 
 [functions]
   node_bundler = "esbuild"
