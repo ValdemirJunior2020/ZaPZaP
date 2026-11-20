@@ -13,7 +13,7 @@ test("local server serves public SmartStore at /s/:slug without redirecting to /
   assert.ok(response,"local HTTP server should start");
   assert.equal(response.status,200);
   assert.equal(response.headers.get("x-nexus-local-store"),"v2");
-  assert.match(response.headers.get("content-type")||"","text/html");
+  assert.match(response.headers.get("content-type")||"",/text\/html/);
   const html=await response.text();
   assert.match(html,/id="introToggle"/);
   assert.match(html,/src="\/store-live\.js"/);
