@@ -91,10 +91,20 @@ const fnMatch=url.pathname.match(/^\/\.netlify\/functions\/([a-z0-9-]+)$/);
 const localApiName=fnMatch?.[1]||(url.pathname.startsWith("/api/")?url.pathname.slice(5):null);
 if(localApiName&&Object.hasOwn(localHandlers,localApiName))return await localFunction(req,res,url,localApiName);
 if(url.pathname.startsWith('/api/'))return result(res,501,{error:'Integration not configured; no production messaging or billing occurs in this demo'});
+if(/^\/s\/[a-z0-9-]{3,50}\/?$/i.test(url.pathname)){
+ // The standalone local server does not run Netlify rewrites; serve the SmartStore
+ // explicitly while retaining /s/{slug} in the browser for tenant lookup.
+ const html=await readFile(path.join(root,"store.html"));
+ res.writeHead(200,{"Content-Type":"text/html; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff","X-Nexus-Local-Store":"v2"});
+ return res.end(req.method==="HEAD"?undefined:html);
+}
 if(req.method!=='GET'&&req.method!=='HEAD')return result(res,405,{error:'Method not allowed'});
 const assistantMatch=url.pathname.match(/^\/assistant\/([a-z][a-z0-9-]{2,31})$/);
 if(assistantMatch){url.searchParams.set("handle",assistantMatch[1]);return await localFunction(req,res,url,"assistant-page")}
 let pathname=decodeURIComponent(url.pathname);
+// Match the Netlify/Vercel public storefront rewrite in local development.
+// Preserve the original /s/:slug URL so store-live.js resolves the tenant correctly.
+if(/^\/s\/[a-z0-9-]{3,50}\/?$/i.test(pathname))pathname="/store.html";
 if(pathname==="/assistant")pathname="/junior.html";
 else if(/^\/assistant\/[a-z][a-z0-9-]{2,31}$/.test(pathname))pathname="/personal-chat.html";
 const file=path.resolve(root,'.'+(pathname==='/'?'/index.html':pathname));if(!file.startsWith(root+path.sep))return result(res,403,{error:'Forbidden'});if(file.includes(path.sep+'.')||/\.(env|sql|md|toml)$/i.test(file))return result(res,404,{error:'Not found'});let info;try{info=await stat(file)}catch{return result(res,404,{error:'Not found'})}if(!info.isFile())return result(res,404,{error:'Not found'});const content=await readFile(file);res.writeHead(200,{'Content-Type':TYPES[path.extname(file)]||'application/octet-stream','X-Content-Type-Options':'nosniff','Cache-Control':'public, max-age=120'});res.end(req.method==='HEAD'?undefined:content)

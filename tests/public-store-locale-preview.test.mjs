@@ -7,7 +7,7 @@ test("Storefront shows an accessible read-more control that retains full source 
  const [html,js]=await Promise.all([read("store.html"),read("store-live.js")]);
  assert.match(html,/id="introToggle"/);
  assert.match(html,/aria-controls="intro" aria-expanded="false"/);
- assert.match(js,/const INTRO_LIMIT=240/);
+ assert.match(js,/const INTRO_LIMIT=100/);
  assert.match(js,/button\.setAttribute\("aria-expanded",String\(expanded\)\)/);
  assert.match(js,/\$\("introToggle"\)\.onclick/);
  assert.match(js,/\$\("intro"\)\.textContent=expanded\?value:preview\.text/);
@@ -16,13 +16,15 @@ test("Long descriptions truncate near word boundary, short descriptions stay who
  const js=await read("store-live.js");
  const match=js.match(/function previewDescription\(description,limit=INTRO_LIMIT\)\{[\s\S]*?\n\}/);
  assert.ok(match);
- const preview=new Function("INTRO_LIMIT",match[0]+";return previewDescription;")(240);
+ const preview=new Function("INTRO_LIMIT",match[0]+";return previewDescription;")(100);
  assert.deepEqual(preview("A short description."),{text:"A short description.",truncated:false});
  const full="Welcome to Nexus AI. "+"Our service helps businesses and customers. ".repeat(14);
  const shortened=preview(full);
  assert.equal(shortened.truncated,true);
- assert.ok(shortened.text.length<=241);
+ assert.ok(shortened.text.length<=101);
  assert.ok(full.startsWith(shortened.text.slice(0,-1)));
+ assert.equal(preview("A".repeat(100)).truncated,false);
+ assert.equal(preview("A".repeat(101)).truncated,true);
 });
 test("Brazilian edge country selects Portuguese before employee and browser preferences",async()=>{
  const js=await read("store-live.js");

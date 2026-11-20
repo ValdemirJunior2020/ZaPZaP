@@ -31,7 +31,7 @@ function translateStore(){
  $("question").placeholder=i18n("askPlaceholder");
  $("introToggle").textContent=i18n("readMore");
 }
-const INTRO_LIMIT=240;
+const INTRO_LIMIT=100;
 let introExpanded=false;
 function previewDescription(description,limit=INTRO_LIMIT){
  const value=String(description||"").trim();
