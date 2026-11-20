@@ -44,3 +44,16 @@ test("Country comes from edge headers rather than request parameters",async()=>{
  assert.match(backend,/visitorCountry:/);
  assert.doesNotMatch(backend,/queryStringParameters\?\.country/);
 });
+
+test("Mobile SmartStore puts a visible Send composer ahead of quick actions and keeps chat history scrollable",async()=>{
+ const [html,js]=await Promise.all([read("store.html"),read("store-live.js")]);
+ assert.match(html,/id="chatForm" class="chat-form"/);
+ assert.match(html,/id="question"[^>]*placeholder="Ask about this business/);
+ assert.match(html,/id="chatSend" type="submit">Send<\/button>/);
+ assert.match(html,/@media\(max-width:850px\)\{[\s\S]*?\.chat-form\{order:2/);
+ assert.match(html,/\.quick\{order:3/);
+ assert.match(html,/\.feed\{order:1;[^}]*overflow-y:auto/);
+ assert.match(html,/@media\(max-width:510px\)\{[\s\S]*?section\.cover h1\{font-size:clamp\(18px,5vw,22px\)/);
+ assert.match(js,/bubble\("user",question\)/);
+ assert.match(js,/\$\("chatFeed"\)\.scrollTop=\$\("chatFeed"\)\.scrollHeight/);
+});
