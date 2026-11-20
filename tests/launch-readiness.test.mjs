@@ -72,15 +72,23 @@ test("PayPal checkout stays disabled without secrets, even for valid plan select
  finally{globalThis.fetch=original;if(old===undefined)delete process.env.NEXUS_BILLING_ENABLED;else process.env.NEXUS_BILLING_ENABLED=old}
 });
 test("LIVE checkout refuses to create payment without production PayPal credentials",async()=>{
- setup();const orig=globalThis.fetch,old=process.env.NEXUS_BILLING_ENABLED;
- process.env.NEXUS_BILLING_ENABLED="true";
- let calls=0;globalThis.fetch=async()=>{calls++;throw Error("No external calls allowed")};
- try{
-  const r=await checkout(event({tier:"business",region:"GLOBAL",employees:3,widget:false,consent:true}));
-  assert.equal(r.statusCode,503);
-  assert.match(JSON.parse(r.body).error,/credentials|webhook|enabled/i);
-  assert.equal(calls,0);
- }finally{globalThis.fetch=orig;if(old===undefined)delete process.env.NEXUS_BILLING_ENABLED;else process.env.NEXUS_BILLING_ENABLED=old}
+  setup();const orig=globalThis.fetch;
+  // Explicitly remove the credentials for this scenario; the Netlify build has real values.
+  const keys=["NEXUS_BILLING_ENABLED","PAYPAL_MODE","PAYPAL_CLIENT_ID","PAYPAL_CLIENT_SECRET","PAYPAL_WEBHOOK_ID"];
+  const previous=Object.fromEntries(keys.map(key=>[key,process.env[key]]));
+  process.env.NEXUS_BILLING_ENABLED="true";
+  process.env.PAYPAL_MODE="live";
+  for(const key of ["PAYPAL_CLIENT_ID","PAYPAL_CLIENT_SECRET","PAYPAL_WEBHOOK_ID"])delete process.env[key];
+  let calls=0;globalThis.fetch=async()=>{calls++;throw Error("No external calls allowed")};
+  try{
+   const r=await checkout(event({tier:"business",region:"GLOBAL",employees:3,widget:false,consent:true}));
+   assert.equal(r.statusCode,503);
+   assert.match(JSON.parse(r.body).error,/credentials|webhook|enabled/i);
+   assert.equal(calls,0);
+  }finally{
+   globalThis.fetch=orig;
+   for(const [key,value] of Object.entries(previous)){if(value===undefined)delete process.env[key];else process.env[key]=value}
+  }
 });
 test("PayPal webhook verifies signature via Sandbox before changing subscription",async()=>{
  setup();const original=globalThis.fetch;const keys=["PAYPAL_MODE","PAYPAL_CLIENT_ID","PAYPAL_CLIENT_SECRET","PAYPAL_PLAN_ID","PAYPAL_WEBHOOK_ID"];const prev=Object.fromEntries(keys.map(k=>[k,process.env[k]]));

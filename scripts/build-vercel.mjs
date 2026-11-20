@@ -12,4 +12,4 @@ for(const name of allowed){
  let details;try{details=await stat(origin)}catch{throw new Error("Required public file missing: "+name)}
  await cp(origin,dest,{recursive:details.isDirectory()});
 }
-console.log("Vercel public bundle assembled: "+allowed.length+" allowlisted files/folders. Private project sources excluded.");
+console.log("Netlify public bundle assembled: "+allowed.length+" allowlisted files/folders. Private project sources excluded.");

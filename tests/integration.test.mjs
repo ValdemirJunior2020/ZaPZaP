@@ -260,22 +260,28 @@ test("Permanent complimentary access ignores trial expiry and includes widget",a
  assert.equal(access({...free,is_complimentary:false}).allowed,false);
 });
 test("PayPal checkout refuses to charge a complimentary account",async()=>{
- configure();
- process.env.NEXUS_BILLING_ENABLED="true";
- process.env.PAYPAL_CLIENT_ID="test-client";process.env.PAYPAL_CLIENT_SECRET="test-secret";process.env.PAYPAL_PLAN_ID="P-TEST";
- const {handler}=await import("../netlify/functions/billing-checkout.mjs");
- const original=globalThis.fetch;let checkoutRequests=0;
- globalThis.fetch=async(url,opts={})=>{
-  const u=String(url);
-  if(u.includes("/v1/oauth2/token"))return res({access_token:"test-access"});
-  if(u.includes("/v1/billing/plans/"))return res({status:"ACTIVE",billing_cycles:[{tenure_type:"REGULAR",frequency:{interval_unit:"MONTH",interval_count:1},pricing_scheme:{fixed_price:{currency_code:"USD",value:"149"}},total_cycles:0}]});
-  if(u.includes("/auth/v1/user"))return res({id:uid});
-  if(u.includes("/rest/v1/nx_entitlements"))return res([{user_id:uid,is_complimentary:true,subscription_status:"TRIAL",trial_started_at:null}]);
-  if(u.includes("/v1/billing/subscriptions"))checkoutRequests++;
-  throw Error("Unexpected fetch "+u);
- };
- try{
-  const r=await handler({httpMethod:"POST",headers:{host:"zapzap-bot.netlify.app",origin:"https://zapzap-bot.netlify.app",authorization:"Bearer test.token"},body:JSON.stringify({tier:"core"})});
-  assert.equal(r.statusCode,503);assert.equal(checkoutRequests,0);
- }finally{globalThis.fetch=original;delete process.env.NEXUS_BILLING_ENABLED;delete process.env.PAYPAL_CLIENT_ID;delete process.env.PAYPAL_CLIENT_SECRET;delete process.env.PAYPAL_PLAN_ID}
+  configure();
+  // Set every billing prerequisite explicitly: do not inherit Netlify's live credentials.
+  const keys=["NEXUS_BILLING_ENABLED","PAYPAL_MODE","PAYPAL_CLIENT_ID","PAYPAL_CLIENT_SECRET","PAYPAL_WEBHOOK_ID","PAYPAL_BUSINESS_PLAN_ID"];
+  const previous=Object.fromEntries(keys.map(key=>[key,process.env[key]]));
+  Object.assign(process.env,{NEXUS_BILLING_ENABLED:"true",PAYPAL_MODE:"live",PAYPAL_CLIENT_ID:"test-client",PAYPAL_CLIENT_SECRET:"test-secret",PAYPAL_WEBHOOK_ID:"test-webhook",PAYPAL_BUSINESS_PLAN_ID:"P-TEST-BUSINESS"});
+  const {handler}=await import("../netlify/functions/billing-checkout.mjs");
+  const original=globalThis.fetch;let checkoutRequests=0;
+  globalThis.fetch=async(url)=>{
+   const u=String(url);
+   if(u.includes("/auth/v1/user"))return res({id:uid});
+   if(u.includes("/rest/v1/nx_entitlements"))return res([{user_id:uid,is_complimentary:true,subscription_status:"TRIAL",trial_started_at:null}]);
+   if(u.includes("/v1/billing/subscriptions"))checkoutRequests++;
+   throw Error("Unexpected fetch "+u);
+  };
+  try{
+   // Valid current checkout payload reaches the complimentary-account guard.
+   const r=await handler({httpMethod:"POST",headers:{host:"zapzap-bot.netlify.app",origin:"https://zapzap-bot.netlify.app",authorization:"Bearer test.token"},body:JSON.stringify({tier:"business",region:"GLOBAL",employees:3,widget:false,consent:true})});
+   assert.equal(r.statusCode,409);
+   assert.match(JSON.parse(r.body).error,/complimentary/i);
+   assert.equal(checkoutRequests,0);
+  }finally{
+   globalThis.fetch=original;
+   for(const [key,value] of Object.entries(previous)){if(value===undefined)delete process.env[key];else process.env[key]=value}
+  }
 });
