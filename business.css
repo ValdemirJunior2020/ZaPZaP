@@ -231,3 +231,8 @@
 .price-cta.secondary{background:#e6f8ed;color:#056543;border:1px solid #b9dfc9}
 .price-cta:focus-visible{outline:3px solid #0eaa7d;outline-offset:3px}
 .price-grid article .price-cta{margin-top:14px}
+
+/* Persistent support link for visitors and signed-in owners. */
+.support-link{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;border:1px solid #c6e5d6;border-radius:999px;background:#f0faf4;color:#086e4b!important;font-size:12px;font-weight:800;padding:8px 13px;text-decoration:none;flex-shrink:0}
+.support-link:focus-visible{outline:3px solid #09ad7d;outline-offset:2px}
+@media(max-width:650px){.top{flex-wrap:wrap;gap:8px}.support-link{margin-left:auto;padding:7px 11px;font-size:11px}.account-top{gap:8px}}
