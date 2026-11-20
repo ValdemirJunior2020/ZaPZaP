@@ -1,3 +1,4 @@
+import {publicSalesContact,needsPublicPhone,verifiedSalesAnswer,verifiedSalesInstructions} from "../lib/verified-sales-routing.mjs";
 import{SPECIAL_OWNER,validHandle,personalMessages,styleName}from"../lib/personal-assistant.mjs";
 import{JUNIOR_OWNER_ID,JUNIOR_EXPERIENCE,juniorMessages}from"../lib/junior-assistant.mjs";
 import{allow,clientIp}from"../lib/abuse.mjs";
@@ -113,8 +114,11 @@ export async function handler(event){
   const qrSource=qrRows?.[0]||null;
   const assigned=qrSource?.id?(await db(c,"nx_employees?store_id=eq."+encodeURIComponent(store.id)+"&qr_source_id=eq."+encodeURIComponent(qrSource.id)+"&enabled=eq.true&select=name,role,language"))?.[0]:null;
   const linkedOffering=qrSource?.offering_id?items.find(item=>item.id===qrSource.offering_id)||null:null;
-  const messages=personalMode?personalMessages(assistant,message,history):juniorMode?juniorMessages(message,history):businessMessages(store,items,message,history,qrSource?{label:qrSource.label,offering:linkedOffering}:null);
-  if(!personalMode&&!juniorMode){
+  const contactPhone=!personalMode&&!juniorMode&&needsPublicPhone(message)?await publicSalesContact(c,store):null;
+  const verifiedReply=!personalMode&&!juniorMode?verifiedSalesAnswer(message,contactPhone):null;
+  const messages=verifiedReply?null:personalMode?personalMessages(assistant,message,history):juniorMode?juniorMessages(message,history):businessMessages(store,items,message,history,qrSource?{label:qrSource.label,offering:linkedOffering}:null);
+  if(messages&&!personalMode&&!juniorMode)messages[0].content+=verifiedSalesInstructions(contactPhone);
+  if(messages&&!personalMode&&!juniorMode){
    try{
     const profile=(await db(c,"nx_business_profiles?store_id=eq."+encodeURIComponent(store.id)+"&select=address,city,region,country,online_only,address_public,timezone,categories,weekly_hours,closed_dates,booking_duration_minutes"))?.[0];
     if(profile){
@@ -125,16 +129,16 @@ export async function handler(event){
     }
    }catch(e){console.warn("Business-hours context unavailable:",e.message)}
   }
-  if(assigned)messages[0].content+=" Assigned sales employee (not the owner): "+JSON.stringify(assigned)+". Reply in the visitor language, or the employee language if unclear. Do not claim to place calls.";
+  if(messages&&assigned)messages[0].content+=" Assigned sales employee (not the owner): "+JSON.stringify(assigned)+". Reply in the visitor language, or the employee language if unclear. Do not claim to place calls.";
   // Persist only actual visitor/AI messages, never browser-provided transcripts.
   diagStage="message_save";
   await db(c,"nx_chat_messages",{method:"POST",body:{session_id:claim.sessionId,store_id:store.id,role:"user",content:message},prefer:"return=minimal"});
   diagStage="ai_gateway";
-  const ai=await aiQuery(messages,{maxTokens:450,timeoutMs:50000,allowFallback:true,tenantKey:store.id});
-  const answer=ai.text;
+  const ai=verifiedReply?null:await aiQuery(messages,{maxTokens:450,timeoutMs:50000,allowFallback:true,tenantKey:store.id});
+  const answer=verifiedReply||ai.text;
   diagStage="reply_save";
   await db(c,"nx_chat_messages",{method:"POST",body:{session_id:claim.sessionId,store_id:store.id,role:"assistant",content:answer},prefer:"return=minimal"});
-  return json(200,{reply:answer,source:"ai",provider:ai.source,sessionId:claim.sessionId,remaining:claim.remaining,limitReached:claim.remaining===0,expiresAt:claim.expiresAt});
+  return json(200,{reply:answer,source:verifiedReply?"verified_business":"ai",provider:ai?.source||null,sessionId:claim.sessionId,remaining:claim.remaining,limitReached:claim.remaining===0,expiresAt:claim.expiresAt});
  }catch(e){
   const diag=await recordAiError(diagCfg||env(),{ownerId:diagOwnerId,storeId:diagStoreId,stage:diagStage,error:e,elapsedMs:Date.now()-diagStart});
   return json(e.status||503,{error:"The business assistant is temporarily unavailable. Please leave an inquiry.",reference:diag.id});
