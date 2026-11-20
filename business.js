@@ -236,7 +236,7 @@ function renderTestBot(){
  '<div class="testbot-chat card"><div class="testbot-chat-head"><div class="testbot-ai-icon">✦</div><div><strong>'+htmlEsc(st?.agent_name||"My AI Assistant")+'</strong><small>'+htmlEsc(st?.name||"Your business")+' • PRIVATE TEST CHAT</small></div></div>'+
  '<div class="testbot-messages" id="testBotMessages" role="log" aria-live="polite"><div class="testbot-bubble assistant">'+htmlEsc(intro)+'</div></div>'+
  '<div class="testbot-controls"><div class="testbot-hints">Try: “What do you offer?” · “How much does it cost?” · “When are you open?”</div>'+
- '<form id="testBotForm" class="testbot-form"><label class="sr-only" for="testBotQuestion">Ask your own AI a question</label><input id="testBotQuestion" maxlength="500" autocomplete="off" placeholder="'+(ready?"Ask about your products or services…":"Save your business details first")+'" '+(!ready?'disabled':'')+' required><button type="submit" class="primary" id="testBotSend" '+(!ready?'disabled':'')+'>Send ↗</button></form><p id="testBotStatus" role="status" class="testbot-meta">'+(ready?"Ready to test your saved catalog. Your trial remains untouched.":"Save your business details to enable testing. Product prices cannot be provided until you add offerings.")+'</p></div></div></div>';
+ '<form id="testBotForm" class="testbot-form"><label class="sr-only" for="testBotQuestion">Ask your own AI a question</label><textarea id="testBotQuestion" rows="2" maxlength="500" autocomplete="off" placeholder="'+(ready?"Ask about your products or services…":"Save your business details first")+'" '+(!ready?'disabled':'')+' required></textarea><button type="submit" class="primary" id="testBotSend" '+(!ready?'disabled':'')+'>Send ↗</button></form><p id="testBotStatus" role="status" class="testbot-meta">'+(ready?"Ready to test your saved catalog. Your trial remains untouched.":"Save your business details to enable testing. Product prices cannot be provided until you add offerings.")+'</p></div></div></div>';
 }
 let testBotHistory=[];
 function testBotMessage(role,content){
@@ -584,7 +584,7 @@ function bindView(){
    const print=doc.createElement("button");print.textContent="Print sign";print.onclick=()=>popup.print();doc.body.append(print);
   });
  }
- if(viewName==="testbot"){$("testBotForm").onsubmit=submitTestBot;}
+ if(viewName==="testbot"){$("testBotForm").onsubmit=submitTestBot;$("testBotQuestion").onkeydown=e=>{if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing){e.preventDefault();$("testBotForm").requestSubmit()}};}
  if(viewName==="store")$("storeForm").onsubmit=saveStore;
  if(viewName==="offerings"){
   $("addOffering").onclick=()=>editOffering();

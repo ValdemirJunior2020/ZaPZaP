@@ -61,8 +61,8 @@
 .demo-suggestions button{border:1px solid #d1e9db;border-radius:30px;padding:7px 10px;background:#f3faf6;font-size:10px;color:#0b8662;font-weight:700}
 .demo-suggestions button:hover{background:#dff8e9}
 .demo-chat-form{display:flex;gap:8px}
-.demo-chat-form input{flex:1;min-width:0;font-size:13px;border:1px solid #cddfd5;padding:12px 13px;border-radius:12px;outline:none}
-.demo-chat-form input:focus{border-color:#0ca778;box-shadow:0 0 0 3px #d3f5e4}
+.demo-chat-form textarea{flex:1;min-width:0;min-height:46px;max-height:135px;resize:vertical;font-size:16px;line-height:1.4;border:1px solid #cddfd5;padding:12px 13px;border-radius:12px;outline:none}
+.demo-chat-form textarea:focus{border-color:#0ca778;box-shadow:0 0 0 3px #d3f5e4}
 .demo-chat-form button{border:none;border-radius:12px;color:#fff;background:#08a879;padding:12px 16px;font-weight:800;font-size:12px}
 .demo-chat-foot{display:flex;gap:8px;justify-content:space-between;align-items:center;margin-top:13px;font-size:10px;color:#849b8d;line-height:1.5;flex-wrap:wrap}
 .demo-chat-foot a{font-weight:800;color:#07956d;white-space:nowrap}
@@ -92,7 +92,7 @@
 .testbot-controls{padding:16px 19px 19px;border-top:1px solid #e0eee5}
 .testbot-hints{font-size:11px;color:#779585;line-height:1.6;margin-bottom:12px}
 .testbot-form{display:flex;gap:8px;align-items:stretch}
-.testbot-form input{flex:1;min-width:0;border:1px solid #c8e0d3;border-radius:11px;padding:12px;font-size:13px}
+.testbot-form textarea{flex:1;min-width:0;min-height:48px;max-height:150px;resize:vertical;border:1px solid #c8e0d3;border-radius:11px;padding:12px;font-size:16px;line-height:1.4}
 .testbot-form button{white-space:nowrap}
 .testbot-meta{font-size:11px;color:#6c9280;line-height:1.5;margin:12px 0 0}
 @media(max-width:1000px){.testbot-wrap{grid-template-columns:1fr}}

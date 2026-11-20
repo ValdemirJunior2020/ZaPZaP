@@ -48,6 +48,8 @@ test("Country comes from edge headers rather than request parameters",async()=>{
 test("Mobile SmartStore puts a visible Send composer ahead of quick actions and keeps chat history scrollable",async()=>{
  const [html,js]=await Promise.all([read("store.html"),read("store-live.js")]);
  assert.match(html,/id="chatForm" class="chat-form"/);
+ assert.match(html,/<textarea id="question"[^>]*rows="2"/);
+ assert.match(js,/\$\("question"\)\.onkeydown=e=>\{if\(e\.key==="Enter"&&!e\.shiftKey&&!e\.isComposing\)/);
  assert.match(html,/id="question"[^>]*placeholder="Ask about this business/);
  assert.match(html,/id="chatSend" type="submit">Send<\/button>/);
  assert.match(html,/@media\(max-width:850px\)\{[\s\S]*?\.chat-form\{order:2/);
@@ -56,4 +58,18 @@ test("Mobile SmartStore puts a visible Send composer ahead of quick actions and 
  assert.match(html,/@media\(max-width:510px\)\{[\s\S]*?section\.cover h1\{font-size:clamp\(18px,5vw,22px\)/);
  assert.match(js,/bubble\("user",question\)/);
  assert.match(js,/\$\("chatFeed"\)\.scrollTop=\$\("chatFeed"\)\.scrollHeight/);
+});
+
+test("AI chat composers support multiline Shift+Enter and Enter-to-send across store, owner and demo",async()=>{
+ const [store,owner,styles,homepage,demo,personal,junior]=await Promise.all(["store.html","business.js","business.css","index.html","demo.js","personal-chat.js","junior.js"].map(read));
+ assert.match(store,/<textarea id="question"[^>]*rows="2"/);
+ assert.match(store,/\.chat-form textarea\{/);
+ assert.match(owner,/<textarea id="testBotQuestion"[^>]*rows="2"/);
+ assert.match(styles,/\.testbot-form textarea\{/);
+ assert.match(homepage,/<textarea id="demoQuestion"[^>]*rows="2"/);
+ assert.match(styles,/\.demo-chat-form textarea\{/);
+ for(const js of [await read("store-live.js"),owner,demo,personal,junior]){
+  assert.match(js,/e\.key==="Enter"&&!e\.shiftKey/);
+  assert.match(js,/requestSubmit\(\)/);
+ }
 });

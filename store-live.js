@@ -149,6 +149,7 @@ async function submitInquiry(e){
  finally{send.disabled=false}
 }
 $("chatForm").onsubmit=e=>{e.preventDefault();ask($("question").value)};
+ $("question").onkeydown=e=>{if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing){e.preventDefault();$("chatForm").requestSubmit()}};
 document.querySelectorAll("[data-ask]").forEach(btn=>btn.onclick=()=>ask(btn.dataset.ask));
 $("askQuote").onclick=()=>{$("requestType").value="quote";requestQuote("a quote")};
 $("askAppointment").onclick=()=>{$("requestType").value="appointment";$("requestType").dispatchEvent(new Event("change"));requestQuote("an appointment")};

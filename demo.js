@@ -25,7 +25,8 @@ const root=$("liveDemo");if(root){
  }
  $("demoIndustries").addEventListener("click",e=>{const button=e.target.closest("button[data-business]");if(button)select(button.dataset.business)});
  $("demoSuggestions").addEventListener("click",e=>{const button=e.target.closest("button[data-question]");if(button&&!busy){question.value=button.dataset.question;form.requestSubmit()}});
- form.addEventListener("submit",async e=>{
+ question.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing){e.preventDefault();form.requestSubmit()}});
+  form.addEventListener("submit",async e=>{
   e.preventDefault();const message=question.value.trim();if(busy||!message||message.length>350)return;
   const selected=current;busy=true;send.disabled=true;question.disabled=true;
   bubble("user",message);question.value="";const pending=bubble("assistant","Thinking…");status.textContent="Asking the real Qwen3 model…";
