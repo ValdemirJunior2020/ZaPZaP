@@ -1,6 +1,6 @@
 [build]
-  publish = "."
-  command = "npm run test:ci"
+  publish = "public"
+  command = "npm run test:ci && node scripts/build-vercel.mjs"
   environment = { NODE_VERSION = "22", SECRETS_SCAN_OMIT_KEYS = "NEXUS_OLLAMA_MODEL,NEXUS_SUPABASE_URL" }
 
 [functions]

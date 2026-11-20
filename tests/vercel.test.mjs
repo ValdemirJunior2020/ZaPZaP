@@ -105,7 +105,7 @@ test("Ollama configuration failures return safe specific codes",async()=>{
   assert.equal(readiness().code,"GATEWAY_URL_MISSING");
   process.env.NEXUS_OLLAMA_URL="http://127.0.0.1:11434/";
   assert.equal(readiness().code,"GATEWAY_URL_INVALID");
-  process.env.NEXUS_OLLAMA_URL="https://nexus-ollama.hotelplannerqa.com/";
+  process.env.NEXUS_OLLAMA_URL="https://ai.example.com/";
   assert.equal(readiness().code,"GATEWAY_TOKEN_MISSING");
   process.env.NEXUS_OLLAMA_GATEWAY_TOKEN="test-token";
   assert.deepEqual(readiness(),{ready:true,code:"READY"});

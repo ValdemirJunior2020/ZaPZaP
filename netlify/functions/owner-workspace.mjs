@@ -34,7 +34,7 @@ export async function handler(event){
    if(store){try{const found=await db(c,"nx_bots?store_id=eq."+encodeURIComponent(store.id)+"&select=bot_id,enabled,greeting,primary_color");bot=found?.[0]||null}catch{}}
    let businessProfile=null;
    if(store){try{businessProfile=(await db(c,"nx_business_profiles?store_id=eq."+encodeURIComponent(store.id)+"&select=*"))?.[0]||null}catch(e){console.warn("Business profile unavailable:",e.message)}}
-   return json(200,{email:user.email,profile,store,businessProfile,offerings:items,leads,qrSources,employees,appointments,teamAllowed:teamEntitled(user,ent),bot,personalAssistant:personalRows[0]||null,personalAssistantSchemaReady:personalSchemaReady,personalAssistantSpecial:user.id===SPECIAL_OWNER&&ent.is_complimentary===true,widgetAllowed:widgetEnabled(c,ent),access:access(ent),aiConfigured:aiReady()});
+   return json(200,{email:user.email,accountKind:user.user_metadata?.account_kind==="personal"?"personal":"business",profile,store,businessProfile,offerings:items,leads,qrSources,employees,appointments,teamAllowed:teamEntitled(user,ent),bot,personalAssistant:personalRows[0]||null,personalAssistantSchemaReady:personalSchemaReady,personalAssistantSpecial:user.id===SPECIAL_OWNER&&ent.is_complimentary===true,widgetAllowed:widgetEnabled(c,ent),access:access(ent),aiConfigured:aiReady()});
   }
   const data=parse(event,30000),action=str(data.action,40);
   if(action==="cancel_subscription")return cancelSubscription(c,user,ent);
@@ -47,7 +47,7 @@ export async function handler(event){
    return json(200,{logs:logs||[]});
   }
   if(["save_employee","set_employee_enabled","delete_employee"].includes(action)&&!teamEntitled(user,ent))return json(403,{error:"A gestão de equipe requer o novo plano Empresarial confirmado. Os planos antigos permanecem inalterados."});
-  if(!canEdit(ent)&&!["pause","disable_widget","lead_history","update_lead"].includes(action))return json(402,{error:"Your trial has ended. Subscribe to continue.",access:access(ent)});
+  if(!canEdit(ent)&&!["pause","disable_widget","lead_history","update_lead","list_conversations","conversation_history","delete_conversation"].includes(action))return json(402,{error:"Your trial has ended. Subscribe to continue.",access:access(ent)});
   if(action==="set_interface_language"){
    if(!store)return json(400,{error:"Create your business first"});
    const language=String(data.language||"").trim().toLowerCase();
@@ -67,6 +67,34 @@ export async function handler(event){
    return json(200,{businessProfile:rows[0]});
   }
   if(ent.billing_tier==="personal"&&ent.subscription_status==="ACTIVE"&&!["save_store","save_personal_assistant"].includes(action))return json(403,{error:"Personal Assistant subscription does not include business management features"});
+  // Personal-only accounts do not need to create a public business storefront.
+  // This private store is a tenant container for personal chat history and quotas.
+  if(action==="initialize_personal_workspace"){
+   if(store)return json(200,{store,created:false});
+   const display=str(data.displayName,50);
+   if(display.length<2)return json(400,{error:"Enter your name (at least two characters)"});
+   const privateSlug="personal-"+user.id.replace(/-/g,"").slice(0,24);
+   const row={owner_id:user.id,name:display+" Personal AI",slug:privateSlug,industry:"Personal Assistant",agent_name:display+" AI",ai_personality:"friendly",
+    headline:"Private personal assistant",description:"",hours:"",store_image_url:null,color:"#06aa77",published:false,updated_at:iso()};
+   const created=await db(c,"nx_stores",{method:"POST",body:row,prefer:"return=representation"});
+   if(!created?.[0])return json(503,{error:"Personal workspace was not confirmed saved"});
+   return json(200,{store:created[0],created:true});
+  }
+  // Starting a personal trial is explicit: merely editing an assistant never
+  // consumes the 48-hour window. The hosted AI must answer successfully first.
+  if(action==="activate_personal"){
+   if(!store)return json(400,{error:"Create a personal workspace first"});
+   const assistants=await db(c,"nx_personal_assistants?owner_id=eq."+encodeURIComponent(user.id)+"&store_id=eq."+encodeURIComponent(store.id)+"&enabled=eq.true&select=id");
+   if(!assistants?.[0])return json(400,{error:"Save and enable your personal assistant first"});
+   if(!aiReady())return json(503,{error:"Hosted AI is not configured. Trial not started."});
+   if(!await verifyHostedAI())return json(503,{error:"Hosted AI did not respond. Trial not started."});
+   if(!ent.is_complimentary&&ent.trial_started_at===null){
+    await db(c,"nx_entitlements?user_id=eq."+encodeURIComponent(user.id)+"&trial_started_at=is.null",{method:"PATCH",body:{trial_started_at:iso(),updated_at:iso()},prefer:"return=representation"});
+   }
+   const current=(await userFrom(event,c)).ent;
+   if(!access(current).allowed)return json(402,{error:"Trial unavailable or expired. A verified subscription is required."});
+   return json(200,{access:access(current),activated:true});
+  }
   if(action==="save_store"){
    const i=data.store||{};
    const name=str(i.name,150);
@@ -237,6 +265,28 @@ export async function handler(event){
    }
    const changed=await db(c,"nx_appointments?id=eq."+encodeURIComponent(id)+"&store_id=eq."+encodeURIComponent(store.id),{method:"PATCH",body:{status,updated_at:iso()},prefer:"return=representation"});
    return json(200,{appointment:changed?.[0]});
+  }
+  // Chat history is independent of lead capture. Store-scoped and owner-authenticated.
+  // Expired sessions remain recorded until an owner explicitly deletes them.
+  if(action==="list_conversations"){
+   const offset=Math.max(0,Math.min(100000,Number.isInteger(data.offset)?data.offset:0));
+   const sessions=await db(c,"nx_chat_sessions?store_id=eq."+encodeURIComponent(store.id)+"&select=id,started_at,expires_at,closed_at,message_count,personal_assistant_id,source_id&order=started_at.desc&limit=50&offset="+offset);
+   return json(200,{sessions:sessions||[],hasMore:(sessions||[]).length===50,nextOffset:offset+(sessions||[]).length});
+  }
+  if(["conversation_history","delete_conversation"].includes(action)){
+   const sessionId=String(data.sessionId||"");
+   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId))return json(400,{error:"Invalid conversation ID"});
+   const rows=await db(c,"nx_chat_sessions?id=eq."+encodeURIComponent(sessionId)+"&store_id=eq."+encodeURIComponent(store.id)+"&select=id,started_at,personal_assistant_id");
+   if(!rows?.[0])return json(404,{error:"Conversation not found"});
+   if(action==="conversation_history"){
+    const messages=await db(c,"nx_chat_messages?session_id=eq."+encodeURIComponent(sessionId)+"&store_id=eq."+encodeURIComponent(store.id)+"&select=role,content,created_at&order=id.asc&limit=200");
+    return json(200,{session:rows[0],messages:messages||[]});
+   }
+   if(data.confirm!==true)return json(400,{error:"Confirm conversation deletion first"});
+   // FK CASCADE removes its messages; linked lead is retained with session_id=NULL.
+   const removed=await db(c,"nx_chat_sessions?id=eq."+encodeURIComponent(sessionId)+"&store_id=eq."+encodeURIComponent(store.id),{method:"DELETE",prefer:"return=representation"});
+   if(!removed?.length)return json(404,{error:"Conversation was not deleted"});
+   return json(200,{deleted:true,sessionId});
   }
   if(action==="lead_history"){
    if(!/^[0-9a-f-]{36}$/i.test(data.id||""))return json(400,{error:"Invalid lead"});

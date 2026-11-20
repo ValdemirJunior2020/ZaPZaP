@@ -13,6 +13,7 @@
 <h1>Your business deserves a salesperson who never sleeps.</h1>
 <p>Build your store, teach the AI what you offer, and give every customer one simple link. Try the full platform for 48 hours once it's activated.</p>
 <div class="hero-pills"><span>✓ Personal SmartLinks</span><span>✓ Real business knowledge</span><span>✓ Email and text sharing</span><span>✓ Website widget available</span></div>
+<div class="hero-ctas"><a class="price-cta" href="#signupArea" data-start-kind="business">Start with Business AI</a><a class="price-cta secondary" href="#signupArea" data-start-kind="personal">Create my Personal AI</a></div>
 </section>
 <section class="demo-section" id="liveDemo" aria-labelledby="demoHeading">
   <div class="demo-intro"><span class="tag">SEE THE AI IN ACTION</span><h2 id="demoHeading">Ask a question. See how your AI salesperson responds.</h2>
@@ -43,9 +44,10 @@
 <div class="signup-card">
 <div class="tag">BUSINESS ACCOUNT</div><h2 id="authHeading">Create your business account</h2><p id="authSub">Enter your business information. No payment card required to register.</p>
 <div class="setup-alert" id="configMessage" role="status">Checking secure account service…</div>
+<div class="account-kind-picker" id="accountTypePicker" role="group" aria-label="Choose your account type"><button type="button" data-account-kind="business" aria-pressed="true">🏢 Business AI</button><button type="button" data-account-kind="personal" aria-pressed="false">✦ Personal AI</button></div>
 <form id="authForm" autocomplete="on">
-<div id="businessInputs"><label>Business name<input name="business" id="authBusiness" placeholder="e.g. Sunshine Marketing Studio" maxlength="150" required autocomplete="organization"></label>
-<label>Business phone number<input name="phone" id="authPhone" placeholder="e.g. +1 561 555 1234" type="tel" maxlength="30" required autocomplete="tel"></label></div>
+<div id="businessInputs"><label><span id="authNameLabel">Business name</span><input name="business" id="authBusiness" placeholder="e.g. Sunshine Marketing Studio" maxlength="150" required autocomplete="organization"></label>
+<label id="authPhoneWrap">Business phone number<input name="phone" id="authPhone" placeholder="e.g. +1 561 555 1234" type="tel" maxlength="30" required autocomplete="tel"></label></div>
 <label>Email address<input name="email" id="authEmail" placeholder="you@business.com" type="email" required autocomplete="email"></label>
 <label>Password<input name="password" id="authPassword" type="password" minlength="8" required autocomplete="new-password" placeholder="At least 8 characters"></label>
 <button id="authSubmit" class="primary" type="submit">Create account</button>
@@ -87,9 +89,10 @@
   </div>
   <p class="example-businesses-disclaimer">Illustrative brands only · Fictional company examples, not customer endorsements</p>
 </div>
-<div class="price-grid"><article><span class="tag">CORE</span><h3>SmartStore + AI</h3><strong>$149<small>/month</small></strong><p>SmartLink, store, public AI assistant, inquiries, email/text sharing and QR code.</p></article>
-<article><span class="tag">OPTIONAL</span><h3>Website widget</h3><strong>+$79<small>/month</small></strong><p>Install a floating AI assistant on an existing website. $228/month bundled.</p></article></div>
-<p class="fine">The 48-hour trial starts when your live store and AI service are activated. Subscription checkout is enabled after payment setup and verification.</p></section>
+<div class="price-grid"><article><span class="tag">PERSONAL</span><h3>Personal AI assistant</h3><strong>$15<small>/month</small></strong><p>Your own shareable web chat link, AI personality and visitor conversations. WhatsApp account auto-replies are not included unless a separate supported integration is activated.</p><a class="price-cta secondary" href="#signupArea" data-start-kind="personal">Create Personal AI</a></article>
+<article><span class="tag">BUSINESS</span><h3>SmartStore + AI</h3><strong>$499<small>/month</small></strong><p>Business SmartLink, AI customer conversations, catalog, leads and up to 3 employees. Extra employees: $30/month each in Brazil, $50/month elsewhere.</p><a class="price-cta" href="#signupArea" data-start-kind="business">Create Business AI</a></article>
+<article><span class="tag">OPTIONAL ADD-ON</span><h3>Website chatbot</h3><strong>+$79<small>/month</small></strong><p>Embed the AI assistant in an existing website. Business base plus this add-on: $578/month, before any extra employees.</p></article></div>
+<p class="fine">All prices USD and recurring monthly. A 48-hour business trial starts only after the hosted AI and storefront are activated. Checkout is unavailable until production payment verification is complete. WhatsApp auto-replies require a separately configured and approved WhatsApp Business integration.</p></section>
 </main>
 <section id="workspace" class="workspace hidden">
 <aside class="side"><div class="side-title">BUSINESS WORKSPACE</div><div class="side-name" id="sideName">Your business</div>

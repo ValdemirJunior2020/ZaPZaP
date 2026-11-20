@@ -1,7 +1,7 @@
 const $=id=>document.getElementById(id);
 const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const cleanSlug=s=>String(s||"").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9-]/g,"-").replace(/-+/g,"-").replace(/^-|-$/g,"").slice(0,48);
-let cfg=null,signingUp=false,viewName="overview",workspace=null,busy=false;
+let cfg=null,signingUp=false,accountKind="business",viewName="overview",workspace=null,busy=false;
 const sessionKey="nexus_owner_v1";
 const session=()=>{try{return JSON.parse(sessionStorage.getItem(sessionKey)||"null")}catch{return null}};
 const saveSession=s=>{if(s)sessionStorage.setItem(sessionKey,JSON.stringify(s));else sessionStorage.removeItem(sessionKey)};
@@ -13,10 +13,16 @@ function setVisible(loggedIn){
  $("workspace").classList.toggle("hidden",!loggedIn);$("topnav").classList.toggle("hidden",loggedIn);$("accountTop").classList.toggle("hidden",!loggedIn);
 }
 function authFields(){
+ const personal=accountKind==="personal";
+ $("accountTypePicker").classList.toggle("hidden",!signingUp);
  $("businessInputs").classList.toggle("hidden",!signingUp);
- $("authBusiness").required=signingUp;$("authPhone").required=signingUp;
- text("authHeading",signingUp?"Create your business account":"Welcome back");
- text("authSub",signingUp?"Add your business details to get started. Your 48-hour trial begins when your AI store goes live.":"Sign in to your business workspace.");
+ $("authPhoneWrap").classList.toggle("hidden",!signingUp||personal);
+ $("authBusiness").required=signingUp;$("authPhone").required=signingUp&&!personal;
+ text("authNameLabel",personal?"Your name":"Business name");
+ $("authBusiness").placeholder=personal?"Your name":"e.g. Sunshine Marketing Studio";
+ document.querySelectorAll("[data-account-kind]").forEach(button=>button.setAttribute("aria-pressed",String(button.dataset.accountKind===accountKind)));
+ text("authHeading",signingUp?(personal?"Create your personal AI account":"Create your business account"):"Welcome back");
+ text("authSub",signingUp?(personal?"Start with your own AI web assistant. No business or payment card is required. Your 48-hour trial begins only when you activate the working assistant.":"Add your business details to get started. Your 48-hour trial begins when your AI store goes live."):"Sign in to NexusSales AI.");
  text("authSubmit",signingUp?"Create account":"Sign in");
  text("switchAuth",signingUp?"Already have an account? Log in":"New to NexusSales? Create an account");
  $("authPassword").setAttribute("autocomplete",signingUp?"new-password":"current-password");
@@ -67,6 +73,7 @@ async function loadWorkspace({throwOnError=false}={}){
  try{
   workspace=await ownerApi();
   if(!workspace)throw Error("Unable to load account");
+  if(workspace.accountKind==="personal"&&viewName==="overview")viewName="personal";
   setVisible(true);
   const currentLanguage=workspace.businessProfile?.interface_language||"en";
   window.NexusLanguage?.restoreLanguage(currentLanguage);
@@ -94,11 +101,11 @@ async function submitAuth(e){
  e.preventDefault();if(busy||!cfg)return;
  const email=$("authEmail").value.trim(),password=$("authPassword").value;
  const name=$("authBusiness").value.trim(),phone=$("authPhone").value.trim();
- if(signingUp&&(name.length<2||phone.replace(/\D/g,"").length<7)){text("authMsg","Enter a business name and valid phone number.");return}
+ if(signingUp&&(name.length<2||(accountKind==="business"&&phone.replace(/\D/g,"").length<7))){text("authMsg",accountKind==="personal"?"Enter your name (at least two characters).":"Enter a business name and valid phone number.");return}
  busy=true;$("authSubmit").disabled=true;text("authMsg","Connecting…");
  try{
   const j=await authRequest(signingUp?"/auth/v1/signup":"/auth/v1/token?grant_type=password",
-   {email,password,...(signingUp?{data:{business_name:name,phone}}:{})});
+   {email,password,...(signingUp?{data:accountKind==="personal"?{display_name:name,account_kind:"personal"}:{business_name:name,phone,account_kind:"business"}}:{})});
   if(!j.access_token){
    showConfirmationEmail(email);
    return;
@@ -293,11 +300,13 @@ function renderLinks(){
 }
 function renderPersonalAssistant(){
  const a=workspace?.personalAssistant||{},saved=Boolean(a.id),special=workspace?.personalAssistantSpecial===true;
- if(!workspace?.store)return '<div class="card"><h2>Build Your Personal Assistant</h2><p>Save your business profile in My Store first, then return here.</p></div>';
+ if(!workspace?.store)return '<div class="card"><div class="tag">PERSONAL AI</div><h2>Set up your private assistant workspace</h2><p>No business, storefront or phone number required. Enter the name visitors should associate with your assistant.</p><form id="personalWorkspaceForm"><label>Your name<input id="personalDisplayName" required minlength="2" maxlength="50" placeholder="Your name"></label><div class="actions"><button type="submit" class="primary">Continue to my assistant</button></div><p id="personalWorkspaceError" role="status"></p></form></div>';
  const name=a.display_name||(special?'Hope':'Alex');
  const style=a.personality||(special?'faithful_encourager':'friendly');
  const handle=a.handle||(special?'junior-ai':'my-assistant');
  const url=saved?location.origin+'/assistant/'+encodeURIComponent(handle):'';
+ const canShare=workspace?.access?.allowed===true&&a.enabled===true;
+ const canStartPersonalTrial=saved&&workspace?.access?.reason==="NOT_STARTED"&&a.enabled===true;
  const personalities=[...personalityOptions,...(special?[
  {id:'faithful_encourager',icon:'✝',title:'Faithful Encourager',desc:'Christian-inspired kindness and encouragement, only when welcomed.',best:'Exclusive bonus'},
  {id:'nexus_sales_expert',icon:'✦',title:'NexusSales AI Sales Expert',desc:'Sells NexusSales with ready-to-use product features, accurate pricing and opt-in lead capture.',best:'Exclusive · preloaded'}
@@ -319,7 +328,7 @@ function renderPersonalAssistant(){
  '<label class="personal-check"><input type="checkbox" id="paEnabled" '+(a.enabled===true||!saved?'checked':'')+'> Enable assistant for visitors</label>'+
  '<button class="primary" type="submit" id="paSave" '+(workspace.personalAssistantSchemaReady===false?'disabled':'')+'>'+(saved?'Save assistant':'Create assistant')+'</button></form>'+
  '<div class="personal-live-preview"><strong id="paPreviewName">'+htmlEsc(name)+'</strong><p id="paPreviewGreeting">'+htmlEsc(a.greeting||('Hi! I am '+name+', your AI assistant.'))+'</p><small>Profile preview; live replies require your Ollama connection.</small></div>'+
- (saved?'<div class="personal-share"><h3>Share your personal AI</h3><div class="link-input"><input id="personalLink" readonly value="'+htmlEsc(url)+'"><button id="copyPersonalLink" class="button" type="button">Copy</button></div><div class="link-actions"><a class="button" href="'+htmlEsc(url)+'" target="_blank" rel="noopener">Open assistant</a><a class="button" href="https://wa.me/?text='+encodeURIComponent('Meet '+name+', my AI assistant: '+url)+'" target="_blank" rel="noopener">Share by WhatsApp link</a></div></div>':'')+
+ (saved?'<div class="personal-share"><h3>Personal AI web link</h3><div class="link-input"><input id="personalLink" readonly value="'+htmlEsc(url)+'">'+(canShare?'<button id="copyPersonalLink" class="button" type="button">Copy</button>':'')+'</div>'+(canShare?'<div class="link-actions"><a class="button" href="'+htmlEsc(url)+'" target="_blank" rel="noopener">Open assistant</a><a class="button" href="https://wa.me/?text='+encodeURIComponent('Meet '+name+', my AI assistant: '+url)+'" target="_blank" rel="noopener">Share by WhatsApp link</a></div>':'<p class="hint">This address is reserved but not publicly active. Activate your trial with a working hosted AI, or complete a verified paid subscription, before sharing it.</p>')+(canStartPersonalTrial?'<div class="actions"><button type="button" class="primary" id="activatePersonalTrial">Activate my 48-hour AI trial</button><p id="personalTrialStatus" role="status"></p></div>':'')+'</div>':'')+
  '<p class="hint">Faithful Encourager is exclusive to your lifetime complimentary account. The assistant always identifies itself as AI. Opt-in leads appear in your existing Leads & Chats dashboard.</p></div>';
 }
 // Super-admin preview only. Pricing is not wired to PayPal or subscriptions.
@@ -425,7 +434,7 @@ function renderLeads(){
  const metric=(label,num,caption)=>'<div class="lead-metric"><small>'+label+'</small><strong>'+num+'</strong><span>'+caption+'</span></div>';
  return '<div class="lead-metrics">'+metric('Total leads',leads.length,'People to follow up')+
  metric('New inquiries',newCount,'Awaiting response')+metric('Appointment requests',appointments,'Require confirmation')+
- metric('QR-sourced leads',qrLeads,'Attributed to printed codes')+'</div>'+'<div class="nx-lead-tabs" role="tablist" aria-label="Leads & Chats views"><button type="button" role="tab" data-lead-pane="leads">Leads &amp; Chats</button><button type="button" role="tab" data-lead-pane="calendar">📅 Calendar / Agenda</button></div><div id="leadListPane">'+
+ metric('QR-sourced leads',qrLeads,'Attributed to printed codes')+'</div>'+'<div class="nx-lead-tabs" role="tablist" aria-label="Leads & Chats views"><button type="button" role="tab" data-lead-pane="leads">Leads &amp; Chats</button><button type="button" role="tab" data-lead-pane="calendar">📅 Calendar / Agenda</button><button type="button" role="tab" id="nxHistoryTab" aria-selected="false">Chat history</button></div><div id="leadListPane">'+
  '<div class="card lead-center"><div class="lead-bar"><div><h2>Lead Center</h2><p>Every customer request, follow-up and linked AI transcript in one place.</p></div>'+
  '<select id="leadFilter" aria-label="Filter leads"><option value="all">All leads</option><option value="New">New</option><option value="Contacted">Contacted</option><option value="Appointment Requested">Appointment requested</option><option value="Booked">Booked</option><option value="Won">Won</option><option value="Lost">Lost</option></select></div>'+
  (leads.length?'<div class="lead-list">'+leads.map(l=>{
@@ -435,7 +444,7 @@ function renderLeads(){
  '<span class="lead-avatar">'+htmlEsc((l.customer_name||'?').slice(0,1).toUpperCase())+'</span><span class="lead-main"><strong>'+htmlEsc(l.customer_name)+'</strong><small>'+htmlEsc(l.interest.slice(0,100))+'</small><small>'+htmlEsc(l.personal_assistant_id?('Personal AI • '+(workspace.personalAssistant?.display_name||'Assistant')):(source?.label||'SmartStore / website'))+' • '+htmlEsc((workspace.employees||[]).find(e=>e.id===l.employee_id)?.name||'')+' • '+htmlEsc(date)+'</small></span>'+
  '<span class="lead-right"><span class="lead-status">'+htmlEsc(l.status)+'</span><small>'+htmlEsc(l.customer_phone||l.customer_email||'No contact')+'</small></span></button>'
  }).join('')+'</div>':'<div class="empty">No leads yet. Publish a QR code and ask a customer to submit an inquiry.</div>')+
- '</div><div class="card lead-detail hidden" id="leadDetail" aria-live="polite"></div></div><div id="leadCalendarPane" class="hidden"></div>';
+ '</div><div class="card lead-detail hidden" id="leadDetail" aria-live="polite"></div></div><div id="leadCalendarPane" class="hidden"></div><div id="nxHistoryPane" class="hidden"></div>';
 }
 function qrSourceUrl(code){return smartUrl()+'?src='+encodeURIComponent(code)}
 function renderQrSources(){
@@ -468,6 +477,17 @@ function bindView(){
  if(viewName==="team"&&workspace?.teamAllowed===true)bindTeam();
  if(viewName==="brazil"&&workspace?.personalAssistantSpecial===true){$("marketCountry").onchange=updateMarketPreview;$("marketEmployees").oninput=updateMarketPreview;$("marketWidget").onchange=updateMarketPreview;updateMarketPreview()}
  if(viewName==="logs"&&workspace?.personalAssistantSpecial===true){$("refreshAiLogs").onclick=fetchAiLogs;fetchAiLogs()}
+ if(viewName==="personal"&&$("personalWorkspaceForm")){
+  $("personalWorkspaceForm").onsubmit=async event=>{
+   event.preventDefault();const button=event.target.querySelector('button[type="submit"]');
+   button.disabled=true;
+   try{
+    const created=await ownerApi("initialize_personal_workspace",{displayName:$("personalDisplayName").value.trim()});
+    if(!created.store?.id)throw Error("Personal workspace could not be verified.");
+    await loadWorkspace({throwOnError:true});viewName="personal";render();toast("Personal workspace created. Set up your assistant.");
+   }catch(error){const status=$("personalWorkspaceError");if(status)status.textContent=error.message;if(button.isConnected)button.disabled=false}
+  };
+ }
  if(viewName==="personal"&&$("personalBuilderForm")){
   const preview=()=>{$("paPreviewName").textContent=$("paName").value.trim()||"Your assistant";$("paPreviewGreeting").textContent=$("paGreeting").value.trim()||"Hi! I'm "+$("paName").value.trim()+", your AI assistant."};
   $("paName").oninput=preview;$("paGreeting").oninput=preview;
@@ -498,6 +518,15 @@ function bindView(){
     toast(previous&&previous!==assistant.handle?"Personal link changed. Share your new link.":"Personal assistant saved and verified.");
    }catch(error){toast(error.message);if(button.isConnected)button.disabled=false}
   };
+  if($("activatePersonalTrial"))$("activatePersonalTrial").onclick=async()=>{
+   const button=$("activatePersonalTrial"),status=$("personalTrialStatus");button.disabled=true;
+   if(status)status.textContent="Checking hosted AI before starting your 48-hour trial…";
+   try{
+    const result=await ownerApi("activate_personal",{});
+    if(result.activated!==true||result.access?.allowed!==true)throw Error("Activation could not be confirmed.");
+    await loadWorkspace({throwOnError:true});viewName="personal";render();toast("Your 48-hour personal AI trial is active.");
+   }catch(error){if(status?.isConnected)status.textContent=error.message;if(button.isConnected)button.disabled=false}
+  };
   if($("copyPersonalLink"))$("copyPersonalLink").onclick=()=>navigator.clipboard.writeText($("personalLink").value).then(()=>toast("Link copied")).catch(()=>toast("Unable to copy"));
  }
  document.querySelectorAll("[data-jump]").forEach(e=>e.onclick=()=>{viewName=e.dataset.jump;render()});
@@ -526,6 +555,7 @@ function bindView(){
   });
   window.NexusCalendar?.activate(workspace,ownerApi,loadWorkspace);
   window.NexusInsights?.activate(workspace);
+  window.NexusConversationHistory?.activate(workspace,ownerApi);
  }
  if(viewName==="links"&&workspace.store){
   const qrForm=$("qrForm");if(qrForm)qrForm.onsubmit=async event=>{
@@ -613,7 +643,9 @@ async function saveOffering(e){
 async function init(){
  authFields();$("authSubmit").disabled=true;
  $("switchAuth").onclick=()=>{signingUp=!signingUp;authFields();text("authMsg","");if(cfg)text("configMessage",signingUp?"Account service connected. Create a new account to begin.":"Account connection ready. Log in with your existing NexusSales email and password.")};
- $("signInTop").onclick=()=>{signingUp=false;authFields();$("signupArea").scrollIntoView({behavior:"smooth"})};
+ document.querySelectorAll("[data-account-kind]").forEach(button=>button.onclick=()=>{accountKind=button.dataset.accountKind==="personal"?"personal":"business";signingUp=true;authFields()});
+ document.querySelectorAll("[data-start-kind]").forEach(button=>button.onclick=()=>{accountKind=button.dataset.startKind==="personal"?"personal":"business";signingUp=true;authFields();$("signupArea").scrollIntoView({behavior:"smooth"})});
+  $("signInTop").onclick=()=>{signingUp=false;authFields();$("signupArea").scrollIntoView({behavior:"smooth"})};
  $("authForm").onsubmit=submitAuth;$("logoutTop").onclick=signOut;$("logoutSide").onclick=signOut;
  $("dialogClose").onclick=closeDialog;$("offeringForm").onsubmit=saveOffering;
  $("dialogBackdrop").addEventListener("click",e=>{if(e.target===$("dialogBackdrop"))closeDialog()});
