@@ -12,5 +12,8 @@ Write-Host "Tests passed. Starting local Nexus AI on the existing port 8788." -F
 if (-not (Test-Path ".env.local")) {
  Write-Warning "No .env.local found. Sign-in and Google Calendar connection may be unavailable."
 }
+Write-Host "Checking Google Calendar local configuration (secrets will never be printed)..." -ForegroundColor Cyan
+node scripts/check-calendar-local.mjs
+if ($LASTEXITCODE -ne 0) { throw "Google Calendar preflight encountered an error." }
 npm start
 if ($LASTEXITCODE -ne 0) { throw "Local Nexus AI stopped with an error." }

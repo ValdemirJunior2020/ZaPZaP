@@ -31,3 +31,6 @@ Deterministic event IDs use prefix 'nsa' and SHA-256 hex digits (Google Calendar
 ## Safety and OAuth testing
 - Google Calendar rate budgets enforced server-side through shared Nexus abuse counters: up to 1000 calls/day for all tenants, up to 100 calls/day and 12 calls/minute for one owner. This protects API usage but does not guarantee a billing-free result if Google's quota pricing model changes.
 - Google's external OAuth consent screen in Testing status may issue refresh tokens that expire after **7 days** for Calendar scopes. Reconnect and repeat testing as needed. Production usage of sensitive Calendar permissions generally needs OAuth verification. See https://developers.google.com/identity/protocols/oauth2 and https://developers.google.com/identity/protocols/oauth2/production-readiness/sensitive-scope-verification.
+
+## Automated local preflight
+The Windows launcher executes `node scripts/check-calendar-local.mjs` before `npm start`. It displays presence/absence of Google and development database settings without revealing values. Missing configuration does not stop the existing Nexus local app. It warns if `.env.local` appears to use the current production Supabase project; never apply the local SQL migration there. Google Cloud OAuth setup and isolated test database are still required.
