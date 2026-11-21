@@ -80,7 +80,8 @@
   const count=pending(w).length,upcoming=(w.appointments||[]).filter(a=>a.status==="confirmed"&&new Date(a.start_at)>=new Date()).length;
   const staff=(w.employees||[]).filter(e=>e.enabled||e.id===state.employee);
   return '<div class="nx-calendar"><div class="nx-cal-summary"><div><span>Confirmados futuros</span><strong>'+upcoming+'</strong></div><div><span>Pedidos sem horário</span><strong>'+count+'</strong></div><div><span>Agendamentos registrados</span><strong>'+(w.appointments||[]).length+'</strong></div></div>'+
- '<div class="nx-cal-layout"><div class="nx-cal-main"><div class="nx-cal-panel"><div class="lead-bar"><div><h2>Agenda de atendimentos</h2><p>Visualização diária, semanal e mensal. Pedidos de clientes precisam ser confirmados pela equipe.</p></div>'+
+ '<div id="nxGoogleCalendarMount" aria-live="polite"></div>'+ 
+  '<div class="nx-cal-layout"><div class="nx-cal-main"><div class="nx-cal-panel"><div class="lead-bar"><div><h2>Agenda de atendimentos</h2><p>Visualização diária, semanal e mensal. Pedidos de clientes precisam ser confirmados pela equipe.</p></div>'+
  '<label>Filtrar funcionário<select id="nxCalEmployee"><option value="all">Todos</option>'+staff.map(e=>'<option value="'+esc(e.id)+'" '+(state.employee===e.id?"selected":"")+'>'+esc(e.name)+'</option>').join("")+'</select></label></div>'+
  controls()+grid(w)+'</div>'+
  '<div class="nx-cal-panel"><h3>Solicitações aguardando horário</h3>'+
