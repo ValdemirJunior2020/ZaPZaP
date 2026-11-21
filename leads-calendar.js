@@ -98,9 +98,32 @@
   if(list)list.classList.toggle("hidden",state.pane!=="leads");
   if(cal){cal.classList.toggle("hidden",state.pane!=="calendar");if(state.pane==="calendar"){cal.innerHTML=render(w);bind(w,api,refresh);window.NexusLanguage?.apply()}}
  }
+ let googleCalendarLoad=null;
+ function ensureGoogleCalendar(w,api,refresh){
+  if(window.NexusGoogleCalendar?.attach){window.NexusGoogleCalendar.attach(w,api,refresh);return}
+  const note=()=>document.getElementById("nxGoogleInfo");
+  if(!googleCalendarLoad){
+   googleCalendarLoad=new Promise(resolve=>{
+    const script=document.createElement("script");
+    script.src="/leads-google-calendar.js?v=20261121-fix2";
+    script.async=true;
+    script.onload=()=>resolve(Boolean(window.NexusGoogleCalendar?.attach));
+    script.onerror=()=>resolve(false);
+    document.head.appendChild(script);
+   });
+  }
+  const status=note();if(status)status.textContent=lang("Loading Google Calendar connection…","Carregando conexão com Google Agenda…","Cargando conexión con Google Calendar…");
+  googleCalendarLoad.then(loaded=>{
+   if(loaded&&window.NexusGoogleCalendar?.attach){
+    window.NexusGoogleCalendar.attach(w,api,refresh);
+   }else{
+    const message=lang("Google Calendar integration could not load. Open /leads-google-calendar.js in this browser to inspect the script.","Não foi possível carregar a integração Google Agenda.","No se pudo cargar la integración de Google Calendar.");
+    const current=note();if(current)current.textContent=message;
+   }
+  });
+ }
  function bind(w,api,refresh){
-  if(window.NexusGoogleCalendar?.attach){window.NexusGoogleCalendar.attach(w,api,refresh)}
-   else {const button=document.getElementById("googleConnect");if(button)button.onclick=()=>{const el=document.getElementById("nxGoogleInfo");if(el)el.textContent=lang("Google Calendar script is not loaded. Check browser console.","Script do Google Agenda não carregou.","El script de Google Calendar no se cargó.");};}
+  ensureGoogleCalendar(w,api,refresh);
   const mount=()=>{document.getElementById("leadCalendarPane").innerHTML=render(w);bind(w,api,refresh);window.NexusLanguage?.apply()};
   const nav=document.querySelectorAll("[data-cal-nav]");
   nav.forEach(button=>button.onclick=()=>{
