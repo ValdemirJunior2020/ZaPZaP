@@ -13,7 +13,7 @@ assert.match(o,/employee_id===employeeId/);assert.match(o,/status=in\.\(requeste
 test("Local dev server does not cache dashboard HTML or JavaScript after branch updates",async()=>{
  const server=await readFile("server.mjs","utf8");
  const google=await readFile("leads-google-calendar.js","utf8");
- assert.match(server,/Cache-Control'.*?\.(?:js|mjs|html|css)/);
+ assert.match(server,/['"]Cache-Control['"]\s*:\s*\/\\\.\(\?:js\|mjs\|html\|css\)\$\/\.test\(pathname\)\s*\?\s*['"]no-store['"]/);
  assert.match(server,/no-store/);
  assert.match(google,/Google Calendar/);
  assert.match(google,/google_calendar_connect/);
