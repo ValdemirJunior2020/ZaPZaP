@@ -4,11 +4,12 @@
  const state={loaded:false,loading:false,connected:false,email:"",events:[],error:"",syncStatus:"not_synced"};
  const esc=s=>String(s??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
  const l=(en,pt,es)=>({en,pt,es})[window.NexusLanguage?.getLanguage?.()||"en"]||en;
+ const googleG='<svg aria-hidden="true" width="19" height="19" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5Z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.25 5.48-4.76 7.18l7.73 6C44.42 38.03 46.98 31.88 46.98 24.55Z"/><path fill="#FBBC05" d="M10.53 28.59A14.41 14.41 0 0 1 9.75 24c0-1.59.27-3.13.76-4.59l-7.98-6.19A23.8 23.8 0 0 0 0 24c0 3.87.93 7.52 2.56 10.78l7.97-6.19Z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.91-5.8l-7.73-6c-2.15 1.45-4.92 2.3-8.18 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.97 6.19C6.51 42.62 14.62 48 24 48Z"/></svg>';
  const logo='<svg width="28" height="28" viewBox="0 0 48 48" aria-hidden="true"><rect width="36" height="36" x="6" y="6" rx="6" fill="#fff" stroke="#d9e8df"/><path d="M6 14V12a6 6 0 0 1 6-6h27v10H6" fill="#4285F4"/><path d="M6 16h9v26H12a6 6 0 0 1-6-6Z" fill="#34A853"/><path d="M32 16h10v20a6 6 0 0 1-6 6h-4Z" fill="#FBBC04"/><path d="M15 33h17v9H15" fill="#EA4335"/><text x="24" y="31" fill="#4285F4" font-family="Arial,sans-serif" font-weight="700" font-size="14" text-anchor="middle">31</text></svg>';
  function template(w){
   const buttons=state.connected?
    '<button class="button" type="button" id="googleRefresh">'+l("Refresh","Atualizar","Actualizar")+'</button> <button class="button" type="button" id="googleDisconnect">'+l("Disconnect","Desconectar","Desconectar")+'</button>':
-   '<button class="button" type="button" id="googleConnect">'+l("Connect to Google Calendar","Conectar ao Google Agenda","Conectar con Google Calendar")+'</button>';
+   '<button class="button" type="button" id="googleConnect" style="display:inline-flex;align-items:center;gap:9px;background:#fff;color:#253346;border:1px solid #dadce0;border-radius:9px;padding:10px 14px;font-weight:650;box-shadow:0 1px 3px rgba(60,64,67,.12)">'+googleG+l("Connect Google Calendar","Conectar Google Agenda","Conectar Google Calendar")+'</button>';
   const upcoming=state.connected?'<div style="margin-top:11px"><strong>'+l("Upcoming Google appointments","Próximos compromissos do Google","Próximas citas de Google")+'</strong>'+
    (state.events.length?state.events.slice(0,8).map(e=>'<div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap;padding:5px 0;border-bottom:1px solid #e1e9e2"><span>'+esc(e.title)+'</span><small>'+esc(e.start?new Date(e.start).toLocaleString():"")+'</small></div>').join(""):'<p class="hint">'+l("No upcoming events.","Nenhum evento futuro.","No hay próximos eventos.")+'</p>')+'</div>':'';
   const sync=state.connected?'<details style="margin-top:12px"><summary style="cursor:pointer">'+l("Sync Nexus appointments","Sincronizar agendamentos do Nexus","Sincronizar citas de Nexus")+'</summary>'+
@@ -24,9 +25,8 @@
  let apiNow=null,wNow=null;
  function render(){
   const cal=document.getElementById("leadCalendarPane");if(!cal||cal.classList.contains("hidden"))return;
-  const summary=cal.querySelector(".nx-cal-summary");if(!summary)return;
-  cal.querySelector("#nxGoogleCalendar")?.remove();
-  summary.insertAdjacentHTML("afterend",template(wNow||{}));
+  const mount=cal.querySelector("#nxGoogleCalendarMount");if(!mount)return;
+  mount.innerHTML=template(wNow||{});
   bindButtons();
  }
  async function load(force=false){
