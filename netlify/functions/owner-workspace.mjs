@@ -1,3 +1,4 @@
+import{allow as integrationAllowance}from"../lib/abuse.mjs";
 import{startConnect,status as googleStatus,events as googleEvents,syncAppointment,availability as googleAvailability,disconnect as googleDisconnect}from"../lib/nexus-google-calendar.mjs";
 import{SPECIAL_OWNER,NEXUS_STYLE,validHandle,validStyle}from"../lib/personal-assistant.mjs";
 import{JUNIOR_OWNER_ID}from"../lib/junior-assistant.mjs";
@@ -40,6 +41,14 @@ export async function handler(event){
   const data=parse(event,30000),action=str(data.action,40);
   if(action.startsWith("google_calendar_")){
    if(!store)return json(403,{error:"Create a business profile first"});
+   // Keep quota spend predictable and fail closed if shared rate counters are unavailable.
+   if(!["google_calendar_status","google_calendar_disconnect"].includes(action)){
+    const globalAllowed=await integrationAllowance(c,"gcal_global_daily","all",1000,86400);
+    const ownerAllowed=await integrationAllowance(c,"gcal_owner_daily",user.id,100,86400);
+    const burstAllowed=await integrationAllowance(c,"gcal_owner_minute",user.id,12,60);
+    if(!globalAllowed||!ownerAllowed||!burstAllowed)return json(429,{error:"Google Calendar reached the safe usage limit. Try again later."});
+   }
+
    if(action==="google_calendar_status")return json(200,await googleStatus(user.id,store.id));
    if(action==="google_calendar_connect"){
     const result=startConnect(user.id,store.id);

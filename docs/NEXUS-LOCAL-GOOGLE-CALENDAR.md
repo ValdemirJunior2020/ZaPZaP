@@ -27,3 +27,7 @@ Not yet complete: automatic sync for every native Nexus edit (manual sync is ava
 Google Calendar standard usage is free subject to quotas. Google has announced planned over-quota charges later in 2026; review https://developers.google.com/workspace/calendar/api/guides/quota and consent requirements. Never commit credentials or deploy without explicit approval.
 
 Deterministic event IDs use prefix 'nsa' and SHA-256 hex digits (Google Calendar-supported base32hex alphabet), ensuring repeated synchronization targets the same event.
+
+## Safety and OAuth testing
+- Google Calendar rate budgets enforced server-side through shared Nexus abuse counters: up to 1000 calls/day for all tenants, up to 100 calls/day and 12 calls/minute for one owner. This protects API usage but does not guarantee a billing-free result if Google's quota pricing model changes.
+- Google's external OAuth consent screen in Testing status may issue refresh tokens that expire after **7 days** for Calendar scopes. Reconnect and repeat testing as needed. Production usage of sensitive Calendar permissions generally needs OAuth verification. See https://developers.google.com/identity/protocols/oauth2 and https://developers.google.com/identity/protocols/oauth2/production-readiness/sensitive-scope-verification.

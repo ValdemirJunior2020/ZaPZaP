@@ -35,3 +35,9 @@ test("Google calendar deterministic event IDs use its permitted base32hex alphab
  assert.match(id,/^[a-v0-9]{5,1024}$/);
  assert.equal(id,eventIdFor("3478cfac-ad28-404c-a308-3c56d791dfab"));
 });
+
+test("Google API call budgets are enforced on authenticated owner actions",async()=>{
+ const fs=await import("node:fs/promises"),s=await fs.readFile("netlify/functions/owner-workspace.mjs","utf8");
+ assert.match(s,/gcal_global_daily/);assert.match(s,/gcal_owner_daily/);
+ assert.match(s,/gcal_owner_minute/);assert.match(s,/integrationAllowance/);
+});
