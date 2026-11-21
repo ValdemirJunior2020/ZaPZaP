@@ -1,3 +1,4 @@
+import{currencyContext}from"../lib/nexus-tool-router.mjs";
 import{SPECIAL_OWNER,validHandle,personalMessages,styleName}from"../lib/personal-assistant.mjs";
 import{JUNIOR_OWNER_ID,JUNIOR_EXPERIENCE,juniorMessages}from"../lib/junior-assistant.mjs";
 import{allow,clientIp}from"../lib/abuse.mjs";
@@ -126,6 +127,10 @@ export async function handler(event){
    }catch(e){console.warn("Business-hours context unavailable:",e.message)}
   }
   if(assigned)messages[0].content+=" Assigned sales employee (not the owner): "+JSON.stringify(assigned)+". Reply in the visitor language, or the employee language if unclear. Do not claim to place calls.";
+  // Read-only tool invocation occurs only for explicit currency requests; no visitor details are sent to the provider.
+  const lookup=await currencyContext(message);
+  if(lookup.used)messages[0].content+=" VERIFIED OPTIONAL TOOL RESULT: "+lookup.fact;
+
   // Persist only actual visitor/AI messages, never browser-provided transcripts.
   diagStage="message_save";
   await db(c,"nx_chat_messages",{method:"POST",body:{session_id:claim.sessionId,store_id:store.id,role:"user",content:message},prefer:"return=minimal"});

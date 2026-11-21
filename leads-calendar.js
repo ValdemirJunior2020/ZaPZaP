@@ -80,7 +80,8 @@
   const count=pending(w).length,upcoming=(w.appointments||[]).filter(a=>a.status==="confirmed"&&new Date(a.start_at)>=new Date()).length;
   const staff=(w.employees||[]).filter(e=>e.enabled||e.id===state.employee);
   return '<div class="nx-calendar"><div class="nx-cal-summary"><div><span>Confirmados futuros</span><strong>'+upcoming+'</strong></div><div><span>Pedidos sem horário</span><strong>'+count+'</strong></div><div><span>Agendamentos registrados</span><strong>'+(w.appointments||[]).length+'</strong></div></div>'+
- '<div class="nx-cal-layout"><div class="nx-cal-main"><div class="nx-cal-panel"><div class="lead-bar"><div><h2>Agenda de atendimentos</h2><p>Visualização diária, semanal e mensal. Pedidos de clientes precisam ser confirmados pela equipe.</p></div>'+
+ '<div id="nxGoogleCalendarMount" aria-live="polite"><section aria-label="Google Calendar" style="margin:12px 0 18px;padding:16px;border:1px solid #d7e8df;border-radius:14px;background:#fff"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:10px"><span aria-hidden="true" style="display:inline-grid;place-items:center;width:36px;height:36px;border-radius:7px;border-top:6px solid #4285f4;border-left:6px solid #34a853;border-right:6px solid #fbbc04;border-bottom:6px solid #ea4335;font-size:14px;font-weight:800;color:#4285f4">31</span><div><strong>Google Calendar</strong><small style="display:block;color:#637d70">Your calendar, your account</small></div></div><button id="googleConnect" type="button" class="button" style="display:inline-flex;align-items:center;gap:8px;background:white;color:#243447;border:1px solid #dadce0;border-radius:9px;padding:10px 14px;font-weight:650"><span aria-hidden="true" style="font-weight:900;font-size:22px;color:#4285f4;text-shadow:1px 0 #ea4335,-1px 0 #34a853">G</span>'+lang("Connect to Google Calendar","Conectar Google Agenda","Conectar Google Calendar")+'</button></div><p id="nxGoogleInfo" role="status" style="font-size:12px;color:#637d70;margin:10px 0 0">'+lang("Checking Google Calendar connection…","Verificando Google Agenda…","Comprobando Google Calendar…")+'</p></section></div>'+
+  '<div class="nx-cal-layout"><div class="nx-cal-main"><div class="nx-cal-panel"><div class="lead-bar"><div><h2>Agenda de atendimentos</h2><p>Visualização diária, semanal e mensal. Pedidos de clientes precisam ser confirmados pela equipe.</p></div>'+
  '<label>Filtrar funcionário<select id="nxCalEmployee"><option value="all">Todos</option>'+staff.map(e=>'<option value="'+esc(e.id)+'" '+(state.employee===e.id?"selected":"")+'>'+esc(e.name)+'</option>').join("")+'</select></label></div>'+
  controls()+grid(w)+'</div>'+
  '<div class="nx-cal-panel"><h3>Solicitações aguardando horário</h3>'+
@@ -97,7 +98,32 @@
   if(list)list.classList.toggle("hidden",state.pane!=="leads");
   if(cal){cal.classList.toggle("hidden",state.pane!=="calendar");if(state.pane==="calendar"){cal.innerHTML=render(w);bind(w,api,refresh);window.NexusLanguage?.apply()}}
  }
+ let googleCalendarLoad=null;
+ function ensureGoogleCalendar(w,api,refresh){
+  if(window.NexusGoogleCalendar?.attach){window.NexusGoogleCalendar.attach(w,api,refresh);return}
+  const note=()=>document.getElementById("nxGoogleInfo");
+  if(!googleCalendarLoad){
+   googleCalendarLoad=new Promise(resolve=>{
+    const script=document.createElement("script");
+    script.src="/leads-google-calendar.js?v=20261121-fix2";
+    script.async=true;
+    script.onload=()=>resolve(Boolean(window.NexusGoogleCalendar?.attach));
+    script.onerror=()=>resolve(false);
+    document.head.appendChild(script);
+   });
+  }
+  const status=note();if(status)status.textContent=lang("Loading Google Calendar connection…","Carregando conexão com Google Agenda…","Cargando conexión con Google Calendar…");
+  googleCalendarLoad.then(loaded=>{
+   if(loaded&&window.NexusGoogleCalendar?.attach){
+    window.NexusGoogleCalendar.attach(w,api,refresh);
+   }else{
+    const message=lang("Google Calendar integration could not load. Open /leads-google-calendar.js in this browser to inspect the script.","Não foi possível carregar a integração Google Agenda.","No se pudo cargar la integración de Google Calendar.");
+    const current=note();if(current)current.textContent=message;
+   }
+  });
+ }
  function bind(w,api,refresh){
+  ensureGoogleCalendar(w,api,refresh);
   const mount=()=>{document.getElementById("leadCalendarPane").innerHTML=render(w);bind(w,api,refresh);window.NexusLanguage?.apply()};
   const nav=document.querySelectorAll("[data-cal-nav]");
   nav.forEach(button=>button.onclick=()=>{

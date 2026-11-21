@@ -1,3 +1,5 @@
+import{allow as integrationAllowance}from"../lib/abuse.mjs";
+import{startConnect,status as googleStatus,events as googleEvents,syncAppointment,availability as googleAvailability,disconnect as googleDisconnect}from"../lib/nexus-google-calendar.mjs";
 import{SPECIAL_OWNER,NEXUS_STYLE,validHandle,validStyle}from"../lib/personal-assistant.mjs";
 import{JUNIOR_OWNER_ID}from"../lib/junior-assistant.mjs";
 import{normalizePersonality,PERSONALITIES}from"../lib/ai-personalities.mjs";
@@ -37,6 +39,28 @@ export async function handler(event){
    return json(200,{email:user.email,accountKind:user.user_metadata?.account_kind==="personal"?"personal":"business",profile,store,businessProfile,offerings:items,leads,qrSources,employees,appointments,teamAllowed:teamEntitled(user,ent),bot,personalAssistant:personalRows[0]||null,personalAssistantSchemaReady:personalSchemaReady,personalAssistantSpecial:user.id===SPECIAL_OWNER&&ent.is_complimentary===true,widgetAllowed:widgetEnabled(c,ent),access:access(ent),aiConfigured:aiReady()});
   }
   const data=parse(event,30000),action=str(data.action,40);
+  if(action.startsWith("google_calendar_")){
+   if(!store)return json(403,{error:"Create a business profile first"});
+   // Keep quota spend predictable and fail closed if shared rate counters are unavailable.
+   if(!["google_calendar_status","google_calendar_disconnect"].includes(action)){
+    const globalAllowed=await integrationAllowance(c,"gcal_global_daily","all",1000,86400);
+    const ownerAllowed=await integrationAllowance(c,"gcal_owner_daily",user.id,100,86400);
+    const burstAllowed=await integrationAllowance(c,"gcal_owner_minute",user.id,12,60);
+    if(!globalAllowed||!ownerAllowed||!burstAllowed)return json(429,{error:"Google Calendar reached the safe usage limit. Try again later."});
+   }
+
+   if(action==="google_calendar_status")return json(200,await googleStatus(user.id,store.id));
+   if(action==="google_calendar_connect"){
+    const result=startConnect(user.id,store.id);
+    const j=json(200,{authorizationUrl:result.url});
+    return{...j,headers:{...j.headers,"Set-Cookie":result.cookie}};
+   }
+   if(action==="google_calendar_events")return json(200,{events:await googleEvents(user.id,store.id)});
+   if(action==="google_calendar_availability")return json(200,await googleAvailability(user.id,store.id,String(data.startAt||""),Number(data.durationMinutes),String(data.appointmentId||"")));
+   if(action==="google_calendar_sync")return json(200,await syncAppointment(user.id,store.id,String(data.appointmentId||"")));
+   if(action==="google_calendar_disconnect")return json(200,await googleDisconnect(user.id,store.id));
+   return json(400,{error:"Unknown calendar request"});
+  }
   if(action==="cancel_subscription")return cancelSubscription(c,user,ent);
   if(action==="delete_account")return deleteAccount(c,user,ent,data);
 
