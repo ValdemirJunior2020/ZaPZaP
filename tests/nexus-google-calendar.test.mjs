@@ -19,3 +19,13 @@ test("owner-workspace uses authenticated store context for Google API operations
  assert.match(code,/syncAppointment\(user\.id,store\.id/);
  assert.match(code,/google_calendar_disconnect/);
 });
+
+test("Leads calendar shows connected email and supports scoped Google sync",async()=>{
+ const fs=await import("node:fs/promises"),[ui,calendar,html,build]=await Promise.all(["leads-google-calendar.js","leads-calendar.js","business.html","scripts/build-vercel.mjs"].map(p=>fs.readFile(p,"utf8")));
+ assert.match(ui,/Connect to Google Calendar/);assert.match(ui,/google_calendar_status/);
+ assert.match(ui,/google_calendar_connect/);assert.match(ui,/google_calendar_disconnect/);
+ assert.match(ui,/google_calendar_sync/);assert.match(ui,/google_calendar_availability/);
+ assert.match(calendar,/NexusGoogleCalendar\?\.attach/);
+ assert.match(html,/leads-google-calendar\.js/);assert.match(build,/"leads-google-calendar\.js"/);
+ assert.doesNotThrow(()=>new Function(ui));
+});

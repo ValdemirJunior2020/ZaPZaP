@@ -1,4 +1,4 @@
-import{startConnect,status as googleStatus,events as googleEvents,syncAppointment,disconnect as googleDisconnect}from"../lib/nexus-google-calendar.mjs";
+import{startConnect,status as googleStatus,events as googleEvents,syncAppointment,availability as googleAvailability,disconnect as googleDisconnect}from"../lib/nexus-google-calendar.mjs";
 import{SPECIAL_OWNER,NEXUS_STYLE,validHandle,validStyle}from"../lib/personal-assistant.mjs";
 import{JUNIOR_OWNER_ID}from"../lib/junior-assistant.mjs";
 import{normalizePersonality,PERSONALITIES}from"../lib/ai-personalities.mjs";
@@ -47,6 +47,7 @@ export async function handler(event){
     return{...j,headers:{...j.headers,"Set-Cookie":result.cookie}};
    }
    if(action==="google_calendar_events")return json(200,{events:await googleEvents(user.id,store.id)});
+   if(action==="google_calendar_availability")return json(200,await googleAvailability(user.id,store.id,String(data.startAt||""),Number(data.durationMinutes),String(data.appointmentId||"")));
    if(action==="google_calendar_sync")return json(200,await syncAppointment(user.id,store.id,String(data.appointmentId||"")));
    if(action==="google_calendar_disconnect")return json(200,await googleDisconnect(user.id,store.id));
    return json(400,{error:"Unknown calendar request"});

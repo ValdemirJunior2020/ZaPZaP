@@ -114,6 +114,21 @@ async function events(ownerId,storeId){
  return(r.items||[]).filter(e=>e.status!=="cancelled").map(e=>({id:e.id,title:String(e.summary||"Busy").slice(0,150),
   start:e.start?.dateTime||e.start?.date,end:e.end?.dateTime||e.end?.date,htmlLink:e.htmlLink||null})).slice(0,40);
 }
+
+async function availability(ownerId,storeId,startAt,durationMinutes,appointmentId=null){
+ const start=new Date(startAt),minutes=Number(durationMinutes),end=new Date(start.getTime()+minutes*60000);
+ if(!Number.isFinite(start.getTime())||!Number.isSafeInteger(minutes)||minutes<15||minutes>480)throw error(400,"Choose a valid date and duration");
+ const {token}=await tokenFor(ownerId,storeId);
+ const query=new URLSearchParams({timeMin:start.toISOString(),timeMax:end.toISOString(),singleEvents:"true",maxResults:"100"});
+ const found=await googleCall(token,"GET","/calendars/primary/events?"+query);
+ const ignored=uuid.test(appointmentId||"")?"nxs"+crypto.createHash("sha256").update(appointmentId).digest("hex").slice(0,40):null;
+ const busy=(found.items||[]).some(e=>{
+  if(e.id===ignored||e.status==="cancelled"||e.transparency==="transparent")return false;
+  const from=Date.parse(e.start?.dateTime||e.start?.date),to=Date.parse(e.end?.dateTime||e.end?.date);
+  return Number.isFinite(from)&&Number.isFinite(to)&&from<end.getTime()&&to>start.getTime();
+ });
+ return{available:!busy,checked:true};
+}
 async function syncAppointment(ownerId,storeId,appointmentId){
  if(!uuid.test(appointmentId))throw error(400,"Invalid appointment");
  const {token,cfg}=await tokenFor(ownerId,storeId);
@@ -157,4 +172,4 @@ async function disconnect(ownerId,storeId){
  await db(cfg,"nx_google_calendar_connections?owner_id=eq."+encodeURIComponent(ownerId)+"&store_id=eq."+encodeURIComponent(storeId),{method:"DELETE",prefer:"return=minimal"});
  return{disconnected:true,eventsRetainedInGoogle:true};
 }
-export{config,encrypt,decrypt,createState,validateState,startConnect,finishConnect,clearCookie,status,events,syncAppointment,disconnect};
+export{config,encrypt,decrypt,createState,validateState,startConnect,finishConnect,clearCookie,status,events,availability,syncAppointment,disconnect};
