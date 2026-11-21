@@ -15,6 +15,8 @@ const localHandlers=Object.freeze({
  "owner-test-chat":"./netlify/functions/owner-test-chat.mjs",
  "public-store":"./netlify/functions/public-store.mjs",
  "widget-config":"./netlify/functions/widget-config.mjs",
+ "google-calendar-callback":"./netlify/functions/google-calendar-callback.mjs",
+ "nexus-integrations":"./netlify/functions/nexus-integrations.mjs",
  "assistant-page":"./netlify/functions/assistant-page.mjs"
 });
 async function localFunction(req,res,url,name){
