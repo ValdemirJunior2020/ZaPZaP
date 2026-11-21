@@ -9,3 +9,12 @@ const o=await readFile("netlify/functions/owner-workspace.mjs","utf8");
 assert.match(o,/action==="save_appointment"/);assert.match(o,/action==="appointment_status"/);assert.match(o,/nx_appointments\?store_id=eq/);
 assert.match(o,/employee_id===employeeId/);assert.match(o,/status=in\.\(requested,confirmed\)/);
 });
+
+test("Local dev server does not cache dashboard HTML or JavaScript after branch updates",async()=>{
+ const server=await readFile("server.mjs","utf8");
+ const google=await readFile("leads-google-calendar.js","utf8");
+ assert.match(server,/Cache-Control'.*?\.(?:js|mjs|html|css)/);
+ assert.match(server,/no-store/);
+ assert.match(google,/Google Calendar/);
+ assert.match(google,/google_calendar_connect/);
+});
