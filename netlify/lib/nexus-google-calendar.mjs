@@ -115,13 +115,17 @@ async function events(ownerId,storeId){
   start:e.start?.dateTime||e.start?.date,end:e.end?.dateTime||e.end?.date,htmlLink:e.htmlLink||null})).slice(0,40);
 }
 
+function eventIdFor(appointmentId){
+ if(!uuid.test(appointmentId))throw error(400,"Invalid appointment");
+ return "nsa"+crypto.createHash("sha256").update(appointmentId).digest("hex").slice(0,40);
+}
 async function availability(ownerId,storeId,startAt,durationMinutes,appointmentId=null){
  const start=new Date(startAt),minutes=Number(durationMinutes),end=new Date(start.getTime()+minutes*60000);
  if(!Number.isFinite(start.getTime())||!Number.isSafeInteger(minutes)||minutes<15||minutes>480)throw error(400,"Choose a valid date and duration");
  const {token}=await tokenFor(ownerId,storeId);
  const query=new URLSearchParams({timeMin:start.toISOString(),timeMax:end.toISOString(),singleEvents:"true",maxResults:"100"});
  const found=await googleCall(token,"GET","/calendars/primary/events?"+query);
- const ignored=uuid.test(appointmentId||"")?"nxs"+crypto.createHash("sha256").update(appointmentId).digest("hex").slice(0,40):null;
+ const ignored=uuid.test(appointmentId||"")?eventIdFor(appointmentId):null;
  const busy=(found.items||[]).some(e=>{
   if(e.id===ignored||e.status==="cancelled"||e.transparency==="transparent")return false;
   const from=Date.parse(e.start?.dateTime||e.start?.date),to=Date.parse(e.end?.dateTime||e.end?.date);
@@ -134,7 +138,7 @@ async function syncAppointment(ownerId,storeId,appointmentId){
  const {token,cfg}=await tokenFor(ownerId,storeId);
  const found=await db(cfg,"nx_appointments?id=eq."+encodeURIComponent(appointmentId)+"&store_id=eq."+encodeURIComponent(storeId)+"&select=id,start_at,end_at,status,customer_name,notes");
  const ap=found?.[0];if(!ap)throw error(404,"Appointment not found for this business");
- const id="nxs"+crypto.createHash("sha256").update(ap.id).digest("hex").slice(0,40);
+ const id=eventIdFor(ap.id);
  const path="/calendars/primary/events/"+id;
  if(ap.status==="cancelled"){
   const r=await fetch(googleApi+path,{method:"DELETE",headers:{Authorization:"Bearer "+token},signal:AbortSignal.timeout(10000)});
@@ -172,4 +176,4 @@ async function disconnect(ownerId,storeId){
  await db(cfg,"nx_google_calendar_connections?owner_id=eq."+encodeURIComponent(ownerId)+"&store_id=eq."+encodeURIComponent(storeId),{method:"DELETE",prefer:"return=minimal"});
  return{disconnected:true,eventsRetainedInGoogle:true};
 }
-export{config,encrypt,decrypt,createState,validateState,startConnect,finishConnect,clearCookie,status,events,availability,syncAppointment,disconnect};
+export{config,encrypt,decrypt,createState,validateState,eventIdFor,startConnect,finishConnect,clearCookie,status,events,availability,syncAppointment,disconnect};

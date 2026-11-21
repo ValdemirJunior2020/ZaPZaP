@@ -1,5 +1,5 @@
 import test from"node:test";import assert from"node:assert/strict";import crypto from"node:crypto";
-import{encrypt,decrypt,createState,validateState}from"../netlify/lib/nexus-google-calendar.mjs";
+import{encrypt,decrypt,createState,validateState,eventIdFor}from"../netlify/lib/nexus-google-calendar.mjs";
 const owner="3478cfac-ad28-404c-a308-3c56d791dfab",store="1ad8a4e4-30bd-4919-8c77-89ddb24f771a";
 test("Google OAuth tokens encrypt at rest and corrupted ciphertext is rejected",()=>{
  const k=crypto.randomBytes(32),enc=encrypt("refresh-token-never-browser",k);
@@ -28,4 +28,10 @@ test("Leads calendar shows connected email and supports scoped Google sync",asyn
  assert.match(calendar,/NexusGoogleCalendar\?\.attach/);
  assert.match(html,/leads-google-calendar\.js/);assert.match(build,/"leads-google-calendar\.js"/);
  assert.doesNotThrow(()=>new Function(ui));
+});
+
+test("Google calendar deterministic event IDs use its permitted base32hex alphabet",()=>{
+ const id=eventIdFor("3478cfac-ad28-404c-a308-3c56d791dfab");
+ assert.match(id,/^[a-v0-9]{5,1024}$/);
+ assert.equal(id,eventIdFor("3478cfac-ad28-404c-a308-3c56d791dfab"));
 });

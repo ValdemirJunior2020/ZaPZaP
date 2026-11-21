@@ -25,3 +25,5 @@ Security: tokens stay on the backend; AES-256-GCM encryption at rest, OAuth stat
 Not yet complete: automatic sync for every native Nexus edit (manual sync is available), AI-controlled booking and confirmation, recurring free/busy-aware slot generation, company holiday/working-hour enforcement, automatic notifications, production OAuth verification, and end-to-end real Google integration testing. No claim these features work yet. Customer-facing use needs live tests and owner approval.
 
 Google Calendar standard usage is free subject to quotas. Google has announced planned over-quota charges later in 2026; review https://developers.google.com/workspace/calendar/api/guides/quota and consent requirements. Never commit credentials or deploy without explicit approval.
+
+Deterministic event IDs use prefix 'nsa' and SHA-256 hex digits (Google Calendar-supported base32hex alphabet), ensuring repeated synchronization targets the same event.
