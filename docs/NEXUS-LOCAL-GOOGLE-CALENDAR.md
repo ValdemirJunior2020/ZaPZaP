@@ -15,7 +15,7 @@ NEXUS_GOOGLE_REDIRECT_URI=http://127.0.0.1:8788/.netlify/functions/google-calend
 NEXUS_GOOGLE_TOKEN_ENCRYPTION_KEY=<32 random bytes in hex, 64 hex chars>
 NEXUS_GOOGLE_OAUTH_STATE_SECRET=<a different random 32+ character secret>
 ```
-Generate 32-byte secrets in PowerShell with `[Convert]::ToHexString([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32))` twice.
+Generate 32-byte secrets in PowerShell with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` twice.
 5. `npm run test:ci`, `npm start`, then open `http://127.0.0.1:8788` and sign in to a development business account. Use Leads & Chats > Calendar > Connect to Google Calendar.
 
 The owner can see Google appointments and manually sync confirmed Nexus appointments, updates, and cancellations. The Google API is checked for overlapping calendar events before sync. Event IDs are deterministic, so retries do not create duplicate Google entries. Google API failures keep the local record and display a warning; they must never be described as successful Google sync. Disconnect removes stored encrypted tokens; previously created Google events remain on Google.
