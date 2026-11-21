@@ -2,6 +2,57 @@
 (function(){
  "use strict";
  const state={pane:"leads",view:"month",focus:new Date(),employee:"all",editId:null,selectedLead:null};
+ // Google Calendar uses Google's browser OAuth flow. Tokens are memory-only, never placed in localStorage.
+ const google={token:"",email:"",events:[],busy:false,error:"",client:null,expiresAt:0};
+ const googleClientId=()=>document.querySelector('meta[name="google-calendar-client-id"]')?.content?.trim()||window.ZAPZAP_GOOGLE_CALENDAR_CLIENT_ID||"";
+ const googleSvg='<svg width="26" height="26" viewBox="0 0 48 48" aria-hidden="true"><path fill="#4285F4" d="M34 6H10a4 4 0 0 0-4 4v28a4 4 0 0 0 4 4h28a4 4 0 0 0 4-4V14z"/><path fill="#fff" d="M13 17h22v19H13z"/><path fill="#34A853" d="M34 6v8h8z"/><path fill="#188038" d="M34 6v8h8z"/><path fill="#EA4335" d="M18 22h12v3H18z"/><path fill="#FBBC04" d="M18 28h8v3h-8z"/></svg>';
+ function googlePanel(){
+  const connected=google.token&&Date.now()<google.expiresAt;
+  const title=lang("Connect to Google Calendar","Conectar ao Google Agenda","Conectar con Google Calendar");
+  const sub=connected?lang("Your Google Calendar is connected for this session.","Seu Google Agenda está conectado nesta sessão.","Google Calendar está conectado en esta sesión."):
+   lang("View your Google appointments right here.","Veja seus compromissos do Google aqui.","Mira tus citas de Google aquí.");
+  return '<section class="nx-google-calendar" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;margin:0 0 14px;border:1px solid rgba(128,128,128,.25);border-radius:14px;background:rgba(128,128,128,.04)">'+
+   '<div style="display:flex;align-items:center;gap:11px">'+googleSvg+'<div><strong style="display:block">'+esc(connected?lang("Google Calendar connected","Google Agenda conectado","Google Calendar conectado"):title)+'</strong><small style="display:block;opacity:.75">'+esc(connected?google.email||sub:sub)+'</small></div></div>'+
+   '<div style="display:flex;gap:8px;align-items:center">'+(connected?'<button type="button" class="button" id="nxGoogleRefresh" '+(google.busy?'disabled':'')+'>'+lang("Refresh","Atualizar","Actualizar")+'</button><button type="button" class="button" id="nxGoogleDisconnect">'+lang("Disconnect","Desconectar","Desconectar")+'</button>':
+    '<button type="button" class="button" id="nxGoogleConnect" '+(google.busy?'disabled':'')+'>'+esc(google.busy?lang("Connecting…","Conectando…","Conectando…"):title)+'</button>')+'</div>'+
+   (google.error?'<p role="alert" style="width:100%;margin:0;color:#c2410c">'+esc(google.error)+'</p>':'')+
+   (connected?'<div style="width:100%;border-top:1px solid rgba(128,128,128,.2);padding-top:10px"><strong>'+lang("Upcoming Google events","Próximos eventos do Google","Próximos eventos de Google")+'</strong>'+
+    (google.events.length?'<div style="display:grid;gap:5px;margin-top:7px">'+google.events.map(e=>'<div style="display:flex;justify-content:space-between;gap:12px"><span>'+esc(e.summary||lang("Untitled event","Evento sem título","Evento sin título"))+'</span><small>'+esc(e.start?.dateTime?fmt(new Date(e.start.dateTime),{dateStyle:"medium",timeStyle:"short"}):e.start?.date||"")+'</small></div>').join("")+'</div>':
+    '<p class="hint" style="margin:7px 0 0">'+lang("No upcoming Google events.","Nenhum evento futuro do Google.","No hay eventos próximos de Google.")+'</p>')+'</div>':'')+'</section>';
+ }
+ async function googleRequest(){
+  if(!google.token||Date.now()>=google.expiresAt)throw new Error(lang("Your Google connection expired. Please reconnect.","Sua conexão expirou. Reconecte.","Tu conexión caducó. Vuelve a conectar."));
+  const params=new URLSearchParams({timeMin:new Date().toISOString(),maxResults:"10",singleEvents:"true",orderBy:"startTime"});
+  const response=await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events?"+params,{headers:{Authorization:"Bearer "+google.token}});
+  if(!response.ok)throw new Error(lang("Could not read Google Calendar. Try reconnecting.","Não foi possível ler o Google Agenda. Reconecte.","No se pudo leer Google Calendar. Vuelve a conectar."));
+  const data=await response.json();google.events=Array.isArray(data.items)?data.items:[];
+ }
+ function googleLoadScript(){
+  if(window.google?.accounts?.oauth2)return Promise.resolve();
+  return new Promise((resolve,reject)=>{
+   const old=document.querySelector('script[data-nx-google-oauth]');
+   if(old){old.addEventListener("load",resolve,{once:true});old.addEventListener("error",()=>reject(new Error("Google sign-in unavailable")),{once:true});return}
+   const script=document.createElement("script");script.src="https://accounts.google.com/gsi/client";script.async=true;script.defer=true;script.dataset.nxGoogleOauth="1";
+   script.onload=resolve;script.onerror=()=>reject(new Error("Google sign-in unavailable"));document.head.appendChild(script);
+  });
+ }
+ async function googleConnect(mount){
+  const id=googleClientId();
+  if(!id||id==="YOUR_GOOGLE_OAUTH_CLIENT_ID"){google.error=lang("Google Calendar needs one-time setup by the app owner. No customer setup is needed.","O proprietário precisa configurar o acesso uma vez.","El propietario debe configurar el acceso una vez.");mount();return}
+  google.error="";google.busy=true;mount();
+  try{
+   await googleLoadScript();
+   google.client=window.google.accounts.oauth2.initTokenClient({client_id:id,scope:"https://www.googleapis.com/auth/calendar.events.readonly",callback:async response=>{
+    google.busy=false;
+    if(response.error||!response.access_token){google.error=lang("Google authorization was not completed.","A autorização do Google não foi concluída.","No se completó la autorización de Google.");mount();return}
+    google.token=response.access_token;google.expiresAt=Date.now()+Math.max(60,Number(response.expires_in||3600)-60)*1000;
+    try{await googleRequest();google.error="";}catch(e){google.error=e.message}
+    mount();
+   },error_callback:()=>{google.busy=false;google.error=lang("Google sign-in was cancelled or blocked.","Login do Google cancelado ou bloqueado.","Inicio de sesión cancelado o bloqueado.");mount()}});
+   google.client.requestAccessToken({prompt:"consent"});
+  }catch(e){google.busy=false;google.error=e.message;mount()}
+ }
+
  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
  const pad=n=>String(n).padStart(2,"0");
  const isoDay=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
@@ -80,7 +131,7 @@
   const count=pending(w).length,upcoming=(w.appointments||[]).filter(a=>a.status==="confirmed"&&new Date(a.start_at)>=new Date()).length;
   const staff=(w.employees||[]).filter(e=>e.enabled||e.id===state.employee);
   return '<div class="nx-calendar"><div class="nx-cal-summary"><div><span>Confirmados futuros</span><strong>'+upcoming+'</strong></div><div><span>Pedidos sem horário</span><strong>'+count+'</strong></div><div><span>Agendamentos registrados</span><strong>'+(w.appointments||[]).length+'</strong></div></div>'+
- '<div class="nx-cal-layout"><div class="nx-cal-main"><div class="nx-cal-panel"><div class="lead-bar"><div><h2>Agenda de atendimentos</h2><p>Visualização diária, semanal e mensal. Pedidos de clientes precisam ser confirmados pela equipe.</p></div>'+
+ googlePanel()+'<div class="nx-cal-layout"><div class="nx-cal-main"><div class="nx-cal-panel"><div class="lead-bar"><div><h2>Agenda de atendimentos</h2><p>Visualização diária, semanal e mensal. Pedidos de clientes precisam ser confirmados pela equipe.</p></div>'+
  '<label>Filtrar funcionário<select id="nxCalEmployee"><option value="all">Todos</option>'+staff.map(e=>'<option value="'+esc(e.id)+'" '+(state.employee===e.id?"selected":"")+'>'+esc(e.name)+'</option>').join("")+'</select></label></div>'+
  controls()+grid(w)+'</div>'+
  '<div class="nx-cal-panel"><h3>Solicitações aguardando horário</h3>'+
@@ -99,6 +150,14 @@
  }
  function bind(w,api,refresh){
   const mount=()=>{document.getElementById("leadCalendarPane").innerHTML=render(w);bind(w,api,refresh);window.NexusLanguage?.apply()};
+  document.getElementById("nxGoogleConnect")?.addEventListener("click",()=>googleConnect(mount));
+  document.getElementById("nxGoogleDisconnect")?.addEventListener("click",()=>{
+   if(google.token&&window.google?.accounts?.oauth2)window.google.accounts.oauth2.revoke(google.token,()=>{});
+   google.token="";google.email="";google.events=[];google.expiresAt=0;google.error="";mount();
+  });
+  document.getElementById("nxGoogleRefresh")?.addEventListener("click",async()=>{
+   google.busy=true;try{await googleRequest();google.error=""}catch(e){google.error=e.message}finally{google.busy=false;mount()}
+  });
   const nav=document.querySelectorAll("[data-cal-nav]");
   nav.forEach(button=>button.onclick=()=>{
    const direction=button.dataset.calNav;
