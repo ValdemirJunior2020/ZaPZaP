@@ -12,6 +12,9 @@ test("validates sessions, WhatsApp personal JIDs and safe messages",()=>{
  assert.equal(normalizeMessage({fromMe:true,type:"TEXT",content:"x",remoteJid:"15551234567@s.whatsapp.net",keyId:"y"}),null);
  assert.equal(approvedSender("15551234567@s.whatsapp.net",new Set(["15551234567"])),true);
  assert.equal(approvedSender("15551234567@s.whatsapp.net",new Set(["15557654321"])),false);
+ assert.equal(approvedSender("15551234567@s.whatsapp.net",new Set(),"all"),true);
+ assert.equal(approvedSender("120363123456@g.us",new Set(),"all"),false);
+ assert.equal(approvedSender("status@broadcast",new Set(),"all"),false);
  assert.match(buildPrompt("Test Garage","When are you open?")[0].content,/Never invent opening hours/);
 });
 
