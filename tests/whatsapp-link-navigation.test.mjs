@@ -114,3 +114,19 @@ test("launcher and WhatsApp console do not misleadingly say replies are OFF when
  assert.match(bridge,/Reply mode: /);
  assert.doesNotMatch(launcher,/Replies remain OFF by default/);
 });
+
+test("Nexus dashboard floating widget uses SAME origin so authenticated owner quota bypass is available",async()=>{
+ const dashboard=await read("index.html");
+ const loader=await read("widget.js");
+ const iframe=await read("widget-chat.html");
+ const server=await read("netlify/functions/store-chat.mjs");
+ assert.match(dashboard,/<script src="\/widget\.js" data-bot-id="bot_c75284b0593d0acd0d39dd60" async><\/script>/);
+ assert.doesNotMatch(dashboard,/src="https:\/\/zapzap-bot\.netlify\.app\/widget\.js"/);
+ assert.match(loader,/iframe\.src=origin\+"\/widget-chat\.html\?bot="/);
+ assert.match(iframe,/sessionStorage\.getItem\("nexus_owner_v1"\)/);
+ assert.match(iframe,/signedOwnerToken\?\{Authorization:"Bearer "/);
+ assert.match(iframe,/nexus_widget_owner_unlimited_v2_/);
+ assert.match(server,/privilegedOwner=identified\.user\.id===store\.owner_id/);
+ assert.match(server,/infojr\.83@gmail\.com/);
+ assert.match(server,/if\(!privilegedOwner && !await allow\(c,"store_chat"/);
+});
