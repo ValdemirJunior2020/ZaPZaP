@@ -293,5 +293,5 @@ export async function startBridge({settings=undefined,fetcher=fetch,port=8791}={
   return{server,state,close:async()=>{clearInterval(interval);state.armed=false;await new Promise(resolve=>server.close(resolve))}};
 }
 if(process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
-  startBridge().then(()=>console.log("Nexus WhatsApp local bridge: http://127.0.0.1:8791 (AI replies OFF)")).catch(e=>{console.error("Startup error:",e.message);process.exitCode=1});
+  startBridge().then(({state})=>console.log("Nexus WhatsApp local bridge: http://127.0.0.1:8791 | Reply mode: "+(state.mode==="all"?"ALL CUSTOMERS":"TEST ONLY")+" | AI: "+(state.armed?"ON":state.requested?"AUTO-RESUME PENDING":"OFF")+" | Business: "+(state.business?.store?.name||"NOT LOADED"))).catch(e=>{console.error("Startup error:",e.message);process.exitCode=1});
 }
