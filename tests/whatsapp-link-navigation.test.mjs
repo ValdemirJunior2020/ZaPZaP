@@ -103,3 +103,11 @@ test("WhatsApp reply mode updates from private env without any second BAT or re-
  assert.match(bridge,/state\.mode=mode;cfg\.allow=allow/);
  assert.match(bridge,/state\.baseline=false;state\.seen\.clear\(\)/);
 });
+
+test("launcher and WhatsApp console do not misleadingly say replies are OFF when auto-resume is requested",async()=>{
+ const bridge=await read("scripts/wa-akg-local-bridge.mjs");
+ const launcher=await read("START-LOCAL-INTEGRATIONS.ps1");
+ assert.match(bridge,/AI: "\+\(state\.armed\?"ON":state\.requested\?"AUTO-RESUME PENDING":"OFF"\)/);
+ assert.match(bridge,/Reply mode: /);
+ assert.doesNotMatch(launcher,/Replies remain OFF by default/);
+});
