@@ -14,10 +14,10 @@ if (-not (Test-Path $destination)) {
 }
 Set-Location $destination
 if (-not (Test-Path '.env')) {
-  Add-Type -AssemblyName System.Security
   function NewSecret([int]$length = 28) {
     $bytes = [byte[]]::new($length)
-    [System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+    $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    try { $rng.GetBytes($bytes) } finally { $rng.Dispose() }
     return ([Convert]::ToBase64String($bytes)).TrimEnd('=').Replace('+','A').Replace('/','B')
   }
   $mysql = NewSecret 24
@@ -44,16 +44,57 @@ if (-not (Test-Path '.env')) {
   Write-Host ('Password: ' + $adminPassword)
   Write-Host 'Admin credentials are stored in wa-akg-local\.env on your PC; DO NOT share or commit it.'
 }
-# Override exposed port in default upstream compose. Keep WA-AKG on local machine.
-$override = @'
+# Compose has its own file so the upstream exposed 0.0.0.0:3000 port cannot leak.
+$localCompose = @'
 services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-wa_akg}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
   app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
     ports:
       - "127.0.0.1:3000:3000"
+    environment:
+      DATABASE_URL: mysql://root:${MYSQL_ROOT_PASSWORD}@db:3306/${MYSQL_DATABASE:-wa_akg}
+      AUTH_SECRET: ${AUTH_SECRET}
+      BASE_URL: http://127.0.0.1:3000
+      NEXTAUTH_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:3000/api
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+      ENABLE_TELEMETRY: "false"
+      DEFAULT_LANGUAGE: en
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - app_data:/app/data
+      - uploads_data:/app/uploads
+volumes:
+  mysql_data:
+  app_data:
+  uploads_data:
 '@
-[System.IO.File]::WriteAllText((Join-Path $destination 'docker-compose.override.yml'),$override,[System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText((Join-Path $destination 'docker-compose.nexus-local.yml'),$localCompose,[System.Text.UTF8Encoding]::new($false))
 Write-Host 'Building and starting WA-AKG + its private MySQL container locally...'
-docker compose up -d --build
-if ($LASTEXITCODE -ne 0) { Fail 'Docker build/start failed. Inspect docker compose logs in wa-akg-local.' }
+docker compose -f docker-compose.nexus-local.yml up -d --build
+if ($LASTEXITCODE -ne 0) { Fail 'Docker build/start failed. Inspect docker compose -f docker-compose.nexus-local.yml logs.' }
 Write-Host 'WA-AKG is starting locally: http://127.0.0.1:3000'
 Write-Host 'Open the dashboard, sign in, then Settings -> API Keys; paste its key into the Nexus .env.wa-local file.'
