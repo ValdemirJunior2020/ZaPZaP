@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
-import {validSession,validJid,normalizeMessage,approvedSender,buildPrompt,startBridge} from "../scripts/wa-akg-local-bridge.mjs";
+import {validSession,validJid,normalizeMessage,approvedSender,buildPrompt,safeCustomerReply,startBridge} from "../scripts/wa-akg-local-bridge.mjs";
 
 test("validates sessions, WhatsApp personal JIDs and safe messages",()=>{
  assert.equal(validSession("nexus-local-x"),true);
@@ -87,4 +87,21 @@ test("local gateway uses mock WA-AKG: starts OFF, limits testing to allowlist, a
   const final=await (await fetch(base+"/api/status")).json();
   assert.equal(final.armed,false);
  }finally{await bridge.close()}
+});
+
+test("WhatsApp customer replies reject raw Qwen reasoning, never cut a thinking block mid-answer",()=>{
+ const bad=[
+  "Okay, the user sent \"Oi\" which means hello. I should reply in Portuguese.",
+  "We are given a greeting in Portuguese: Oi. Steps: 1. Acknowledge it.",
+  "The customer wrote Oi. Looking at the business facts, I should respond.",
+  "The instructions say: Speak in the customer's language.",
+  "1. Acknowledge the greeting\n2. Respond in Portuguese",
+  "<think>Let me reason internally</think>Okay, the user is saying hi",
+  "Okay, the user wrote Oi; here's my plan.",
+  "<think>unfinished reasoning",
+  "",
+ ];
+ for(const value of bad)assert.equal(safeCustomerReply(value),null,"MUST block: "+value);
+ assert.equal(safeCustomerReply("Olá! Sou assistente da Nexus AI. Como posso ajudar?"),"Olá! Sou assistente da Nexus AI. Como posso ajudar?");
+ assert.equal(safeCustomerReply("<think>Hidden thought</think>Olá! Como posso ajudar?"),"Olá! Como posso ajudar?");
 });
