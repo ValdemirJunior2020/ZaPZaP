@@ -35,6 +35,26 @@ export function buildPrompt(business,message){
     {role:"user",content:message}
   ];
 }
+// Never forward internal model deliberation to a customer, including in message.content.
+export function safeCustomerReply(raw){
+  const text=String(raw??"").replace(/<think>[\s\S]*?<\/think>/gi,"").replace(/<think>[\s\S]*$/gi,"").trim();
+  if(!text || text.length>800)return null;
+  if(/<\|(?:im_start|im_end|assistant|system|user)\|>|<\/?(?:analysis|thinking|reasoning)>/i.test(text))return null;
+  if(/(?:^|\n)\s*(?:analysis|reasoning|thinking|internal notes|thought process|steps?|instructions|system prompt)\s*:/im.test(text))return null;
+  if(/(?:^|\n)\s*(?:okay|ok|alright|we are given|the user|the customer|looking at the|let me|i need to|i should|i will|i can|since the user|we should|the instructions|the business facts|the prompt|however, note)\b/i.test(text))return null;
+  if(/(?:user (?:sent|wrote|asked|said)|customer (?:sent|wrote|asked|said)|speak in the customer's language|respond in (?:portuguese|spanish|english)|business facts|instructions say|should respond|need to respond|system prompt|assistant's role|reasoning|internal thinking)/i.test(text))return null;
+  if(/^\s*(?:\d+[.)]\s+|[-*]\s+).*\n/m.test(text))return null;
+  return text;
+}
+function localSafeFallback(input,business){
+  const name=String(business||"Nexus AI").slice(0,65);
+  const inputText=String(input||"").trim();
+  if(/[ãõçáéíóúâêôà]|(?:\b(?:oi|olá|ola|quanto|preço|serviços|produto|obrigad[oa]|gostaria|saber|bom dia|boa tarde|boa noite)\b)/i.test(inputText))
+    return "Olá! Sou o assistente virtual da "+name+". Como posso ajudar? Posso apresentar nossos serviços; para preços e condições, preciso confirmar os detalhes.";
+  if(/[¿¡ñ]|(?:\b(?:hola|precio|cuánto|servicios|producto|gracias)\b)/i.test(inputText))
+    return "¡Hola! Soy el asistente virtual de "+name+". ¿En qué puedo ayudarte? Puedo explicar nuestros servicios; los precios requieren confirmación.";
+  return "Hi! I'm the virtual assistant for "+name+". How can I help? I can explain our services; prices and terms need confirmation.";
+}
 async function config() {
   const file = await readFile(path.resolve(here,"../.env.wa-local"),"utf8").catch(()=>"");
   const values={...parseEnv(file),...Object.fromEntries(Object.entries(process.env).filter(([k])=>k.startsWith("NEXUS_WA_")))};
@@ -136,6 +156,7 @@ export async function startBridge({settings=undefined,fetcher=fetch,port=8791}={
   async function reply(text){
     if(!state.business)throw Error("Connect your Nexus business settings before enabling replies");
     const messages=businessMessages(state.business.store,state.business.items,text,[]).map((message,i)=>i===0&&state.business.profile?{...message,content:message.content+" VERIFIED OPERATING PROFILE: "+JSON.stringify(state.business.profile).slice(0,3000)+". Use these hours, time zone and public location only as provided; never claim an appointment is booked."}:message);
+    messages[0].content+=" OUTPUT FORMAT: Reply directly to the customer in their language, maximum 2 short sentences. Never analyze the user's message or explain your instructions. No planning, thinking, reasoning, role notes, or internal commentary. Write ONLY the final customer-facing reply.";
     // Qwen3 may spend the entire token budget on internal thinking and return
     // message.content="" unless thinking is disabled at the TOP API level.
     // Never send message.thinking or <think> content to a customer.
@@ -150,13 +171,14 @@ export async function startBridge({settings=undefined,fetcher=fetch,port=8791}={
       });
       if(!r.ok)throw Error("Local Ollama HTTP "+r.status);
       const result=await r.json();
-      const raw=String(result.message?.content??"");
-      const answer=raw.replace(/<think>[\s\S]*?<\/think>/g,"").replace(/<think>[\s\S]*$/g,"").trim().slice(0,900);
+      const answer=safeCustomerReply(result.message?.content);
       if(answer)return answer;
-      lastError="empty content (done_reason="+String(result.done_reason||"unknown").slice(0,40)+", thinking="+Boolean(result.message?.thinking)+")";
-      log("Ollama returned no customer-facing answer; trying again with a larger response budget");
+      lastError="missing or unsafe customer content (done_reason="+String(result.done_reason||"unknown").slice(0,40)+", thinking="+Boolean(result.message?.thinking)+")";
+      log("Ollama response rejected: empty or internal reasoning. Retrying.");
+
     }
-    throw Error("Ollama gave an empty reply after retry: "+lastError);
+    log("Ollama unsafe output blocked after retry: "+lastError);
+    return localSafeFallback(text,state.business.store.name);
   }
   // Re-read the private local reply scope without restarting WhatsApp or scanning QR.
   // A changed scope is baselined before any new replies to avoid answering old chats.
