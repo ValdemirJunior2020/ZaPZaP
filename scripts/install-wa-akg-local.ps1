@@ -88,38 +88,51 @@ if (-not $oldEnv -or $malformed) {
 $dockerfile = Join-Path $destination 'Dockerfile'
 if (-not (Test-Path $dockerfile)) { Fail 'WA-AKG Dockerfile is missing. Reclone only if needed.' }
 $dockerContent = [System.IO.File]::ReadAllText($dockerfile)
-$replacements = @(
-  @('ENV NODE_ENV=production' + "`n" + '# Provide fallback build-time', 'ENV NODE_ENV=development' + "`n" + '# Provide fallback build-time'),
-  @('RUN npm ci --legacy-peer-deps && npm cache clean --force', 'RUN npm ci --include=dev --legacy-peer-deps && npm cache clean --force'),
-  @('RUN npx prisma generate && npm run build', 'RUN npx --no-install prisma generate && npm run build'),
-  @('RUN npm prune --omit=dev && npm install --no-save tsx typescript', 'RUN npm prune --omit=dev && npm install --no-save --legacy-peer-deps prisma@5.22.0 tsx typescript'),
-  @('CMD ["sh", "-c", "npx prisma db push &&', 'CMD ["sh", "-c", "npx --no-install prisma db push &&')
+# Idempotent patch: accept upstream, intermediate, or already-fixed local Dockerfile.
+# Important: keep original node_modules (including Prisma CLI) in the builder.
+$buildPairs = @(
+  @('ENV NODE_ENV=production' + "`n" + '# Provide fallback build-time', 'ENV NODE_ENV=development' + "`n" + '# Provide fallback build-time')
+  @('RUN npm ci --legacy-peer-deps && npm cache clean --force', 'RUN npm ci --include=dev --legacy-peer-deps && npm cache clean --force')
+  @('RUN npx prisma generate && npm run build', 'RUN npx --no-install prisma generate && npm run build')
 )
-foreach ($pair in $replacements) {
-  $from = $pair[0]; $to = $pair[1]
+foreach ($pair in $buildPairs) {
+  $from = [string]$pair[0]
+  $to = [string]$pair[1]
   if ($dockerContent.Contains($to)) { continue }
-  if (-not $dockerContent.Contains($from)) { Fail ('WA-AKG Dockerfile layout changed: missing ' + $from) }
+  if (-not $dockerContent.Contains($from)) { Fail ('Unsupported WA-AKG Dockerfile build stage: ' + $from) }
   $dockerContent = $dockerContent.Replace($from, $to)
 }
-# For this LOCAL test, retain the Prisma 5 CLI from the successful builder install.
-# npm prune --omit=dev removed Prisma at runtime and npx attempted Prisma 8.
-# A larger local image is preferable to a broken runtime or a surprise CLI upgrade.
-$runtimeOriginal = 'RUN npm prune --omit=dev && npm install --no-save tsx typescript'
-$runtimePatched = 'RUN npm prune --omit=dev && npm install --no-save --legacy-peer-deps prisma@5.22.0 tsx typescript'
 $runtimeKeep = 'RUN test -x node_modules/.bin/prisma && node_modules/.bin/prisma --version'
-if ($dockerContent.Contains($runtimePatched)) {
-  $dockerContent = $dockerContent.Replace($runtimePatched, $runtimeKeep)
-} elseif ($dockerContent.Contains($runtimeOriginal)) {
-  $dockerContent = $dockerContent.Replace($runtimeOriginal, $runtimeKeep)
-} elseif (-not $dockerContent.Contains($runtimeKeep)) {
-  Fail 'Could not identify WA-AKG runtime dependency command. Existing files were preserved.'
+$runtimeVariants = @(
+  'RUN npm prune --omit=dev && npm install --no-save tsx typescript'
+  'RUN npm prune --omit=dev && npm install --no-save --legacy-peer-deps prisma@5.22.0 tsx typescript'
+)
+if (-not $dockerContent.Contains($runtimeKeep)) {
+  $found = $false
+  foreach ($variant in $runtimeVariants) {
+    if ($dockerContent.Contains($variant)) {
+      $dockerContent = $dockerContent.Replace($variant, $runtimeKeep)
+      $found = $true
+      break
+    }
+  }
+  if (-not $found) { Fail 'Unsupported WA-AKG Dockerfile runtime stage; preserving existing files.' }
 }
-$cmdNpx = 'CMD ["sh", "-c", "npx --no-install prisma db push &&'
 $cmdDirect = 'CMD ["sh", "-c", "./node_modules/.bin/prisma db push &&'
-if ($dockerContent.Contains($cmdNpx)) {
-  $dockerContent = $dockerContent.Replace($cmdNpx, $cmdDirect)
-} elseif (-not $dockerContent.Contains($cmdDirect)) {
-  Fail 'Could not identify WA-AKG Prisma startup command. Existing files were preserved.'
+$cmdVariants = @(
+  'CMD ["sh", "-c", "npx prisma db push &&'
+  'CMD ["sh", "-c", "npx --no-install prisma db push &&'
+)
+if (-not $dockerContent.Contains($cmdDirect)) {
+  $found = $false
+  foreach ($variant in $cmdVariants) {
+    if ($dockerContent.Contains($variant)) {
+      $dockerContent = $dockerContent.Replace($variant, $cmdDirect)
+      $found = $true
+      break
+    }
+  }
+  if (-not $found) { Fail 'Unsupported WA-AKG Dockerfile startup command; preserving existing files.' }
 }
 [System.IO.File]::WriteAllText($dockerfile, $dockerContent, [System.Text.UTF8Encoding]::new($false))
 Write-Host 'Applied local-only pinned Prisma 5 Docker build fix.'
