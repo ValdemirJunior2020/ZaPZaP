@@ -142,7 +142,7 @@ export async function startBridge({settings=undefined,fetcher=fetch,port=8791}={
     return answer;
   }
   async function check(){
-    if(!state.armed||state.busy)return;
+    if(!state.requested||state.busy)return;
     state.busy=true;
     try{
       await sessionStatus();
@@ -159,7 +159,7 @@ export async function startBridge({settings=undefined,fetcher=fetch,port=8791}={
           const n=normalizeMessage(msg);
           if(!n||state.seen.has(n.key))continue;
           state.seen.add(n.key);
-          if(state.seen.size>6000){const first=state.seen.values().next().value;state.seen.delete(first)}
+          if(state.seen.size>250000){state.requested=false;state.armed=false;throw Error("Message deduplication capacity reached; auto replies paused to prevent duplicate sends") }
           try{
             const answer=await reply(n.text);
             const sent=await callWa("/messages/"+sessionPath()+"/"+encodeURIComponent(n.jid)+"/send",{method:"POST",body:JSON.stringify({message:{text:answer}})});
