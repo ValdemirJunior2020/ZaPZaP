@@ -25,3 +25,19 @@ test("local WhatsApp bridge allows iframe from local Nexus only",async()=>{
  assert.match(bridge,/action==="connect"/);
  assert.match(bridge,/state\.armed=false/);
 });
+
+test("local business settings sync requires authenticated account, never exposes gateway key",async()=>{
+ const server=await read("server.mjs");
+ const browser=await read("business.js");
+ const bridge=await read("scripts/wa-akg-local-bridge.mjs");
+ assert.match(server,/syncWhatsAppBusiness\(req,res\)/);
+ assert.match(server,/userFrom\(event,c\)/);
+ assert.match(server,/ent\?\.subscription_status==="ACTIVE"/);
+ assert.match(server,/ent\?\.billing_tier==="business"/);
+ assert.match(server,/ownStore\(c,user\.id\)/);
+ assert.match(server,/127\.0\.0\.1:8791\/api\/business/);
+ assert.match(browser,/fetch\("\/api\/nexus-whatsapp-business"/);
+ assert.match(bridge,/businessMessages\(state\.business\.store,state\.business\.items/);
+ assert.match(bridge,/if\(!state\.business\)throw Error/);
+ assert.match(bridge,/await rememberSession\(\)/);
+});
