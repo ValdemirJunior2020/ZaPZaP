@@ -20,7 +20,6 @@
 <script>
 const botId=new URLSearchParams(location.search).get("bot")||"";
 const el=id=>document.getElementById(id),feed=el("feed");let ready=false,history=[],busy=false,storeSlug="",sessionId=null,chatClosed=false,remaining=10;
-const sessionKey="nexus_widget_"+botId;try{sessionId=localStorage.getItem(sessionKey)||null}catch{}
 function ownerSessionToken(){
   // Same-origin Nexus dashboard iframe only; the server verifies the JWT and ownership.
   // Cross-origin embedded widgets do not receive any dashboard authentication token.
@@ -32,7 +31,9 @@ function ownerSessionToken(){
   }catch{return ""}
 }
 const signedOwnerToken=ownerSessionToken();
-if(signedOwnerToken)sessionId=null;
+// Owner preview and public widget never share a conversation ID.
+const sessionKey=(signedOwnerToken?"nexus_widget_owner_":"nexus_widget_")+botId;
+try{sessionId=localStorage.getItem(sessionKey)||null}catch{}
 
 function add(role,text){const b=document.createElement("div");b.className="bubble "+role;b.textContent=String(text).slice(0,2500);feed.appendChild(b);feed.scrollTop=feed.scrollHeight;return b}
 async function init(){
