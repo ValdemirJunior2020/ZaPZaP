@@ -141,10 +141,26 @@ export async function startBridge({settings=undefined,fetcher=fetch,port=8791}={
     if(!answer)throw Error("Ollama gave an empty reply");
     return answer;
   }
+  // Re-read the private local reply scope without restarting WhatsApp or scanning QR.
+  // A changed scope is baselined before any new replies to avoid answering old chats.
+  async function refreshLocalReplyMode(){
+    if(settings!==undefined)return;
+    let values;
+    try{values=parseEnv(await readFile(path.resolve(here,"../.env.wa-local"),"utf8"))}catch{return}
+    const mode=values.NEXUS_WA_REPLY_MODE==="all"?"all":"test";
+    const allow=new Set((values.NEXUS_WA_TEST_NUMBERS||"").split(",").map(x=>x.trim().replace(/^\\+/,"")).filter(x=>/^\\d{5,20}$/.test(x)));
+    const list=[...allow].sort().join(",");
+    if(mode!==state.mode || list!==[...cfg.allow].sort().join(",")){
+      state.armed=false;state.baseline=false;state.seen.clear();
+      state.mode=mode;cfg.allow=allow;
+      log("WhatsApp reply scope updated: "+(mode==="all"?"ALL CUSTOMERS":"TEST ONLY")+"; prior messages will be ignored");
+    }
+  }
   async function check(){
     if(!state.requested||state.busy)return;
     state.busy=true;
     try{
+      await refreshLocalReplyMode();
       await sessionStatus();
       if(!state.connected){state.armed=false;return}
       if(state.requested && !state.armed && state.business && (state.mode==="all"||cfg.allow.size)){
