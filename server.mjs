@@ -32,6 +32,47 @@ async function localFunction(req,res,url,name){
  res.end(answer.body||"");
 }
 
+// Local-only authenticated handoff: the browser never sees WA-AKG credentials.
+async function syncWhatsAppBusiness(req,res){
+ if(req.method!=="POST")return result(res,405,{error:"Method not allowed"});
+ const host=String(req.headers.host||"");
+ if(!/^(localhost|127\.0\.0\.1):8788$/.test(host)||req.headers.origin!=="http://"+host)
+   return result(res,403,{error:"Local Nexus origin required"});
+ try{
+  const {env,userFrom,ownStore,offerings,db}=await import("./netlify/lib/tenant.mjs");
+  const {SPECIAL_OWNER}=await import("./netlify/lib/personal-assistant.mjs");
+  const c=env(),event={headers:req.headers};
+  const {user,ent}=await userFrom(event,c);
+  const paid=ent?.subscription_status==="ACTIVE"&&ent?.billing_tier==="business"&&user.user_metadata?.account_kind!=="personal";
+  const preview=ent?.is_complimentary===true&&user.id===SPECIAL_OWNER;
+  if(!paid&&!preview)return result(res,403,{error:"Active $499 Business plan required"});
+  const store=await ownStore(c,user.id);
+  if(!store?.id||!store.name)return result(res,409,{error:"Save your Nexus business settings first"});
+  const offeringsRows=await offerings(c,store.id);
+  // Only share public business facts with this on-PC assistant, never store credentials.
+  const cut=(v,n)=>String(v??"").slice(0,n);
+  const safeStore={id:store.id,name:cut(store.name,150),agent_name:cut(store.agent_name,65),description:cut(store.description,2000),hours:cut(store.hours,300),ai_personality:cut(store.ai_personality,50)};
+  const items=(offeringsRows||[]).slice(0,100).map(item=>({name:cut(item.name,130),type:cut(item.type,30),description:cut(item.description,500),price_label:cut(item.price_label,70),status:cut(item.status,50)}));
+  let profile=null;
+  try{profile=(await db(c,"nx_business_profiles?store_id=eq."+encodeURIComponent(store.id)+"&select=address,city,region,country,online_only,address_public,timezone,categories,weekly_hours,closed_dates"))?.[0]||null}catch{}
+  const envSource=await readFile(path.join(root,".env.wa-local"),"utf8");
+  const lines=[...envSource.matchAll(/^NEXUS_WA_AKG_API_KEY=(.+)$/gm)];
+  const key=lines.at(-1)?.[1]?.trim()||"";
+  if(key.length<12)return result(res,503,{error:"Configure WA-AKG API key in .env.wa-local"});
+  const internal=crypto.createHash("sha256").update("nexus-wa-local-settings-v1:"+key).digest("hex");
+  const response=await fetch("http://127.0.0.1:8791/api/business",{
+   method:"POST",headers:{"Content-Type":"application/json","X-Nexus-Internal-Key":internal},
+   body:JSON.stringify({store:safeStore,items,profile}),signal:AbortSignal.timeout(8000)
+  });
+  const answer=await response.json().catch(()=>({}));
+  if(!response.ok)return result(res,503,{error:String(answer.error||"WhatsApp bridge rejected the business settings").slice(0,140)});
+  return result(res,200,{ok:true,business:answer.business,offerings:answer.offerings,armed:false});
+ }catch(error){
+  console.error("Local WhatsApp business sync:",String(error?.message||error).slice(0,140));
+  return result(res,503,{error:error?.status===401?"Sign in to Nexus again":"Cannot load Nexus settings into the local WhatsApp connector. Check both local services."});
+ }
+}
+
 const TYPES={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.toml':'text/plain','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.gif':'image/gif','.ico':'image/x-icon','.avif':'image/avif','.woff':'font/woff','.woff2':'font/woff2'};
 const language=(s)=>/[ãõçáéíóúâêôà]/i.test(s)||/\b(olá|oi|vocês|preço|quanto custa|obrigad[oa]|agendar|carro|hoje)\b/i.test(s)?'pt':/[¿¡ñ]/.test(s)||/\b(hola|precio|gracias|quiero|cita|mañana|cuánto|tienen|necesito)\b/i.test(s)?'es':'en';
 const fallback={en:"Thanks for messaging us! We're helping other customers right now. Someone will be with you shortly.",es:"¡Gracias por escribirnos! Estamos atendiendo a otros clientes. En breve estaremos contigo.",pt:"Obrigado por entrar em contato! Estamos atendendo outros clientes. Em breve vamos falar com você."};
@@ -89,6 +130,7 @@ const direct=/\b(phone|telephone|number|human|representative|call someone|telefo
 if(direct&&settings.sharePhone&&/^\+?[\d\s().-]{7,35}$/.test(settings.humanPhone))return result(res,200,{reply:({en:"The business contact number is ",pt:"O telefone de contato da empresa é ",es:"El teléfono de contacto de la empresa es "})[language(message)]+settings.humanPhone});
 active++;try{const answer=await generate(message,settings,Array.isArray(j.history)?j.history:[]);return result(res,200,{reply:answer,source:'ai'})}catch(e){console.warn('AI unavailable:',e.message);return result(res,503,{error:'AI temporarily unavailable',code:'AI_UNAVAILABLE'})}finally{active--}}
 if(url.pathname==='/api/whatsapp/webhook'&&req.method==='GET'){if(!process.env.WHATSAPP_VERIFY_TOKEN)return result(res,503,{error:'Not configured'});if(url.searchParams.get('hub.mode')==='subscribe'&&url.searchParams.get('hub.verify_token')===process.env.WHATSAPP_VERIFY_TOKEN){res.writeHead(200,{'Content-Type':'text/plain'});return res.end(url.searchParams.get('hub.challenge')||'')}return result(res,403,{error:'Verification failed'})}
+if(url.pathname==="/api/nexus-whatsapp-business")return await syncWhatsAppBusiness(req,res);
 const fnMatch=url.pathname.match(/^\/\.netlify\/functions\/([a-z0-9-]+)$/);
 const localApiName=fnMatch?.[1]||(url.pathname.startsWith("/api/")?url.pathname.slice(5):null);
 if(localApiName&&Object.hasOwn(localHandlers,localApiName))return await localFunction(req,res,url,localApiName);

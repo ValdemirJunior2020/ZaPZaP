@@ -86,6 +86,11 @@ async function loadWorkspace({throwOnError=false}={}){
   text("accountLabel",workspace.email||"Account");
   text("sideName",workspace.store?.name||workspace.profile?.business_name||"Your business");
   document.querySelectorAll("[data-owner-only]").forEach(el=>el.hidden=workspace?.personalAssistantSpecial!==true);
+  // Developer-only UI. Paid Business entitlement comes from owner-workspace, not browser pricing.
+  const whatsappLocal=["localhost","127.0.0.1"].includes(location.hostname);
+  const whatsappAllowed=whatsappLocal&&(workspace?.whatsappLinkAllowed===true||workspace?.personalAssistantSpecial===true);
+  document.querySelectorAll("[data-whatsapp-business]").forEach(el=>{el.hidden=!whatsappAllowed});
+  if(viewName==="whatsappLink"&&!whatsappAllowed)viewName="overview";
   render();
   return true;
  }catch(e){toast(e.message);if(/sign in|session|invalid login|unauthorized/i.test(e.message)){saveSession(null);setVisible(false)}else{setVisible(true);$("viewContent").innerHTML='<div class="alert">Business data is temporarily unavailable. Your account has not been logged out. Refresh the page to retry.</div>'}if(throwOnError)throw e;return false}
@@ -158,6 +163,7 @@ function render(){
  links:["TRACKED QR CODES","Turn foot traffic into leads","Create trackable QR codes for storefronts, vehicles, services and products."],
  widget:["WEBSITE CHATBOT","Add Chatbot to Your Website","One script to add your AI salesperson to your own website."],
  leads:["LEAD CENTER","Leads & conversations","Every inquiry, appointment request and captured conversation."],
+ whatsappLink:["WHATSAPP CONNECTION","Link your WhatsApp","Connect your WhatsApp number to your Nexus AI assistant. Local testing only."],
  team:["TEAM MANAGEMENT","Equipe de vendedores","QR Code, WhatsApp e idioma de cada funcionário."],
  personal:["PERSONAL AI BUILDER","Build Your Personal Assistant","Customize your named AI, personality, and personal contact link."],
  logs:["AI DIAGNOSTICS","AI Error Logs","Recent chat failures, stages, and diagnostic reference IDs."],
@@ -166,12 +172,19 @@ function render(){
  const t=titles[viewName]||titles.overview;
  text("workspaceEyebrow",t[0]);text("workspaceHeading",t[1]);text("workspaceSubtitle",t[2]);text("trialBadge",statusText());
  document.querySelectorAll("[data-view]").forEach(b=>{b.classList.toggle("active",b.dataset.view===viewName)});
- const views={overview:renderOverview,store:renderStore,offerings:renderOfferings,testbot:renderTestBot,links:renderLinks,leads:renderLeads,widget:()=>"",team:renderTeam,personal:renderPersonalAssistant,logs:renderErrorLogs,brazil:renderMarketPlans,billing:renderBilling};
+ const views={overview:renderOverview,store:renderStore,offerings:renderOfferings,testbot:renderTestBot,links:renderLinks,leads:renderLeads,whatsappLink:renderWhatsAppLink,widget:()=>"",team:renderTeam,personal:renderPersonalAssistant,logs:renderErrorLogs,brazil:renderMarketPlans,billing:renderBilling};
+ if(viewName==="whatsappLink"&&(!["localhost","127.0.0.1"].includes(location.hostname)||!(workspace?.whatsappLinkAllowed===true||workspace?.personalAssistantSpecial===true)))viewName="overview";
  $("viewContent").innerHTML=(views[viewName]||views.overview)();
  bindView();
  if(viewName==="widget")window.NexusWidgetGuide?.render(workspace,ownerApi,loadWorkspace);
  if(viewName==="store")window.NexusBusinessProfile?.activate(workspace,ownerApi,loadWorkspace);
  window.NexusLanguage?.apply();
+}
+function renderWhatsAppLink(){
+ // The bridge must remain loopback-only; this is not a public customer connection yet.
+ if(!["localhost","127.0.0.1"].includes(location.hostname)||!(workspace?.whatsappLinkAllowed===true||workspace?.personalAssistantSpecial===true))
+   return '<div class="card">WhatsApp linking is available to active Business subscribers during local testing.</div>';
+ return '<div class="card" style="max-width:900px"><span class="tag">BUSINESS PLAN · LOCAL TEST</span><h2>Connect your WhatsApp in Nexus</h2><p>Use your spare WhatsApp number for this test. Your AI responses stay off until you choose to enable them.</p><p id="nexusWaHelp" role="status">Click below to begin linking. You will scan a QR code using WhatsApp → Linked Devices → Link a Device.</p><button type="button" id="nexusWaLinkButton" class="price-cta" style="border:0;cursor:pointer">Link Your WhatsApp</button><div id="nexusWaEmbedded" hidden style="margin-top:18px"><iframe title="Nexus WhatsApp local linking" src="about:blank" loading="lazy" referrerpolicy="no-referrer" style="width:100%;min-height:660px;border:1px solid #c8ded1;border-radius:16px;background:#0c1714"></iframe><p class="fine">Local prototype. WA-AKG must be running on port 3790 and Nexus WhatsApp bridge on port 8791. No deployment or customer account is connected yet.</p></div></div>';
 }
 function renderOverview(){
  const s=workspace.store,items=workspace.offerings||[],leads=workspace.leads||[];
@@ -474,6 +487,30 @@ function renderBilling(){
  return '<div class="card"><h2>'+htmlEsc(statusText())+'</h2><p>'+htmlEsc(status)+'</p><div class="view-grid"><div><strong class="metric">$499<small>/mo</small></strong><p>Business base with 3 employees. Extra employees: $30 each/month in Brazil or $50 elsewhere.</p></div><div><strong class="metric">+$79<small>/mo</small></strong><p>Optional website chatbot. Prices are estimates until checkout is verified.</p></div></div><p class="hint">The old $149/$228 PayPal plans are retired for new purchases.</p><div class="actions">'+(a.reason==="COMPLIMENTARY"?'<span class="status-badge">✓ No payment required</span>':'<a class="primary" href="'+url+'">Account status</a>')+'</div></div>';
 }
 function bindView(){
+ if(viewName==="whatsappLink"){
+  const button=$("nexusWaLinkButton");
+  if(button)button.onclick=async()=>{
+   if(!["localhost","127.0.0.1"].includes(location.hostname)||!(workspace?.whatsappLinkAllowed===true||workspace?.personalAssistantSpecial===true))return;
+   button.disabled=true;
+   text("nexusWaHelp","Loading your Nexus business settings into the local WhatsApp assistant…");
+   try{
+    const headers=await authHeader();
+    if(!headers)throw Error("Sign in to Nexus again");
+    const response=await fetch("/api/nexus-whatsapp-business",{method:"POST",headers,body:"{}",cache:"no-store"});
+    const result=await response.json().catch(()=>({}));
+    if(!response.ok)throw Error(result.error||"Could not load your Nexus business settings");
+    const wrapper=$("nexusWaEmbedded");
+    wrapper.hidden=false;
+    const frame=wrapper.querySelector("iframe");
+    if(frame&&frame.getAttribute("src")==="about:blank")frame.setAttribute("src","http://127.0.0.1:8791/");
+    button.textContent="Refresh Nexus business settings";
+    text("nexusWaHelp","Business settings loaded: "+result.business+" ("+result.offerings+" offerings). Use the panel to link your WhatsApp. AI replies remain OFF until you enable them for test numbers.");
+   }catch(error){
+    text("nexusWaHelp",error.message+". Make sure Nexus (8788) and the WhatsApp bridge (8791) are running.");
+   }finally{button.disabled=false}
+  };
+ }
+
  if(viewName==="team"&&workspace?.teamAllowed===true)bindTeam();
  if(viewName==="brazil"&&workspace?.personalAssistantSpecial===true){$("marketCountry").onchange=updateMarketPreview;$("marketEmployees").oninput=updateMarketPreview;$("marketWidget").onchange=updateMarketPreview;updateMarketPreview()}
  if(viewName==="logs"&&workspace?.personalAssistantSpecial===true){$("refreshAiLogs").onclick=fetchAiLogs;fetchAiLogs()}
