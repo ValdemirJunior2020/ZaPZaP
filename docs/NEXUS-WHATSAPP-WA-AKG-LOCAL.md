@@ -87,3 +87,15 @@ User requested that the **real connected WhatsApp number receive AI answers base
 - Important: A pre-existing WA-AKG linked session has id `nexus-local-mwrj16c8`. The user must set this value in ignored `.env.wa-local` as `NEXUS_WA_SESSION_ID=nexus-local-mwrj16c8` before restarting the bridge; otherwise the bridge may attempt to create another link and cause WhatsApp `conflict replaced` disconnections.
 - Set `NEXUS_WA_TEST_NUMBERS=` to the **other phone's international digits (no plus sign)** used to send test messages, NOT the business's own WhatsApp number. Leave `NEXUS_WA_AKG_API_KEY` private and present exactly once. Keep WhatsApp Business away messages on until working tests, then coordinate to avoid duplicate replies. Use a spare number when possible due to unofficial Baileys WhatsApp-account risks.
 - Next local validation: pull branch and run `npm run test:ci`; ensure Ollama is running on localhost:11434 with `qwen3:4b`; start Nexus 8788 and WhatsApp bridge 8791, click **Link Your WhatsApp** (loads actual settings), inspect embedded status `Nexus business: <name>`, then click **Enable replies** with an approved test sender. Verify reply text is grounded in saved Nexus business facts. **Do not deploy or activate for all real customers.**
+
+## November 22 — One BAT starts ALL local Nexus AI services
+User requested that the existing Nexus AI launcher start the entire local test stack with **one double-click**. Updated `START-LOCAL-INTEGRATIONS.bat` and its `START-LOCAL-INTEGRATIONS.ps1` orchestrator on branch `feat/wa-akg-local-bridge-20261121`, no Netlify/main merge/production changes.
+- BAT now clearly labeled **NEXUS AI - START ALL LOCAL SERVICES**.
+- PowerShell runs `npm run test:ci` before startup, preserving its existing fail-closed test behavior.
+- Checks port 3790: if WA-AKG is already up, leaves it completely alone; otherwise with Docker Desktop active runs `docker compose -f docker-compose.nexus-local.yml up -d --no-build --no-recreate db_nexus app`, **never deletes volumes or recreates containers**.
+- Checks port 11434: if Ollama already up, reuses; otherwise starts `ollama serve` in a separate window if Ollama is installed.
+- Checks port 8791: reuses running WhatsApp bridge; otherwise opens `START-WHATSAPP-LOCAL-TEST.bat` in its own persistent console. The local bridge always starts with automatic replies OFF.
+- Checks port 8788: reuses Nexus if already up; otherwise runs `npm start` in the main launcher console. Opens the local dashboard URL.
+- Does not prompt for or display API keys. If WA session ID is not set, warns rather than creating a second WhatsApp session silently.
+- This is not a Windows runtime verification; code is committed and needs user testing. The user should close **older Nexus/WhatsApp terminal windows** before first run to ensure they pick up the new branch code; do not stop the WA-AKG Docker linked session. Then pull latest feature branch and double-click `START-LOCAL-INTEGRATIONS.bat` only. No separate npm start or WhatsApp BAT needed.
+- Git commits: `5d7529b77dcb83c9d903b8cb6e1c2dbb178d54ae` and `9f4ca3bf74e63741cdba245f57ad72b865a9d236`.
