@@ -91,9 +91,7 @@ $dockerContent = [System.IO.File]::ReadAllText($dockerfile)
 $replacements = @(
   @('ENV NODE_ENV=production' + "`n" + '# Provide fallback build-time', 'ENV NODE_ENV=development' + "`n" + '# Provide fallback build-time'),
   @('RUN npm ci --legacy-peer-deps && npm cache clean --force', 'RUN npm ci --include=dev --legacy-peer-deps && npm cache clean --force'),
-  @('RUN npx prisma generate && npm run build', 'RUN npx --no-install prisma generate && npm run build'),
-  @('RUN npm prune --omit=dev && npm install --no-save tsx typescript', 'RUN npm prune --omit=dev && npm install --no-save --legacy-peer-deps prisma@5.22.0 tsx typescript'),
-  @('CMD ["sh", "-c", "npx prisma db push &&', 'CMD ["sh", "-c", "npx --no-install prisma db push &&')
+  @('RUN npx prisma generate && npm run build', 'RUN npx --no-install prisma generate && npm run build')
 )
 foreach ($pair in $replacements) {
   $from = $pair[0]; $to = $pair[1]
@@ -114,9 +112,12 @@ if ($dockerContent.Contains($runtimePatched)) {
 } elseif (-not $dockerContent.Contains($runtimeKeep)) {
   Fail 'Could not identify WA-AKG runtime dependency command. Existing files were preserved.'
 }
+$cmdOriginal = 'CMD ["sh", "-c", "npx prisma db push &&'
 $cmdNpx = 'CMD ["sh", "-c", "npx --no-install prisma db push &&'
 $cmdDirect = 'CMD ["sh", "-c", "./node_modules/.bin/prisma db push &&'
-if ($dockerContent.Contains($cmdNpx)) {
+if ($dockerContent.Contains($cmdOriginal)) {
+  $dockerContent = $dockerContent.Replace($cmdOriginal, $cmdDirect)
+} elseif ($dockerContent.Contains($cmdNpx)) {
   $dockerContent = $dockerContent.Replace($cmdNpx, $cmdDirect)
 } elseif (-not $dockerContent.Contains($cmdDirect)) {
   Fail 'Could not identify WA-AKG Prisma startup command. Existing files were preserved.'
