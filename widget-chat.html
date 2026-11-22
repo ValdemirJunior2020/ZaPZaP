@@ -32,7 +32,7 @@ function ownerSessionToken(){
 }
 const signedOwnerToken=ownerSessionToken();
 // Owner preview and public widget never share a conversation ID.
-const sessionKey=(signedOwnerToken?"nexus_widget_owner_":"nexus_widget_")+botId;
+const sessionKey=(signedOwnerToken?"nexus_widget_owner_unlimited_v2_":"nexus_widget_")+botId;
 try{sessionId=localStorage.getItem(sessionKey)||null}catch{}
 
 function add(role,text){const b=document.createElement("div");b.className="bubble "+role;b.textContent=String(text).slice(0,2500);feed.appendChild(b);feed.scrollTop=feed.scrollHeight;return b}
