@@ -81,8 +81,11 @@ test("WhatsApp reloads cached business snapshot automatically and never commits 
 
 test("signed-in owner widget transcript is separate from public customer transcripts",async()=>{
  const html=await read("widget-chat.html");
- assert.match(html,/signedOwnerToken\?"nexus_widget_owner_":"nexus_widget_"/);
- assert.match(html,/if\(window\.top===window \|\| window\.top\.location\.origin!==location\.origin\)return ""/);
+ assert.match(html,/signedOwnerToken\?"nexus_widget_owner_unlimited_v2_":"nexus_widget_"/);
+ assert.doesNotMatch(html,/if\(window\.top===window/);
+ const server=await read("netlify/functions/store-chat.mjs");
+ assert.match(server,/String\(identified\.user\.email\|\|""\)\.toLowerCase\(\)==="infojr\.83@gmail\.com"/);
+ assert.match(server,/if\(!privilegedOwner && !await allow\(c,"store_chat"/);
 });
 
 test("all-customer reply scope is explicit and defaults to test-only; reconnect and history protections remain",async()=>{
