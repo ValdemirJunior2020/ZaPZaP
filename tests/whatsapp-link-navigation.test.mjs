@@ -78,3 +78,9 @@ test("WhatsApp reloads cached business snapshot automatically and never commits 
  assert.match(bridge,/writeFile\(snapshotFile,JSON\.stringify\(business\)/);
  assert.match(ignore,/\.nexus-wa-business-local\.json/);
 });
+
+test("signed-in owner widget transcript is separate from public customer transcripts",async()=>{
+ const html=await read("widget-chat.html");
+ assert.match(html,/signedOwnerToken\?"nexus_widget_owner_":"nexus_widget_"/);
+ assert.match(html,/if\(window\.top===window \|\| window\.top\.location\.origin!==location\.origin\)return ""/);
+});
