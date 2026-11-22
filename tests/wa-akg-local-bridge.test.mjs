@@ -20,7 +20,7 @@ test("validates sessions, WhatsApp personal JIDs and safe messages",()=>{
 
 test("local gateway uses mock WA-AKG: starts OFF, limits testing to allowlist, and never sends old messages",async()=>{
  const allMessages=[{fromMe:false,type:"TEXT",content:"old customer message",remoteJid:"15551234567@s.whatsapp.net",keyId:"old"}];
- let sends=0,queries=0,status="CONNECTED",created=false,session="nexus-local-test",responses=[];
+ let sends=0,queries=0,status="CONNECTED",created=false,session="nexus-local-test",responses=[],presence=[];
  const json=(body,code=200)=>({ok:code<400,status:code,json:async()=>body});
  const mock=async(url,init={})=>{
   const parsed=new URL(url);
@@ -41,6 +41,7 @@ test("local gateway uses mock WA-AKG: starts OFF, limits testing to allowlist, a
   if(p==="/api/chat/"+session)return json({status:true,data:[{jid:"15551234567@s.whatsapp.net"},{jid:"15557654321@s.whatsapp.net"},{jid:"120363@g.us"}]});
   if(p==="/api/chat/"+session+"/15551234567%40s.whatsapp.net")return json({status:true,data:allMessages});
   if(p==="/api/chat/"+session+"/15557654321%40s.whatsapp.net")return json({status:true,data:[{fromMe:false,type:"TEXT",keyId:"other",content:"please ignore",remoteJid:"15557654321@s.whatsapp.net"}]});
+  if(p.endsWith("/presence")&&init.method==="POST"){presence.push(JSON.parse(init.body).presence);return json({success:true})}
   if(p.startsWith("/api/messages/")){sends++;responses.push(JSON.parse(init.body));return json({status:true})}
   throw Error("Unexpected request "+url);
  };
@@ -78,6 +79,7 @@ test("local gateway uses mock WA-AKG: starts OFF, limits testing to allowlist, a
   assert.equal(sends,1,JSON.stringify({queries,errors:bridge.state.errors,recent:bridge.state.recent}));
   assert.deepEqual(responses[0],{message:{text:"Hello from Nexus!"}});
   assert.equal(queries,1);
+  assert.deepEqual(presence,["composing","paused"]);
   status="DISCONNECTED";
   const final=await (await fetch(base+"/api/status")).json();
   assert.equal(final.armed,false);
