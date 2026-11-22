@@ -41,7 +41,7 @@ window.addEventListener("message",event=>{
  if(event.source!==window.parent||!trustedOwnerParent(event.origin))return;
  if(event.data?.type!=="nexus-widget-owner-auth-response"||event.data?.botId!==botId)return;
  const token=event.data?.token;
- if(typeof token!=="string"||!/^[-\\w.]+$/.test(token)||token.length>4096)return;
+ if(typeof token!=="string"||!/^[-\w.]+$/.test(token)||token.length>4096)return;
  signedOwnerToken=token;
  sessionKey="nexus_widget_owner_unlimited_v2_"+botId;
  sessionId=null;try{sessionId=localStorage.getItem(sessionKey)||null}catch{}
