@@ -105,9 +105,9 @@ test("Nexus AI Support opens an accessible copy-email dialog rather than launchi
 
 test("Nexus AI homepage embeds the active owner chatbot widget exactly once",async()=>{
  const homepage=await read("index.html");
- const embed='<script src="https://zapzap-bot.netlify.app/widget.js" data-bot-id="bot_c75284b0593d0acd0d39dd60" async></script>';
+ const embed='<script src="/widget.js" data-bot-id="bot_c75284b0593d0acd0d39dd60" async></script>';
  assert.equal(homepage.split(embed).length-1,1);
- assert.match(homepage,/src="https:\/\/zapzap-bot\.netlify\.app\/widget\.js"/);
+ assert.doesNotMatch(homepage,/src="https:\/\/zapzap-bot\.netlify\.app\/widget\.js"/);
 });
 
 test("Embedded website chatbot animates thinking dots and replaces them with actual replies",async()=>{
