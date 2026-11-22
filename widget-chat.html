@@ -21,10 +21,10 @@
 const botId=new URLSearchParams(location.search).get("bot")||"";
 const el=id=>document.getElementById(id),feed=el("feed");let ready=false,history=[],busy=false,storeSlug="",sessionId=null,chatClosed=false,remaining=10;
 function ownerSessionToken(){
-  // Same-origin Nexus dashboard iframe only; the server verifies the JWT and ownership.
-  // Cross-origin embedded widgets do not receive any dashboard authentication token.
+  // Check only the Nexus origin's own signed-in session.
+  // A cross-origin customer site cannot read this storage or grant owner privileges.
+  // The server always validates the JWT, owner ID, email and entitlement.
   try{
-    if(window.top===window || window.top.location.origin!==location.origin)return "";
     const auth=JSON.parse(sessionStorage.getItem("nexus_owner_v1")||"null");
     if(!auth?.access_token || (auth.expires_at && Date.now()/1000>auth.expires_at-60))return "";
     return String(auth.access_token);
