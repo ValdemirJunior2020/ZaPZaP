@@ -71,7 +71,7 @@ if (PortUp 8791) {
     Write-Warning "Existing WhatsApp session ID not configured in .env.wa-local. Do not create a second session by accident."
   }
   StartWindow "Nexus WhatsApp Local Bridge" "call START-WHATSAPP-LOCAL-TEST.bat"
-  Write-Host "WhatsApp bridge start requested. Replies remain OFF by default." -ForegroundColor Green
+  Write-Host "WhatsApp bridge launched. Check Nexus WhatsApp panel for CONNECTED, reply mode and AI status." -ForegroundColor Green
 }
 
 Write-Host "[5/5] Starting Nexus AI dashboard..." -ForegroundColor Cyan
