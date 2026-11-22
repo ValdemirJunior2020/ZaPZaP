@@ -135,11 +135,28 @@ export async function startBridge({settings=undefined,fetcher=fetch,port=8791}={
   }
   async function reply(text){
     if(!state.business)throw Error("Connect your Nexus business settings before enabling replies");
-    const r=await fetcher(cfg.ollamaRoot+"/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:cfg.model,stream:false,messages:businessMessages(state.business.store,state.business.items,text,[]).map((message,i)=>i===0&&state.business.profile?{...message,content:message.content+" VERIFIED OPERATING PROFILE: "+JSON.stringify(state.business.profile).slice(0,3000)+". Use these hours, time zone and public location only as provided; never claim an appointment is booked."}:message),options:{num_predict:350,temperature:0.4}}),signal:AbortSignal.timeout(35000)});
-    if(!r.ok)throw Error("Local Ollama HTTP "+r.status);
-    const result=await r.json();const answer=String(result.message?.content||"").replace(/<think>[\s\S]*?<\/think>/g,"").trim().slice(0,900);
-    if(!answer)throw Error("Ollama gave an empty reply");
-    return answer;
+    const messages=businessMessages(state.business.store,state.business.items,text,[]).map((message,i)=>i===0&&state.business.profile?{...message,content:message.content+" VERIFIED OPERATING PROFILE: "+JSON.stringify(state.business.profile).slice(0,3000)+". Use these hours, time zone and public location only as provided; never claim an appointment is booked."}:message);
+    // Qwen3 may spend the entire token budget on internal thinking and return
+    // message.content="" unless thinking is disabled at the TOP API level.
+    // Never send message.thinking or <think> content to a customer.
+    let lastError="empty content";
+    for(let attempt=0;attempt<2;attempt++){
+      const r=await fetcher(cfg.ollamaRoot+"/api/chat",{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          model:cfg.model,stream:false,think:false,messages,
+          options:{num_predict:attempt===0?700:1200,temperature:0.4}
+        }),signal:AbortSignal.timeout(attempt===0?45000:70000)
+      });
+      if(!r.ok)throw Error("Local Ollama HTTP "+r.status);
+      const result=await r.json();
+      const raw=String(result.message?.content??"");
+      const answer=raw.replace(/<think>[\\s\\S]*?<\\/think>/g,"").replace(/<think>[\\s\\S]*$/g,"").trim().slice(0,900);
+      if(answer)return answer;
+      lastError="empty content (done_reason="+String(result.done_reason||"unknown").slice(0,40)+", thinking="+Boolean(result.message?.thinking)+")";
+      log("Ollama returned no customer-facing answer; trying again with a larger response budget");
+    }
+    throw Error("Ollama gave an empty reply after retry: "+lastError);
   }
   // Re-read the private local reply scope without restarting WhatsApp or scanning QR.
   // A changed scope is baselined before any new replies to avoid answering old chats.
