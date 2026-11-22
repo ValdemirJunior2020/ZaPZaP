@@ -44,11 +44,11 @@ async function config() {
     const u = new URL(origin);
     if (u.protocol!=="http:" || !["127.0.0.1","localhost"].includes(u.hostname) || u.username || u.password || u.pathname!=="/") throw Error("Gateway and Ollama URLs must be loopback HTTP origins");
   }
-  return {apiRoot,ollamaRoot,apiKey:values.NEXUS_WA_AKG_API_KEY||"",model:values.NEXUS_WA_OLLAMA_MODEL||"qwen3:4b",business:(values.NEXUS_WA_BUSINESS_NAME||"Our Business").slice(0,80),session:values.NEXUS_WA_SESSION_ID||"",allow:new Set((values.NEXUS_WA_TEST_NUMBERS||"").split(",").map(x=>x.trim().replace(/^\+/,"")).filter(x=>/^\d{5,20}$/.test(x)))};
+  return {apiRoot,ollamaRoot,apiKey:values.NEXUS_WA_AKG_API_KEY||"",model:values.NEXUS_WA_OLLAMA_MODEL||"qwen3:4b",business:(values.NEXUS_WA_BUSINESS_NAME||"Our Business").slice(0,80),session:values.NEXUS_WA_SESSION_ID||"",autoReply:values.NEXUS_WA_AUTO_REPLY!=="off",allow:new Set((values.NEXUS_WA_TEST_NUMBERS||"").split(",").map(x=>x.trim().replace(/^\+/,"")).filter(x=>/^\d{5,20}$/.test(x)))};
 }
 export async function startBridge({settings=undefined,fetcher=fetch,port=8791}={}) {
   const cfg = settings || await config();
-  const state = {session:validSession(cfg.session)?cfg.session:"",connected:false,armed:false,busy:false,lastCheck:"Never",errors:[],recent:[],seen:new Set(),baseline:false,business:null};
+  const state = {session:validSession(cfg.session)?cfg.session:"",connected:false,armed:false,requested:false,busy:false,lastCheck:"Never",errors:[],recent:[],seen:new Set(),baseline:false,business:null};
   const log = value => {state.recent.unshift({time:new Date().toLocaleTimeString(),message:value});state.recent=state.recent.slice(0,18)};
   const err = value => {state.errors.unshift(String(value).slice(0,160));state.errors=state.errors.slice(0,5);log("Error: "+value)};
   async function rememberSession(){
@@ -68,10 +68,18 @@ export async function startBridge({settings=undefined,fetcher=fetch,port=8791}={
   }
   function sessionPath(s=state.session){if(!validSession(s))throw Error("Invalid session ID");return encodeURIComponent(s)}
   async function sessionStatus(){
-    const result=await callWa("/sessions/"+sessionPath());
+    let result;
+    try{result=await callWa("/sessions/"+sessionPath())}
+    catch(error){
+      if(/WA-AKG HTTP 404/.test(String(error.message))){
+        state.connected=false;state.armed=false;
+        throw Error("Saved WA-AKG session is missing. Restore the original Docker MySQL data/session; do not create a duplicate or scan a new QR until checked.");
+      }
+      throw error;
+    }
     const status=String(result.data?.status||"UNKNOWN").toUpperCase();
     state.connected=status==="CONNECTED";
-    if(!state.connected && state.armed){state.armed=false;log("Automatic replies paused: session disconnected")}
+    if(!state.connected && state.armed){state.armed=false;log("WhatsApp offline; replies resume automatically after reconnection")}
     return status;
   }
   async function getChats(){
@@ -129,6 +137,11 @@ export async function startBridge({settings=undefined,fetcher=fetch,port=8791}={
     state.busy=true;
     try{
       await sessionStatus();
+      if(!state.connected){state.armed=false;return}
+      if(state.requested && !state.armed && state.business && cfg.allow.size){
+        if(!state.baseline)await baseline();
+        state.armed=true;log("AI replies automatically resumed for "+cfg.allow.size+" approved test numbers");
+      }
       if(!state.armed)return;
       const chats=await getChats();
       for(const chat of chats){
@@ -147,10 +160,10 @@ export async function startBridge({settings=undefined,fetcher=fetch,port=8791}={
         }
       }
       state.lastCheck=new Date().toLocaleTimeString();
-    }catch(e){state.armed=false;err("Auto-reply paused: "+e.message)}
+    }catch(e){state.armed=false;err("Auto-reply paused; will retry automatically: "+e.message)}
     finally{state.busy=false}
   }
-  const page=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Nexus AI · WhatsApp local lab</title><style>body{font:16px system-ui;background:#0c1714;color:#edf7f1;margin:0;padding:30px}main{max-width:740px;margin:auto}section{background:#173027;padding:24px;border:1px solid #36614b;border-radius:18px;margin:14px 0}button{background:#28c76f;color:#092013;border:0;border-radius:10px;padding:12px 18px;font-weight:700;margin:4px;cursor:pointer}button:disabled{opacity:.4;cursor:not-allowed}img{max-width:260px;border-radius:12px;background:white;padding:10px}code{color:#a1f9cd}small{color:#abcbb8}pre{white-space:pre-wrap;color:#d1efe0}h1{margin:0}.warning{color:#ffcb9f}</style><main><h1>WhatsApp · Local Test</h1><p>WA-AKG QR + Nexus AI Ollama. Runs on this PC only. Not a live customer integration.</p><section><div id="status">Checking…</div><button onclick="connectWhatsApp()">Link Your WhatsApp</button><button id="refreshQr" onclick="qr()" disabled>Refresh QR</button><p id="qr"></p><small>Scan with WhatsApp → Settings → Linked Devices → Link a Device.</small></section><section><h2>AI test replies</h2><p class="warning">Replies are OFF by default. Only phone numbers in .env.wa-local can receive AI replies. Test on a spare number.</p><button id="on" onclick="action('arm')">Enable replies</button><button onclick="action('disarm')">Stop replies</button><pre id="logs"></pre></section><script>async function get(p,opts={}){const r=await fetch('/api/'+p,opts);const x=await r.json();if(!r.ok)throw Error(x.error||'Request failed');return x}async function action(type){try{await get(type,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});await update()}catch(e){alert(e.message)}}async function connectWhatsApp(){try{document.getElementById('qr').textContent='Preparing your secure link…';await get('connect',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});await update();await qr()}catch(e){document.getElementById('qr').textContent=e.message}}async function qr(){try{const x=await get('qr');document.getElementById('qr').innerHTML=x.base64?'<img alt="WhatsApp link QR" src="'+x.base64+'">':'QR is still preparing. Click Refresh QR in a few seconds.'}catch(e){document.getElementById('qr').textContent=e.message}}async function update(){try{const x=await get('status');document.getElementById('status').textContent='Session: '+(x.session||'not created')+' | WhatsApp: '+x.connection+' | AI: '+(x.armed?'ON':'OFF')+' | Nexus business: '+(x.business||'not loaded')+' | Test numbers: '+x.allowed;document.getElementById('on').disabled=!x.connected||!x.allowed||!x.business;document.getElementById('refreshQr').disabled=!x.session;document.getElementById('logs').textContent=x.recent.map(x=>x.time+' '+x.message).join('\\n')}catch(e){document.getElementById('status').textContent=e.message}}update();setInterval(update,4500)</script></main></html>`;
+  const page=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Nexus AI · WhatsApp local lab</title><style>body{font:16px system-ui;background:#0c1714;color:#edf7f1;margin:0;padding:30px}main{max-width:740px;margin:auto}section{background:#173027;padding:24px;border:1px solid #36614b;border-radius:18px;margin:14px 0}button{background:#28c76f;color:#092013;border:0;border-radius:10px;padding:12px 18px;font-weight:700;margin:4px;cursor:pointer}button:disabled{opacity:.4;cursor:not-allowed}img{max-width:260px;border-radius:12px;background:white;padding:10px}code{color:#a1f9cd}small{color:#abcbb8}pre{white-space:pre-wrap;color:#d1efe0}h1{margin:0}.warning{color:#ffcb9f}</style><main><h1>WhatsApp · Local Test</h1><p>WA-AKG QR + Nexus AI Ollama. Runs on this PC only. Not a live customer integration.</p><section><div id="status">Checking…</div><button onclick="connectWhatsApp()">Link Your WhatsApp</button><button id="refreshQr" onclick="qr()" disabled>Refresh QR</button><p id="qr"></p><small>Scan with WhatsApp → Settings → Linked Devices → Link a Device.</small></section><section><h2>AI test replies</h2><p class="warning">Replies are OFF by default. Only phone numbers in .env.wa-local can receive AI replies. Test on a spare number.</p><button id="on" onclick="action('arm')">Enable replies</button><button onclick="action('disarm')">Stop replies</button><pre id="logs"></pre></section><script>async function get(p,opts={}){const r=await fetch('/api/'+p,opts);const x=await r.json();if(!r.ok)throw Error(x.error||'Request failed');return x}async function action(type){try{await get(type,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});await update()}catch(e){alert(e.message)}}async function connectWhatsApp(){try{document.getElementById('qr').textContent='Preparing your secure link…';await get('connect',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});await update();await qr()}catch(e){document.getElementById('qr').textContent=e.message}}async function qr(){try{const x=await get('qr');document.getElementById('qr').innerHTML=x.base64?'<img alt="WhatsApp link QR" src="'+x.base64+'">':'QR is still preparing. Click Refresh QR in a few seconds.'}catch(e){document.getElementById('qr').textContent=e.message}}async function update(){try{const x=await get('status');document.getElementById('status').textContent='Session: '+(x.session||'not created')+' | WhatsApp: '+x.connection+' | AI: '+(x.armed?'ON':x.autoReplyRequested?'AUTO-RESUME PENDING':'OFF')+' | Nexus business: '+(x.business||'not loaded')+' | Test numbers: '+x.allowed;document.getElementById('on').disabled=!x.connected||!x.allowed||!x.business;document.getElementById('refreshQr').disabled=!x.session;document.getElementById('logs').textContent=x.recent.map(x=>x.time+' '+x.message).join('\\n')}catch(e){document.getElementById('status').textContent=e.message}}update();setInterval(update,4500)</script></main></html>`;
   const send=(res,status,value,type="application/json")=>{res.writeHead(status,{"Content-Type":type,"Cache-Control":"no-store","X-Content-Type-Options":"nosniff","Content-Security-Policy":"default-src 'self' data: 'unsafe-inline'; img-src 'self' data:; object-src 'none'; frame-ancestors http://127.0.0.1:8788 http://localhost:8788"});res.end(type==="application/json"?JSON.stringify(value):value)};
   const server=http.createServer(async(req,res)=>{
     const host=req.headers.host||"";
@@ -171,13 +184,16 @@ export async function startBridge({settings=undefined,fetcher=fetch,port=8791}={
         if(state.business&&state.business.store.id!==business.store.id){send(res,409,{error:"This local WhatsApp session belongs to another business. Stop replies before switching accounts."});return}
         state.armed=false;
         state.business=business;
-        log("Nexus business settings loaded for "+business.store.name+" ("+business.items.length+" offerings). Replies OFF.");
+        state.requested=cfg.autoReply!==false;
+        state.baseline=false;
+        state.seen.clear();
+        log("Nexus business settings loaded for "+business.store.name+" ("+business.items.length+" offerings). Auto replies "+(state.requested?"requested":"disabled")+". Waiting for confirmed WhatsApp connection.");
         send(res,200,{ok:true,business:business.store.name,offerings:business.items.length,armed:state.armed});return;
       }
       if(action==="status"&&req.method==="GET"){
         let connection="not created";
         if(state.session){try{connection=await sessionStatus()}catch(e){connection="WA-AKG unavailable"}}
-        send(res,200,{session:state.session,connection,connected:state.connected,armed:state.armed,business:state.business?.store.name||null,allowed:cfg.allow.size,recent:state.recent,errors:state.errors});return;
+        send(res,200,{session:state.session,connection,connected:state.connected,armed:state.armed,autoReplyRequested:state.requested,business:state.business?.store.name||null,allowed:cfg.allow.size,recent:state.recent,errors:state.errors});return;
       }
       if(action==="qr"&&req.method==="GET"){
         if(!state.session){send(res,409,{error:"Click Link Your WhatsApp first to create a session."});return}
@@ -212,8 +228,8 @@ export async function startBridge({settings=undefined,fetcher=fetch,port=8791}={
         if(!state.business)throw Error("Open Link Your WhatsApp in Nexus to load this business settings first");
         if(!state.session)throw Error("Create a WhatsApp session first");
         if(await sessionStatus()!=="CONNECTED")throw Error("WhatsApp must be connected");
-        state.armed=false;state.seen.clear();await baseline();state.armed=true;log("AI replies enabled for approved test numbers");
-      }else if(action==="disarm"){state.armed=false;log("AI replies disabled")}
+        state.requested=true;state.armed=false;state.baseline=false;state.seen.clear();await baseline();state.armed=true;log("AI replies enabled for approved test numbers");
+      }else if(action==="disarm"){state.requested=false;state.armed=false;log("AI replies disabled until next explicit enable or business settings reload")}
       else{send(res,404,{error:"Unknown action"});return}
       send(res,200,{ok:true,session:state.session,armed:state.armed});
     }catch(e){err(e.message);send(res,400,{error:String(e.message).slice(0,180)})}
