@@ -13,36 +13,59 @@ if (-not (Test-Path $destination)) {
   if ($LASTEXITCODE -ne 0) { Fail 'Git clone failed.' }
 }
 Set-Location $destination
-if (-not (Test-Path '.env')) {
-  function NewSecret([int]$length = 28) {
-    $bytes = [byte[]]::new($length)
-    $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
-    try { $rng.GetBytes($bytes) } finally { $rng.Dispose() }
-    return ([Convert]::ToBase64String($bytes)).TrimEnd('=').Replace('+','A').Replace('/','B')
+function NewSecret([int]$length = 28) {
+  $bytes = [byte[]]::new($length)
+  $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+  try { $rng.GetBytes($bytes) } finally { $rng.Dispose() }
+  return ([Convert]::ToBase64String($bytes)).TrimEnd('=').Replace('+','A').Replace('/','B')
+}
+$envPath = Join-Path $destination '.env'
+$oldEnv = if (Test-Path $envPath) { [System.IO.File]::ReadAllText($envPath) } else { '' }
+# Older installer wrote all keys onto one line, so Docker interpreted them as
+# one giant MYSQL_ROOT_PASSWORD. Repair in place WITHOUT deleting the DB volume.
+$malformed = ($oldEnv -match '(?m)^MYSQL_ROOT_PASSWORD=.*\s+MYSQL_DATABASE=') -or
+             ($oldEnv -and $oldEnv -notmatch '(?m)^AUTH_SECRET=') -or
+             ($oldEnv -and $oldEnv -notmatch '(?m)^ADMIN_EMAIL=')
+if (-not $oldEnv -or $malformed) {
+  $mysql = $null
+  # Match the EXACT password used by the already initialized MySQL container.
+  # Never print it, and do not change it while preserving the MySQL volume.
+  $inspect = & docker inspect --format '{{json .Config.Env}}' wa-akg-local-db-1 2>$null
+  if ($LASTEXITCODE -eq 0 -and $inspect) {
+    $mysqlVar = @($inspect | ConvertFrom-Json | Where-Object { $_ -like 'MYSQL_ROOT_PASSWORD=*' }) | Select-Object -First 1
+    if ($mysqlVar) { $mysql = $mysqlVar.Substring('MYSQL_ROOT_PASSWORD='.Length) }
   }
-  $mysql = NewSecret 24
+  if (-not $mysql -and $oldEnv) {
+    Fail 'Could not recover existing MySQL password safely. Do not delete the DB volume; share only the error text.'
+  }
+  if (-not $mysql) { $mysql = NewSecret 24 }
   $auth = NewSecret 48
-  $adminPassword = NewSecret 22
+  $adminPassword = NewSecret 24
   $email = 'localadmin@example.test'
+  # Each entry must be a distinct array item, not a comma-separated expression.
+  # The URL-encoded MySQL password is separate from the raw container password.
   $envLines = @(
-    'MYSQL_ROOT_PASSWORD=' + $mysql,
-    'MYSQL_DATABASE=wa_akg',
-    'AUTH_SECRET=' + $auth,
-    'BASE_URL=http://127.0.0.1:3790',
-    'NEXTAUTH_URL=http://127.0.0.1:3790',
-    'PORT=3000',
-    'DEFAULT_LANGUAGE=en',
-    'TZ=America/New_York',
-    'ENABLE_TELEMETRY=false',
-    'ADMIN_EMAIL=' + $email,
-    'ADMIN_PASSWORD=' + $adminPassword
+    ("MYSQL_ROOT_PASSWORD='" + $mysql.Replace("'", "''") + "'")
+    ('NEXUS_WA_MYSQL_PASSWORD_URL=' + [Uri]::EscapeDataString($mysql))
+    'MYSQL_DATABASE=wa_akg'
+    ('AUTH_SECRET=' + $auth)
+    'BASE_URL=http://127.0.0.1:3790'
+    'NEXTAUTH_URL=http://127.0.0.1:3790'
+    'PORT=3000'
+    'DEFAULT_LANGUAGE=en'
+    'TZ=America/New_York'
+    'ENABLE_TELEMETRY=false'
+    ('ADMIN_EMAIL=' + $email)
+    ('ADMIN_PASSWORD=' + $adminPassword)
   )
-  [System.IO.File]::WriteAllLines((Join-Path $destination '.env'),$envLines,[System.Text.UTF8Encoding]::new($false))
-  Write-Host ''
-  Write-Host 'WA-AKG admin account (save privately):'
+  # Preserve a local-only backup of original settings; never print secrets.
+  if ($oldEnv) { [System.IO.File]::WriteAllText(($envPath + '.before-repair'), $oldEnv, [System.Text.UTF8Encoding]::new($false)) }
+  [System.IO.File]::WriteAllLines($envPath, [string[]]$envLines, [System.Text.UTF8Encoding]::new($false))
+  Write-Host 'WA-AKG environment file created/repaired with separate settings.'
+  Write-Host 'LOCAL WA-AKG administrator:'
   Write-Host ('Email: ' + $email)
   Write-Host ('Password: ' + $adminPassword)
-  Write-Host 'Admin credentials are stored in wa-akg-local\.env on your PC; DO NOT share or commit it.'
+  Write-Host 'Save the administrator password privately. It is also stored in wa-akg-local\.env.'
 }
 # Fix upstream WA-AKG Dockerfile for pinned Prisma 5 CLI.
 # Upstream sets NODE_ENV=production in the builder, so npm skips Prisma (devDependency)
@@ -90,7 +113,7 @@ services:
     ports:
       - "127.0.0.1:3790:3000"
     environment:
-      DATABASE_URL: mysql://root:${MYSQL_ROOT_PASSWORD}@db:3306/${MYSQL_DATABASE:-wa_akg}
+      DATABASE_URL: mysql://root:${NEXUS_WA_MYSQL_PASSWORD_URL}@db:3306/${MYSQL_DATABASE:-wa_akg}
       AUTH_SECRET: ${AUTH_SECRET}
       BASE_URL: http://127.0.0.1:3790
       NEXTAUTH_URL: http://127.0.0.1:3790
