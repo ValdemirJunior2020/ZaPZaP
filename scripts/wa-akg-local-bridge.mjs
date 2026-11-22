@@ -46,14 +46,32 @@ export function safeCustomerReply(raw){
   if(/^\s*(?:\d+[.)]\s+|[-*]\s+).*\n/m.test(text))return null;
   return text;
 }
-function localSafeFallback(input,business){
-  const name=String(business||"Nexus AI").slice(0,65);
-  const inputText=String(input||"").trim();
-  if(/[ãõçáéíóúâêôà]|(?:\b(?:oi|olá|ola|quanto|preço|serviços|produto|obrigad[oa]|gostaria|saber|bom dia|boa tarde|boa noite)\b)/i.test(inputText))
-    return "Olá! Sou o assistente virtual da "+name+". Como posso ajudar? Posso apresentar nossos serviços; para preços e condições, preciso confirmar os detalhes.";
-  if(/[¿¡ñ]|(?:\b(?:hola|precio|cuánto|servicios|producto|gracias)\b)/i.test(inputText))
-    return "¡Hola! Soy el asistente virtual de "+name+". ¿En qué puedo ayudarte? Puedo explicar nuestros servicios; los precios requieren confirmación.";
-  return "Hi! I'm the virtual assistant for "+name+". How can I help? I can explain our services; prices and terms need confirmation.";
+export function localSafeFallback(input,business,items=[]){
+  const name=String(typeof business==="object"?business?.name:business||"Nexus AI").trim().slice(0,65)||"Nexus AI";
+  const original=String(input||"").trim();
+  const q=original.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+  const pt=/[ãõçáéíóúâêôà]/i.test(original)||/\b(?:oi|ola|quanto|qual|quais|preco|precos|servico|servicos|produto|produtos|obrigad[oa]|gostaria|saber|voc[eê]|bom dia|boa tarde|boa noite|oferece|oferecem)\b/i.test(q);
+  const es=!pt&&(/[¿¡ñ]/.test(original)||/\b(?:hola|precio|cuanto|cuantos|servicios|producto|productos|gracias|ofrecen)\b/i.test(q));
+  const productQuestion=/\b(?:servico|servicos|produto|produtos|oferece|oferecem|solucoes|faz|voces fazem|services|products|offer|offers|solutions|servicios|productos|ofrecen)\b/i.test(q);
+  const priceQuestion=/\b(?:quanto|preco|precos|custa|custam|valor|valores|price|prices|cost|costs|pricing|precio|cuanto|cuesta)\b/i.test(q);
+  const catalog=(Array.isArray(items)?items:[]).filter(x=>x&&typeof x.name==="string"&&x.name.trim()&&String(x.status||"").toLowerCase()!=="inactive");
+  // Only trusted, owner-supplied catalog items are used. Never manufacture prices.
+  const products=catalog.slice(0,5).map(x=>{
+    const title=String(x.name).trim().replace(/[\r\n]+/g," ").slice(0,85);
+    const price=String(x.price_label||"").trim().replace(/[\r\n]+/g," ").slice(0,50);
+    return title+(priceQuestion&&price?" ("+price+")":"");
+  });
+  const remaining=catalog.length>5;
+  if((productQuestion||priceQuestion)&&products.length){
+    const offers=products.join(", ")+(remaining?"…":"");
+    const priced=catalog.slice(0,5).every(x=>String(x.price_label||"").trim());
+    if(pt)return "A "+name+" oferece: "+offers+". "+(priceQuestion&&!priced?"Os valores não informados precisam ser confirmados.":"Qual serviço você gostaria de conhecer melhor?");
+    if(es)return name+" ofrece: "+offers+". "+(priceQuestion&&!priced?"Los precios no publicados necesitan confirmación.":"¿Cuál te interesa conocer mejor?");
+    return name+" offers: "+offers+". "+(priceQuestion&&!priced?"Unlisted prices need confirmation.":"Which service would you like to learn more about?");
+  }
+  if(pt)return "Olá! Sou o assistente virtual da "+name+". Como posso ajudar você hoje?";
+  if(es)return "¡Hola! Soy el asistente virtual de "+name+". ¿Cómo puedo ayudarte?";
+  return "Hi! I'm the virtual assistant for "+name+". How can I help you today?";
 }
 async function config() {
   const file = await readFile(path.resolve(here,"../.env.wa-local"),"utf8").catch(()=>"");
@@ -178,7 +196,7 @@ export async function startBridge({settings=undefined,fetcher=fetch,port=8791}={
 
     }
     log("Ollama unsafe output blocked after retry: "+lastError);
-    return localSafeFallback(text,state.business.store.name);
+    return localSafeFallback(text,state.business.store,state.business.items);
   }
   // Re-read the private local reply scope without restarting WhatsApp or scanning QR.
   // A changed scope is baselined before any new replies to avoid answering old chats.
