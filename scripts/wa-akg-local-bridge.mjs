@@ -101,12 +101,12 @@ export async function startBridge({settings=undefined,fetcher=fetch,port=8791}={
           const n=normalizeMessage(msg);
           if(!n||state.seen.has(n.key))continue;
           state.seen.add(n.key);
-          if(state.seen.size>6000)state.seen.clear();
+          if(state.seen.size>6000){const first=state.seen.values().next().value;state.seen.delete(first)}
           try{
             const answer=await reply(n.text);
             const sent=await callWa("/messages/"+sessionPath()+"/"+encodeURIComponent(n.jid)+"/send",{method:"POST",body:JSON.stringify({message:{text:answer}})});
             if(sent.status===false)throw Error("WA-AKG did not confirm send");
-            log("Replied to approved test number ending "+n.jid.slice(-18,-15)+" (message "+n.key.slice(0,12)+")");
+            log("Replied to approved test number ending "+n.jid.split("@")[0].slice(-3)+" (message "+n.key.slice(0,12)+")");
           }catch(e){err(e.message)}
         }
       }
