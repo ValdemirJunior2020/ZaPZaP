@@ -44,6 +44,28 @@ if (-not (Test-Path '.env')) {
   Write-Host ('Password: ' + $adminPassword)
   Write-Host 'Admin credentials are stored in wa-akg-local\.env on your PC; DO NOT share or commit it.'
 }
+# Fix upstream WA-AKG Dockerfile for pinned Prisma 5 CLI.
+# Upstream sets NODE_ENV=production in the builder, so npm skips Prisma (devDependency)
+# and npx downloads an incompatible latest Prisma CLI. Keep Prisma 5 during build and runtime.
+# This patch runs ONLY against the ignored LOCAL WA-AKG clone; never edits GitHub upstream.
+$dockerfile = Join-Path $destination 'Dockerfile'
+if (-not (Test-Path $dockerfile)) { Fail 'WA-AKG Dockerfile is missing. Reclone only if needed.' }
+$dockerContent = [System.IO.File]::ReadAllText($dockerfile)
+$replacements = @(
+  @('ENV NODE_ENV=production' + "`n" + '# Provide fallback build-time', 'ENV NODE_ENV=development' + "`n" + '# Provide fallback build-time'),
+  @('RUN npm ci --legacy-peer-deps && npm cache clean --force', 'RUN npm ci --include=dev --legacy-peer-deps && npm cache clean --force'),
+  @('RUN npx prisma generate && npm run build', 'RUN npx --no-install prisma generate && npm run build'),
+  @('RUN npm prune --omit=dev && npm install --no-save tsx typescript', 'RUN npm prune --omit=dev && npm install --no-save --legacy-peer-deps prisma@5.22.0 tsx typescript'),
+  @('CMD ["sh", "-c", "npx prisma db push &&', 'CMD ["sh", "-c", "npx --no-install prisma db push &&')
+)
+foreach ($pair in $replacements) {
+  $from = $pair[0]; $to = $pair[1]
+  if ($dockerContent.Contains($to)) { continue }
+  if (-not $dockerContent.Contains($from)) { Fail ('WA-AKG Dockerfile layout changed: missing ' + $from) }
+  $dockerContent = $dockerContent.Replace($from, $to)
+}
+[System.IO.File]::WriteAllText($dockerfile, $dockerContent, [System.Text.UTF8Encoding]::new($false))
+Write-Host 'Applied local-only pinned Prisma 5 Docker build fix.'
 # Compose has its own file so the upstream exposed 0.0.0.0:3000 port cannot leak.
 $localCompose = @'
 services:
