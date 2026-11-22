@@ -48,7 +48,11 @@ async function syncWhatsAppBusiness(req,res){
   if(!paid&&!preview)return result(res,403,{error:"Active $499 Business plan required"});
   const store=await ownStore(c,user.id);
   if(!store?.id||!store.name)return result(res,409,{error:"Save your Nexus business settings first"});
-  const items=await offerings(c,store.id);
+  const offeringsRows=await offerings(c,store.id);
+  // Only share public business facts with this on-PC assistant, never store credentials.
+  const cut=(v,n)=>String(v??"").slice(0,n);
+  const safeStore={id:store.id,name:cut(store.name,150),agent_name:cut(store.agent_name,65),description:cut(store.description,2000),hours:cut(store.hours,300),ai_personality:cut(store.ai_personality,50)};
+  const items=(offeringsRows||[]).slice(0,100).map(item=>({name:cut(item.name,130),type:cut(item.type,30),description:cut(item.description,500),price_label:cut(item.price_label,70),status:cut(item.status,50)}));
   let profile=null;
   try{profile=(await db(c,"nx_business_profiles?store_id=eq."+encodeURIComponent(store.id)+"&select=address,city,region,country,online_only,address_public,timezone,categories,weekly_hours,closed_dates"))?.[0]||null}catch{}
   const envSource=await readFile(path.join(root,".env.wa-local"),"utf8");
@@ -58,7 +62,7 @@ async function syncWhatsAppBusiness(req,res){
   const internal=crypto.createHash("sha256").update("nexus-wa-local-settings-v1:"+key).digest("hex");
   const response=await fetch("http://127.0.0.1:8791/api/business",{
    method:"POST",headers:{"Content-Type":"application/json","X-Nexus-Internal-Key":internal},
-   body:JSON.stringify({store,items,profile}),signal:AbortSignal.timeout(8000)
+   body:JSON.stringify({store:safeStore,items,profile}),signal:AbortSignal.timeout(8000)
   });
   const answer=await response.json().catch(()=>({}));
   if(!response.ok)return result(res,503,{error:String(answer.error||"WhatsApp bridge rejected the business settings").slice(0,140)});
