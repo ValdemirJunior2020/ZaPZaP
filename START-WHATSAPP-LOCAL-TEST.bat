@@ -17,7 +17,7 @@ if not exist ".env.wa-local" (
   notepad ".env.wa-local"
   echo.
 )
-echo Starting Nexus WhatsApp Local Bridge. WA-AKG must also be running at 127.0.0.1:3000.
+echo Starting Nexus WhatsApp Local Bridge. WA-AKG must also be running at 127.0.0.1:3790.
 start "" "http://127.0.0.1:8791"
 node scripts\wa-akg-local-bridge.mjs
 echo.
