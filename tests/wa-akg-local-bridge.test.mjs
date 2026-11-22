@@ -56,6 +56,9 @@ test("local gateway uses mock WA-AKG: starts OFF, limits testing to allowlist, a
   assert.equal(bridge.state.armed,false);
   await call("start");
   assert.equal((await (await fetch(base+"/api/qr")).json()).base64.startsWith("data:image/png"),true);
+  const beforeSettings=await call("arm");
+  assert.match(beforeSettings.error,/Nexus business settings/);
+  assert.equal(bridge.state.armed,false);
   const internalKey=crypto.createHash("sha256").update("nexus-wa-local-settings-v1:local-testing-only").digest("hex");
   const businessData={store:{id:"11111111-1111-4111-8111-111111111111",name:"Nexus Test Bakery",agent_name:"Mia",description:"Sells fresh breads.",hours:"9 AM to 5 PM",ai_personality:"friendly"},items:[{name:"Sourdough",type:"Product",description:"Fresh loaf",price_label:"$8",status:"Available"}],profile:null};
   const denied=await fetch(base+"/api/business",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(businessData)});
