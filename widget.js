@@ -34,7 +34,7 @@ const mounted=()=> {
  panel.append(iframe);
  // Only the genuine signed-in Nexus dashboard may pass its owner JWT to the
  // trusted widget origin. Third-party customer sites never receive this token.
- const nexusHost=location.origin===origin || /^(?:localhost|127\\.0\\.0\\.1):8788$/.test(location.host)&&location.protocol==="http:";
+ const nexusHost=location.origin===origin || /^(?:localhost|127\.0\.0\.1):8788$/.test(location.host)&&location.protocol==="http:";
  const dashboardAuth=()=>{
    if(!nexusHost)return "";
    try{
