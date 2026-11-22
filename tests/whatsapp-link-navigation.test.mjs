@@ -69,3 +69,12 @@ test("local WhatsApp connector keeps desired auto-reply state and checks every c
  assert.match(bridge,/return Array\.isArray\(response\.data\)\?response\.data:\[\]/);
  assert.match(bridge,/Saved WA-AKG session is missing/);
 });
+
+test("WhatsApp reloads cached business snapshot automatically and never commits it",async()=>{
+ const bridge=await read("scripts/wa-akg-local-bridge.mjs");
+ const ignore=await read(".gitignore");
+ assert.match(bridge,/Stored Nexus business settings restored/);
+ assert.match(bridge,/await readFile\(snapshotFile,"utf8"\)/);
+ assert.match(bridge,/writeFile\(snapshotFile,JSON\.stringify\(business\)/);
+ assert.match(ignore,/\.nexus-wa-business-local\.json/);
+});
