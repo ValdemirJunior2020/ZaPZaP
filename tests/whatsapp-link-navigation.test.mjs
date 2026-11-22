@@ -130,3 +130,23 @@ test("Nexus dashboard floating widget uses SAME origin so authenticated owner qu
  assert.match(server,/infojr\.83@gmail\.com/);
  assert.match(server,/if\(!privilegedOwner && !await allow\(c,"store_chat"/);
 });
+
+
+test("WhatsApp owner panel uses customer-ready copy while preserving local disclosure and technical support details",async()=>{
+ const bridge=await read("scripts/wa-akg-local-bridge.mjs");
+ assert.match(bridge,/<h1>WhatsApp Assistant<\/h1>/);
+ assert.match(bridge,/Manage your WhatsApp connection and automatic customer replies in one place/);
+ assert.match(bridge,/id="connectionBadge"/);
+ assert.match(bridge,/id="replyBadge"/);
+ assert.match(bridge,/id="audience"/);
+ assert.match(bridge,/id="activity"/);
+ assert.match(bridge,/<details><summary>Technical details \(for support\)<\/summary>/);
+ assert.match(bridge,/Connected'\:'Not connected'/);
+ assert.match(bridge,/All new customer messages/);
+ assert.match(bridge,/Selected test contacts/);
+ assert.match(bridge,/if\(connected\)el\('qr'\)\.textContent=''/);
+ assert.match(bridge,/onclick="action\('arm'\)"/);
+ assert.match(bridge,/onclick="action\('disarm'\)"/);
+ assert.match(bridge,/currently runs on your computer and is not a hosted 24\/7 customer service integration/);
+ assert.doesNotMatch(bridge,/<h1>WhatsApp · Local Test<\/h1>/);
+});
