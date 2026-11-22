@@ -95,3 +95,11 @@ test("all-customer reply scope is explicit and defaults to test-only; reconnect 
  assert.match(bridge,/if\(state\.seen\.size>250000\)/);
  assert.match(example,/NEXUS_WA_REPLY_MODE=test/);
 });
+
+test("WhatsApp reply mode updates from private env without any second BAT or re-link",async()=>{
+ const bridge=await read("scripts/wa-akg-local-bridge.mjs");
+ assert.match(bridge,/async function refreshLocalReplyMode\(\)/);
+ assert.match(bridge,/await refreshLocalReplyMode\(\)/);
+ assert.match(bridge,/state\.mode=mode;cfg\.allow=allow/);
+ assert.match(bridge,/state\.baseline=false;state\.seen\.clear\(\)/);
+});
