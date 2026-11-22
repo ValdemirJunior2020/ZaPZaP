@@ -41,7 +41,9 @@ test("local gateway uses mock WA-AKG: starts OFF, limits testing to allowlist, a
   let state=await (await fetch(base+"/api/status")).json();
   assert.equal(state.armed,false);
   assert.equal(state.session,"");
-  await call("create");assert.equal(created,true);
+  await call("connect");assert.equal(created,true);
+  assert.equal(bridge.state.session,session);
+  assert.equal(bridge.state.armed,false);
   await call("start");
   assert.equal((await (await fetch(base+"/api/qr")).json()).base64.startsWith("data:image/png"),true);
   await call("arm");assert.equal(bridge.state.armed,true);assert.equal(bridge.state.seen.has("old"),true);
