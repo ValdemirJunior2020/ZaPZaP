@@ -1,0 +1,27 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {readFile} from "node:fs/promises";
+
+const root=new URL("../",import.meta.url);
+const read=async file=>readFile(new URL(file,root),"utf8");
+
+test("business WhatsApp navigation is hidden by default and isolated",async()=>{
+ const html=await read("index.html");
+ const js=await read("business.js");
+ assert.match(html,/data-view="whatsappLink" data-whatsapp-business hidden/);
+ assert.match(js,/function renderWhatsAppLink\(\)/);
+ assert.match(js,/workspace\?\.whatsappLinkAllowed===true/);
+ assert.match(js,/workspace\?\.personalAssistantSpecial===true/);
+ assert.match(js,/\["localhost","127\.0\.0\.1"\]\.includes\(location\.hostname\)/);
+ assert.match(js,/127\.0\.0\.1:8791/);
+});
+test("business entitlement comes from server subscription and is not based on displayed price",async()=>{
+ const handler=await read("netlify/functions/owner-workspace.mjs");
+ assert.match(handler,/whatsappLinkAllowed:ent\?\.subscription_status==="ACTIVE"&&ent\?\.billing_tier==="business"/);
+});
+test("local WhatsApp bridge allows iframe from local Nexus only",async()=>{
+ const bridge=await read("scripts/wa-akg-local-bridge.mjs");
+ assert.match(bridge,/frame-ancestors http:\/\/127\.0\.0\.1:8788 http:\/\/localhost:8788/);
+ assert.match(bridge,/action==="connect"/);
+ assert.match(bridge,/state\.armed=false/);
+});
