@@ -156,6 +156,27 @@ export async function startBridge({settings=undefined,fetcher=fetch,port=8791}={
       log("WhatsApp reply scope updated: "+(mode==="all"?"ALL CUSTOMERS":"TEST ONLY")+"; prior messages will be ignored");
     }
   }
+  async function withTyping(jid,work){
+    // WA-AKG presence is a native WhatsApp "typing..." state, not a chat message.
+    // Presence may fail on some WA-AKG versions; never block an actual AI reply.
+    const endpoint="/chat/"+sessionPath()+"/"+encodeURIComponent(jid)+"/presence";
+    let stopped=false,updating=false;
+    const presence=async(type)=>{
+      try{await callWa(endpoint,{method:"POST",body:JSON.stringify({presence:type})})}
+      catch(e){log("Typing indicator unavailable: "+String(e.message).slice(0,100))}
+    };
+    await presence("composing");
+    const tick=setInterval(()=>{
+      if(stopped||updating)return;
+      updating=true;
+      presence("composing").finally(()=>{updating=false});
+    },12000);
+    try{return await work()}
+    finally{
+      stopped=true;clearInterval(tick);
+      await presence("paused");
+    }
+  }
   async function check(){
     if(!state.requested||state.busy)return;
     state.busy=true;
@@ -177,9 +198,11 @@ export async function startBridge({settings=undefined,fetcher=fetch,port=8791}={
           state.seen.add(n.key);
           if(state.seen.size>250000){state.requested=false;state.armed=false;throw Error("Message deduplication capacity reached; auto replies paused to prevent duplicate sends") }
           try{
-            const answer=await reply(n.text);
-            const sent=await callWa("/messages/"+sessionPath()+"/"+encodeURIComponent(n.jid)+"/send",{method:"POST",body:JSON.stringify({message:{text:answer}})});
-            if(sent.status===false)throw Error("WA-AKG did not confirm send");
+            await withTyping(n.jid,async()=>{
+              const answer=await reply(n.text);
+              const sent=await callWa("/messages/"+sessionPath()+"/"+encodeURIComponent(n.jid)+"/send",{method:"POST",body:JSON.stringify({message:{text:answer}})});
+              if(sent.status===false)throw Error("WA-AKG did not confirm send");
+            });
             log("Replied to approved test number ending "+n.jid.split("@")[0].slice(-3)+" (message "+n.key.slice(0,12)+")");
           }catch(e){err(e.message)}
         }
