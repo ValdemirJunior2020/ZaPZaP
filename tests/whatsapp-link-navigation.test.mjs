@@ -84,3 +84,14 @@ test("signed-in owner widget transcript is separate from public customer transcr
  assert.match(html,/signedOwnerToken\?"nexus_widget_owner_":"nexus_widget_"/);
  assert.match(html,/if\(window\.top===window \|\| window\.top\.location\.origin!==location\.origin\)return ""/);
 });
+
+test("all-customer reply scope is explicit and defaults to test-only; reconnect and history protections remain",async()=>{
+ const bridge=await read("scripts/wa-akg-local-bridge.mjs");
+ const example=await read(".env.wa-local.example");
+ assert.match(bridge,/mode:values\.NEXUS_WA_REPLY_MODE==="all"\?"all":"test"/);
+ assert.match(bridge,/if\(!state\.requested\|\|state\.busy\)return/);
+ assert.match(bridge,/approvedSender\(chat\.jid,cfg\.allow,state\.mode\)/);
+ assert.match(bridge,/if\(!n\|\|state\.seen\.has\(n\.key\)\)continue/);
+ assert.match(bridge,/if\(state\.seen\.size>250000\)/);
+ assert.match(example,/NEXUS_WA_REPLY_MODE=test/);
+});
