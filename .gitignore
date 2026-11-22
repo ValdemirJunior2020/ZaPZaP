@@ -8,3 +8,7 @@ node_modules/
 # Generated Vercel static assets
 public/
 .vercel/
+
+# Separate local WA-AKG checkout and credentials (never commit)
+/wa-akg-local/
+.env.wa-local
