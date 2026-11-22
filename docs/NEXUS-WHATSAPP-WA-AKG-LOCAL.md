@@ -10,12 +10,11 @@ Date: November 21, 2026. Branch: feat/wa-akg-local-bridge-20261121.
 - Unlike the official WhatsApp Cloud API, WA-AKG uses the unofficial Baileys/WhatsApp Web protocol. Account restriction and disconnection are possible. Do not test on the primary business WhatsApp account.
 
 ## Prepare the WA-AKG gateway (separate app)
-Follow https://github.com/mrifqidaffaaditya/WA-AKG#-quick-installation
-Install into an **independent directory** next to Nexus, and run on port 3000. It requires a database. Never use a production DB or credentials for the gateway. Use the WA-AKG dashboard to create a private API key in Settings > API Keys. The bridge does not install, start or alter WA-AKG's database.
+Use **INSTALL-WA-AKG-LOCAL.bat** from the Nexus folder if you already have Docker Desktop running and Git for Windows installed. It clones WA-AKG into ignored `wa-akg-local`, builds local Docker containers, creates a private MySQL database, and generates random local admin credentials. This may download Docker images and dependencies to your PC, but creates NO Netlify builds or cloud resources. It only binds WhatsApp gateway port 3000 to `127.0.0.1`. Keep the credentials shown by the installer private. Otherwise follow https://github.com/mrifqidaffaaditya/WA-AKG#-quick-installation manually. Use the WA-AKG dashboard to create a private API key in Settings > API Keys. The bridge itself never modifies WA-AKG's database.
 
 ## Tomorrow: two steps at a time
-1. Switch Nexus repository to branch **feat/wa-akg-local-bridge-20261121**, pull; then double-click START-WHATSAPP-LOCAL-TEST.bat. It creates .env.wa-local and opens Notepad if absent. Add your WA-AKG key, YOUR OWN spare test phone number, and ensure Ollama qwen3:4b is available.
-2. Ensure WA-AKG is running on port 3000. Open http://127.0.0.1:8791 and choose **Create session → Start session → Show QR** (QR may take several seconds). On phone use WhatsApp → Linked Devices → Link a Device. Once CONNECTED, press **Enable replies**; send one message from the whitelisted spare number to your linked test number.
+1. Switch Nexus to branch **feat/wa-akg-local-bridge-20261121** and pull. If WA-AKG is not yet installed, double-click **INSTALL-WA-AKG-LOCAL.bat** (requires Git + running Docker Desktop) and save the generated admin password privately.
+2. Double-click **START-WHATSAPP-LOCAL-TEST.bat**. In `.env.wa-local`, paste your WA-AKG dashboard API key (Settings → API Keys) and YOUR OWN spare phone number into `NEXUS_WA_TEST_NUMBERS`. Restart the bridge after saving changes. Then open http://127.0.0.1:8791 → Create session → Start session → Show QR. Scan QR using WhatsApp → Linked Devices. Enable replies only after status CONNECTED; send a message from your spare whitelisted phone.
 
 IMPORTANT: The QR flow needs a real running WA-AKG server; this branch was only code-reviewed, not paired to a phone in ChatGPT. Do not claim end-to-end success until local tests confirm it. If no QR appears, check the WA-AKG status/console and API key. WA-AKG's QR endpoint can report 404 while the session initializes.
 
