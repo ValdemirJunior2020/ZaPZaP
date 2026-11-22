@@ -151,7 +151,7 @@ export async function startBridge({settings=undefined,fetcher=fetch,port=8791}={
       if(!r.ok)throw Error("Local Ollama HTTP "+r.status);
       const result=await r.json();
       const raw=String(result.message?.content??"");
-      const answer=raw.replace(/<think>[\\s\\S]*?<\\/think>/g,"").replace(/<think>[\\s\\S]*$/g,"").trim().slice(0,900);
+      const answer=raw.replace(/<think>[\s\S]*?<\/think>/g,"").replace(/<think>[\s\S]*$/g,"").trim().slice(0,900);
       if(answer)return answer;
       lastError="empty content (done_reason="+String(result.done_reason||"unknown").slice(0,40)+", thinking="+Boolean(result.message?.thinking)+")";
       log("Ollama returned no customer-facing answer; trying again with a larger response budget");
