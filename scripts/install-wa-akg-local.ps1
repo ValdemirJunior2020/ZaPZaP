@@ -126,71 +126,7 @@ Write-Host 'Applied local-only pinned Prisma 5 Docker build fix.'
 # MySQL root may only authenticate via its local socket; never enable remote root.
 # Provision an app-specific user without deleting or resetting existing MySQL data.
 $envText = [System.IO.File]::ReadAllText($envPath)
-$passwordMatch = [regex]::Match($envText, '(?m)^NEXUS_WA_DB_PASSWORD=([A-Za-z0-9]+)[ \t]*
-$localCompose = @'
-services:
-  db:
-    image: mysql:8.0
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-wa_akg}
-    volumes:
-      - mysql_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:3790:3000"
-    environment:
-      DATABASE_URL: mysql://nexus_wa:${NEXUS_WA_DB_PASSWORD}@db:3306/${MYSQL_DATABASE:-wa_akg}
-      AUTH_SECRET: ${AUTH_SECRET}
-      BASE_URL: http://127.0.0.1:3790
-      NEXTAUTH_URL: http://127.0.0.1:3790
-      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3790
-      NEXT_PUBLIC_API_URL: http://127.0.0.1:3790/api
-      NODE_ENV: production
-      PORT: "3000"
-      HOSTNAME: 0.0.0.0
-      ENABLE_TELEMETRY: "false"
-      DEFAULT_LANGUAGE: en
-      ADMIN_EMAIL: ${ADMIN_EMAIL}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
-    depends_on:
-      db:
-        condition: service_healthy
-    volumes:
-      - app_data:/app/data
-      - uploads_data:/app/uploads
-volumes:
-  mysql_data:
-  app_data:
-  uploads_data:
-'@
-[System.IO.File]::WriteAllText((Join-Path $destination 'docker-compose.nexus-local.yml'),$localCompose,[System.Text.UTF8Encoding]::new($false))
-# Keep an existing local bridge configuration in sync without showing or changing its API key.
-$bridgeEnv = Join-Path $root '.env.wa-local'
-if (Test-Path $bridgeEnv) {
-  $existing = [System.IO.File]::ReadAllText($bridgeEnv)
-  $updated = [regex]::Replace($existing, '(?m)^NEXUS_WA_AKG_URL=http://(?:127\.0\.0\.1|localhost):3000[ \t]*$', 'NEXUS_WA_AKG_URL=http://127.0.0.1:3790')
-  if ($updated -ne $existing) {
-    [System.IO.File]::WriteAllText($bridgeEnv, $updated, [System.Text.UTF8Encoding]::new($false))
-    Write-Host 'Updated existing .env.wa-local WA-AKG URL to port 3790. All secrets were preserved.'
-  }
-}
-Write-Host 'Building and starting WA-AKG + its private MySQL container locally...'
-docker compose -f docker-compose.nexus-local.yml up -d --build
-if ($LASTEXITCODE -ne 0) { Fail 'Docker build/start failed. Inspect docker compose -f docker-compose.nexus-local.yml logs.' }
-Write-Host 'WA-AKG is starting locally: http://127.0.0.1:3790'
-Write-Host 'Open the dashboard, sign in, then Settings -> API Keys; paste its key into the Nexus .env.wa-local file.'
-)
+$passwordMatch = [regex]::Match($envText, '(?m)^NEXUS_WA_DB_PASSWORD=([A-Za-z0-9]+)[ \t]*$')
 if ($passwordMatch.Success) {
   $appDbPassword = $passwordMatch.Groups[1].Value
 } else {
@@ -198,71 +134,7 @@ if ($passwordMatch.Success) {
   $envText = $envText.TrimEnd([char[]]"`r`n") + "`r`nNEXUS_WA_DB_PASSWORD=" + $appDbPassword + "`r`n"
   [System.IO.File]::WriteAllText($envPath, $envText, [System.Text.UTF8Encoding]::new($false))
 }
-if ($appDbPassword -notmatch '^[A-Za-z0-9]{20,100}
-$localCompose = @'
-services:
-  db:
-    image: mysql:8.0
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-wa_akg}
-    volumes:
-      - mysql_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:3790:3000"
-    environment:
-      DATABASE_URL: mysql://root:${NEXUS_WA_MYSQL_PASSWORD_URL}@db:3306/${MYSQL_DATABASE:-wa_akg}
-      AUTH_SECRET: ${AUTH_SECRET}
-      BASE_URL: http://127.0.0.1:3790
-      NEXTAUTH_URL: http://127.0.0.1:3790
-      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3790
-      NEXT_PUBLIC_API_URL: http://127.0.0.1:3790/api
-      NODE_ENV: production
-      PORT: "3000"
-      HOSTNAME: 0.0.0.0
-      ENABLE_TELEMETRY: "false"
-      DEFAULT_LANGUAGE: en
-      ADMIN_EMAIL: ${ADMIN_EMAIL}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
-    depends_on:
-      db:
-        condition: service_healthy
-    volumes:
-      - app_data:/app/data
-      - uploads_data:/app/uploads
-volumes:
-  mysql_data:
-  app_data:
-  uploads_data:
-'@
-[System.IO.File]::WriteAllText((Join-Path $destination 'docker-compose.nexus-local.yml'),$localCompose,[System.Text.UTF8Encoding]::new($false))
-# Keep an existing local bridge configuration in sync without showing or changing its API key.
-$bridgeEnv = Join-Path $root '.env.wa-local'
-if (Test-Path $bridgeEnv) {
-  $existing = [System.IO.File]::ReadAllText($bridgeEnv)
-  $updated = [regex]::Replace($existing, '(?m)^NEXUS_WA_AKG_URL=http://(?:127\.0\.0\.1|localhost):3000[ \t]*$', 'NEXUS_WA_AKG_URL=http://127.0.0.1:3790')
-  if ($updated -ne $existing) {
-    [System.IO.File]::WriteAllText($bridgeEnv, $updated, [System.Text.UTF8Encoding]::new($false))
-    Write-Host 'Updated existing .env.wa-local WA-AKG URL to port 3790. All secrets were preserved.'
-  }
-}
-Write-Host 'Building and starting WA-AKG + its private MySQL container locally...'
-docker compose -f docker-compose.nexus-local.yml up -d --build
-if ($LASTEXITCODE -ne 0) { Fail 'Docker build/start failed. Inspect docker compose -f docker-compose.nexus-local.yml logs.' }
-Write-Host 'WA-AKG is starting locally: http://127.0.0.1:3790'
-Write-Host 'Open the dashboard, sign in, then Settings -> API Keys; paste its key into the Nexus .env.wa-local file.'
-) {
+if ($appDbPassword -notmatch '^[A-Za-z0-9]{20,100}$') {
   Fail 'Invalid local DB password format. Existing MySQL data was preserved.'
 }
 $tick = [char]96
@@ -302,7 +174,7 @@ services:
     ports:
       - "127.0.0.1:3790:3000"
     environment:
-      DATABASE_URL: mysql://root:${NEXUS_WA_MYSQL_PASSWORD_URL}@db:3306/${MYSQL_DATABASE:-wa_akg}
+      DATABASE_URL: mysql://nexus_wa:${NEXUS_WA_DB_PASSWORD}@db:3306/${MYSQL_DATABASE:-wa_akg}
       AUTH_SECRET: ${AUTH_SECRET}
       BASE_URL: http://127.0.0.1:3790
       NEXTAUTH_URL: http://127.0.0.1:3790
