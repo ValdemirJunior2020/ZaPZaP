@@ -101,6 +101,26 @@ foreach ($pair in $replacements) {
   if (-not $dockerContent.Contains($from)) { Fail ('WA-AKG Dockerfile layout changed: missing ' + $from) }
   $dockerContent = $dockerContent.Replace($from, $to)
 }
+# For this LOCAL test, retain the Prisma 5 CLI from the successful builder install.
+# npm prune --omit=dev removed Prisma at runtime and npx attempted Prisma 8.
+# A larger local image is preferable to a broken runtime or a surprise CLI upgrade.
+$runtimeOriginal = 'RUN npm prune --omit=dev && npm install --no-save tsx typescript'
+$runtimePatched = 'RUN npm prune --omit=dev && npm install --no-save --legacy-peer-deps prisma@5.22.0 tsx typescript'
+$runtimeKeep = 'RUN test -x node_modules/.bin/prisma && node_modules/.bin/prisma --version'
+if ($dockerContent.Contains($runtimePatched)) {
+  $dockerContent = $dockerContent.Replace($runtimePatched, $runtimeKeep)
+} elseif ($dockerContent.Contains($runtimeOriginal)) {
+  $dockerContent = $dockerContent.Replace($runtimeOriginal, $runtimeKeep)
+} elseif (-not $dockerContent.Contains($runtimeKeep)) {
+  Fail 'Could not identify WA-AKG runtime dependency command. Existing files were preserved.'
+}
+$cmdNpx = 'CMD ["sh", "-c", "npx --no-install prisma db push &&'
+$cmdDirect = 'CMD ["sh", "-c", "./node_modules/.bin/prisma db push &&'
+if ($dockerContent.Contains($cmdNpx)) {
+  $dockerContent = $dockerContent.Replace($cmdNpx, $cmdDirect)
+} elseif (-not $dockerContent.Contains($cmdDirect)) {
+  Fail 'Could not identify WA-AKG Prisma startup command. Existing files were preserved.'
+}
 [System.IO.File]::WriteAllText($dockerfile, $dockerContent, [System.Text.UTF8Encoding]::new($false))
 Write-Host 'Applied local-only pinned Prisma 5 Docker build fix.'
 # Compose has its own file so the upstream exposed 0.0.0.0:3000 port cannot leak.
