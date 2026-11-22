@@ -31,8 +31,11 @@ test("local gateway uses mock WA-AKG: starts OFF, limits testing to allowlist, a
     assert.match(request.messages[0].content,/Nexus Test Bakery/);
     assert.match(request.messages[0].content,/Sourdough/);
     assert.match(request.messages[0].content,/Mia/);
+    assert.equal(request.think,false,"Qwen3 should not spend its reply token budget on thinking");
+    assert.ok(request.options.num_predict>=700);
     queries++;
-    return json({message:{content:"Hello from Nexus!"}});
+    if(queries===1)return json({message:{content:"",thinking:"internal reasoning must never reach the WhatsApp user"},done_reason:"length"});
+    return json({message:{content:"Hello from Nexus!"},done_reason:"stop"});
   }
   if(p==="/api/sessions"&&init.method==="POST"){created=true;return json({status:true,data:{sessionId:session}})}
   if(p==="/api/sessions/"+session) return json({status:true,data:{status}});
@@ -78,7 +81,7 @@ test("local gateway uses mock WA-AKG: starts OFF, limits testing to allowlist, a
   while(sends<1&&Date.now()<deadline)await new Promise(r=>setTimeout(r,150));
   assert.equal(sends,1,JSON.stringify({queries,errors:bridge.state.errors,recent:bridge.state.recent}));
   assert.deepEqual(responses[0],{message:{text:"Hello from Nexus!"}});
-  assert.equal(queries,1);
+  assert.equal(queries,2,"empty Qwen3 responses should be retried");
   assert.deepEqual(presence,["composing","paused"]);
   status="DISCONNECTED";
   const final=await (await fetch(base+"/api/status")).json();
