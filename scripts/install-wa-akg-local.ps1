@@ -32,8 +32,22 @@ if (-not $oldEnv -or $malformed) {
   # Never print it, and do not change it while preserving the MySQL volume.
   $inspect = & docker inspect --format '{{json .Config.Env}}' wa-akg-local-db-1 2>$null
   if ($LASTEXITCODE -eq 0 -and $inspect) {
-    $mysqlVar = @($inspect | ConvertFrom-Json | Where-Object { $_ -like 'MYSQL_ROOT_PASSWORD=*' }) | Select-Object -First 1
-    if ($mysqlVar) { $mysql = $mysqlVar.Substring('MYSQL_ROOT_PASSWORD='.Length) }
+    # ConvertFrom-Json outputs array items directly. The previous pipeline
+    # unwrapped a string into the wrong shape and caused Substring to fail.
+    $prefix = 'MYSQL_ROOT_PASSWORD='
+    $jsonText = [string]::Join('', [string[]]@($inspect))
+    try {
+      $entries = ConvertFrom-Json -InputObject $jsonText
+      foreach ($item in @($entries)) {
+        $value = [string]$item
+        if ($value.StartsWith($prefix, [StringComparison]::Ordinal) -and $value.Length -gt $prefix.Length) {
+          $mysql = $value.Substring($prefix.Length)
+          break
+        }
+      }
+    } catch {
+      Fail 'Docker returned invalid container metadata. Existing MySQL volume was not changed.'
+    }
   }
   if (-not $mysql -and $oldEnv) {
     Fail 'Could not recover existing MySQL password safely. Do not delete the DB volume; share only the error text.'
