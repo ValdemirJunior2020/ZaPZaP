@@ -36,7 +36,7 @@ export function buildPrompt(business,message){
 async function config() {
   const file = await readFile(path.resolve(here,"../.env.wa-local"),"utf8").catch(()=>"");
   const values={...parseEnv(file),...Object.fromEntries(Object.entries(process.env).filter(([k])=>k.startsWith("NEXUS_WA_")))};
-  const apiRoot = values.NEXUS_WA_AKG_URL || "http://127.0.0.1:3000";
+  const apiRoot = values.NEXUS_WA_AKG_URL || "http://127.0.0.1:3790";
   const ollamaRoot = values.NEXUS_WA_OLLAMA_URL || "http://127.0.0.1:11434";
   for (const origin of [apiRoot,ollamaRoot]) {
     const u = new URL(origin);
