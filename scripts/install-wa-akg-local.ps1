@@ -115,16 +115,11 @@ volumes:
   uploads_data:
 '@
 [System.IO.File]::WriteAllText((Join-Path $destination 'docker-compose.nexus-local.yml'),$localCompose,[System.Text.UTF8Encoding]::new($false))
-# Keep an existing local bridge configuration in sync without revealing or altering its API key.
+# Keep an existing local bridge configuration in sync without showing or changing its API key.
 $bridgeEnv = Join-Path $root '.env.wa-local'
 if (Test-Path $bridgeEnv) {
   $existing = [System.IO.File]::ReadAllText($bridgeEnv)
-  $updated = [regex]::Replace($existing, '(?m)^NEXUS_WA_AKG_URL=http://(?:127\.0\.0\.1|localhost):3000\s*
-docker compose -f docker-compose.nexus-local.yml up -d --build
-if ($LASTEXITCODE -ne 0) { Fail 'Docker build/start failed. Inspect docker compose -f docker-compose.nexus-local.yml logs.' }
-Write-Host 'WA-AKG is starting locally: http://127.0.0.1:3790'
-Write-Host 'Open the dashboard, sign in, then Settings -> API Keys; paste its key into the Nexus .env.wa-local file.'
-, 'NEXUS_WA_AKG_URL=http://127.0.0.1:3790')
+  $updated = [regex]::Replace($existing, '(?m)^NEXUS_WA_AKG_URL=http://(?:127\.0\.0\.1|localhost):3000[ \t]*$', 'NEXUS_WA_AKG_URL=http://127.0.0.1:3790')
   if ($updated -ne $existing) {
     [System.IO.File]::WriteAllText($bridgeEnv, $updated, [System.Text.UTF8Encoding]::new($false))
     Write-Host 'Updated existing .env.wa-local WA-AKG URL to port 3790. All secrets were preserved.'
