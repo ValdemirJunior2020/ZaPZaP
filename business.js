@@ -489,15 +489,25 @@ function renderBilling(){
 function bindView(){
  if(viewName==="whatsappLink"){
   const button=$("nexusWaLinkButton");
-  if(button)button.onclick=()=>{
+  if(button)button.onclick=async()=>{
    if(!["localhost","127.0.0.1"].includes(location.hostname)||!(workspace?.whatsappLinkAllowed===true||workspace?.personalAssistantSpecial===true))return;
-   const wrapper=$("nexusWaEmbedded");
-   wrapper.hidden=false;
-   const frame=wrapper.querySelector("iframe");
-   if(frame&&frame.getAttribute("src")==="about:blank")frame.setAttribute("src","http://127.0.0.1:8791/");
-   button.textContent="WhatsApp linking opened";
    button.disabled=true;
-   text("nexusWaHelp","Follow the one-click connection instructions below to display your WhatsApp QR code.");
+   text("nexusWaHelp","Loading your Nexus business settings into the local WhatsApp assistant…");
+   try{
+    const headers=await authHeader();
+    if(!headers)throw Error("Sign in to Nexus again");
+    const response=await fetch("/api/nexus-whatsapp-business",{method:"POST",headers,body:"{}",cache:"no-store"});
+    const result=await response.json().catch(()=>({}));
+    if(!response.ok)throw Error(result.error||"Could not load your Nexus business settings");
+    const wrapper=$("nexusWaEmbedded");
+    wrapper.hidden=false;
+    const frame=wrapper.querySelector("iframe");
+    if(frame&&frame.getAttribute("src")==="about:blank")frame.setAttribute("src","http://127.0.0.1:8791/");
+    button.textContent="Refresh Nexus business settings";
+    text("nexusWaHelp","Business settings loaded: "+result.business+" ("+result.offerings+" offerings). Use the panel to link your WhatsApp. AI replies remain OFF until you enable them for test numbers.");
+   }catch(error){
+    text("nexusWaHelp",error.message+". Make sure Nexus (8788) and the WhatsApp bridge (8791) are running.");
+   }finally{button.disabled=false}
   };
  }
 
