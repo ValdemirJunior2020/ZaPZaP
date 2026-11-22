@@ -29,7 +29,7 @@ test("local gateway uses mock WA-AKG: starts OFF, limits testing to allowlist, a
   if(p==="/api/sessions"&&init.method==="POST"){created=true;return json({status:true,data:{sessionId:session}})}
   if(p==="/api/sessions/"+session) return json({status:true,data:{status}});
   if(p==="/api/sessions/"+session+"/start") return json({status:true});
-  if(p==="/api/sessions/"+session+"/qr")return json({base64:"data:image/png;base64,aGVsbG8=",success:true});
+  if(p==="/api/sessions/"+session+"/qr")return json({status:true,data:{base64:"data:image/png;base64,aGVsbG8=",success:true}});
   if(p==="/api/chat/"+session)return json({status:true,data:[{jid:"15551234567@s.whatsapp.net"},{jid:"15557654321@s.whatsapp.net"},{jid:"120363@g.us"}]});
   if(p==="/api/chat/"+session+"/15551234567%40s.whatsapp.net")return json({status:true,data:allMessages});
   if(p==="/api/chat/"+session+"/15557654321%40s.whatsapp.net")return json({status:true,data:[{fromMe:false,type:"TEXT",keyId:"other",content:"please ignore",remoteJid:"15557654321@s.whatsapp.net"}]});
@@ -43,6 +43,9 @@ test("local gateway uses mock WA-AKG: starts OFF, limits testing to allowlist, a
   let state=await (await fetch(base+"/api/status")).json();
   assert.equal(state.armed,false);
   assert.equal(state.session,"");
+  const earlyQr=await fetch(base+"/api/qr");
+  assert.equal(earlyQr.status,409);
+  assert.match((await earlyQr.json()).error,/Link Your WhatsApp first/);
   await call("connect");assert.equal(created,true);
   assert.equal(bridge.state.session,session);
   assert.equal(bridge.state.armed,false);
