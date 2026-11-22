@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
-import {validSession,validJid,normalizeMessage,approvedSender,buildPrompt,safeCustomerReply,startBridge} from "../scripts/wa-akg-local-bridge.mjs";
+import {validSession,validJid,normalizeMessage,approvedSender,buildPrompt,safeCustomerReply,localSafeFallback,startBridge} from "../scripts/wa-akg-local-bridge.mjs";
 
 test("validates sessions, WhatsApp personal JIDs and safe messages",()=>{
  assert.equal(validSession("nexus-local-x"),true);
@@ -104,4 +104,26 @@ test("WhatsApp customer replies reject raw Qwen reasoning, never cut a thinking 
  for(const value of bad)assert.equal(safeCustomerReply(value),null,"MUST block: "+value);
  assert.equal(safeCustomerReply("Olá! Sou assistente da Nexus AI. Como posso ajudar?"),"Olá! Sou assistente da Nexus AI. Como posso ajudar?");
  assert.equal(safeCustomerReply("<think>Hidden thought</think>Olá! Como posso ajudar?"),"Olá! Como posso ajudar?");
+});
+
+test("safe fallback answers a real Portuguese Nexus offerings question using only catalog facts",()=>{
+ const store={name:"Nexus AI"};
+ const offerings=[
+  {name:"SmartStore",price_label:"R$ 49",status:"Available"},
+  {name:"Assistentes de IA",price_label:"",status:"Available"},
+  {name:"Automação de Atendimento",price_label:"",status:"Available"},
+ ];
+ const offer=localSafeFallback("Olá, quero saber quais serviços a Nexus AI oferece.",store,offerings);
+ assert.match(offer,/A Nexus AI oferece:/);
+ assert.match(offer,/SmartStore/);
+ assert.match(offer,/Assistentes de IA/);
+ assert.doesNotMatch(offer,/Como posso ajudar\?/);
+ const price=localSafeFallback("Quanto custa?",store,offerings);
+ assert.match(price,/SmartStore \(R\$ 49\)/);
+ assert.match(price,/valores não informados precisam ser confirmados/);
+ assert.doesNotMatch(price,/Assistentes de IA \(R\$ 49\)/);
+ assert.match(localSafeFallback("Oi",store,offerings),/^Olá!/);
+ assert.match(localSafeFallback("Hello",store,offerings),/^Hi!/);
+ assert.match(localSafeFallback("Hola",store,offerings),/^¡Hola!/);
+ assert.doesNotMatch(localSafeFallback("What services do you offer?",store,offerings),/R\$ 49/);
 });
