@@ -39,7 +39,6 @@ export async function handler(event){
   const req=parse(event,6000),message=str(req.message,700);
   if(!message)return json(400,{error:"Question is required"});
   const c=env();diagCfg=c;
-  if(!await allow(c,"store_chat",clientIp(event),10,60))return json(429,{error:"Too many requests. Try again later"});
   const personalMode=req.experience==="personal";diagStage="assistant_lookup";
   let assistant=null;
   if(personalMode){
@@ -87,9 +86,15 @@ export async function handler(event){
      && /^Bearer [A-Za-z0-9_.-]+$/.test(event.headers.authorization||event.headers.Authorization||"")){
     try{
       const identified=await userFrom(event,c);
-      privilegedOwner=identified.user.id===store.owner_id && identified.ent?.is_complimentary===true;
+      privilegedOwner=identified.user.id===store.owner_id &&
+        String(identified.user.email||"").toLowerCase()==="infojr.83@gmail.com" &&
+        identified.ent?.is_complimentary===true;
     }catch{privilegedOwner=false}
   }
+  // Resolve verified owner before the anonymous visitor's shared-IP rate limit.
+  // Public visitors keep the existing rate limits; only the signed-in owner bypasses them.
+  if(!privilegedOwner && !await allow(c,"store_chat",clientIp(event),10,60))
+    return json(429,{error:"Too many requests. Try again later"});
   if(juniorMode&&(store.owner_id!==JUNIOR_OWNER_ID||ent.is_complimentary!==true))return json(403,{error:"This assistant belongs to a different business"});
   diagStage="daily_quota";
   const dailyLimit=ent.is_complimentary===true?1000:personalMode&&ent.billing_tier==="personal"?100:ent.subscription_status==="ACTIVE"?1000:100;
