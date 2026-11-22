@@ -41,3 +41,10 @@ test("local business settings sync requires authenticated account, never exposes
  assert.match(bridge,/if\(!state\.business\)throw Error/);
  assert.match(bridge,/await rememberSession\(\)/);
 });
+
+test("embedded widget messages never shrink into overlapping text",async()=>{
+ const html=await read("widget-chat.html");
+ assert.match(html,/\.feed\{[^}]*min-height:0;[^}]*overflow-y:auto/);
+ assert.match(html,/\.bubble\{[^}]*flex:0 0 auto;[^}]*min-height:max-content/);
+ assert.match(html,/#feed>\.bubble\{[^}]*flex-shrink:0/);
+});
