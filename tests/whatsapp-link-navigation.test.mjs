@@ -48,3 +48,24 @@ test("embedded widget messages never shrink into overlapping text",async()=>{
  assert.match(html,/\.bubble\{[^}]*flex:0 0 auto;[^}]*min-height:max-content/);
  assert.match(html,/#feed>\.bubble\{[^}]*flex-shrink:0/);
 });
+
+test("complimentary owner has verified unlimited dashboard widget access without anonymous quota bypass",async()=>{
+ const server=await read("netlify/functions/store-chat.mjs");
+ const widget=await read("widget-chat.html");
+ const preview=await read("netlify/functions/owner-test-chat.mjs");
+ assert.match(server,/privilegedOwner=identified\.user\.id===store\.owner_id/);
+ assert.match(server,/if\(!privilegedOwner\)/);
+ assert.match(server,/p_limit:cap,p_minutes:minutes/);
+ assert.match(server,/unlimitedOwner:privilegedOwner/);
+ assert.match(widget,/sessionStorage\.getItem\("nexus_owner_v1"\)/);
+ assert.match(widget,/signedOwnerToken\?\{Authorization:"Bearer "/);
+ assert.match(preview,/const ownerPreview=ent\.is_complimentary===true/);
+});
+test("local WhatsApp connector keeps desired auto-reply state and checks every chat",async()=>{
+ const bridge=await read("scripts/wa-akg-local-bridge.mjs");
+ assert.match(bridge,/autoReply:values\.NEXUS_WA_AUTO_REPLY!=="off"/);
+ assert.match(bridge,/requested:false/);
+ assert.match(bridge,/state\.requested && !state\.armed/);
+ assert.match(bridge,/return Array\.isArray\(response\.data\)\?response\.data:\[\]/);
+ assert.match(bridge,/Saved WA-AKG session is missing/);
+});
