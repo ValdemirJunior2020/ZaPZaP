@@ -84,7 +84,7 @@ export async function handler(event){
   // Never trust a client-provided "owner" flag, name, phone, or store ID.
   let privilegedOwner=false;
   if(!personalMode && store.owner_id===JUNIOR_OWNER_ID && ent.is_complimentary===true
-     && /^Bearer [-\\w.]+$/.test(event.headers.authorization||event.headers.Authorization||"")){
+     && /^Bearer [A-Za-z0-9_.-]+$/.test(event.headers.authorization||event.headers.Authorization||"")){
     try{
       const identified=await userFrom(event,c);
       privilegedOwner=identified.user.id===store.owner_id && identified.ent?.is_complimentary===true;
