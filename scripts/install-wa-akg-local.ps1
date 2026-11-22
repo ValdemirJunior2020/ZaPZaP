@@ -136,94 +136,41 @@ if (-not $dockerContent.Contains($cmdDirect)) {
 }
 [System.IO.File]::WriteAllText($dockerfile, $dockerContent, [System.Text.UTF8Encoding]::new($false))
 Write-Host 'Applied local-only pinned Prisma 5 Docker build fix.'
-# MySQL root may only authenticate via its local socket; never enable remote root.
-# Provision an app-specific user without deleting or resetting existing MySQL data.
+# Fresh, ISOLATED local-test MySQL service/volume. Never delete old mysql_data.
+# MySQL auto-creates the limited application account on first initialization.
 $envText = [System.IO.File]::ReadAllText($envPath)
-$passwordMatch = [regex]::Match($envText, '(?m)^NEXUS_WA_DB_PASSWORD=([A-Za-z0-9]+)[ \t]*$')
-if ($passwordMatch.Success) {
-  $appDbPassword = $passwordMatch.Groups[1].Value
-} else {
-  $appDbPassword = NewSecret 24
-  $envText = $envText.TrimEnd([char[]]"`r`n") + "`r`nNEXUS_WA_DB_PASSWORD=" + $appDbPassword + "`r`n"
-  [System.IO.File]::WriteAllText($envPath, $envText, [System.Text.UTF8Encoding]::new($false))
-}
-if ($appDbPassword -notmatch '^[A-Za-z0-9]{20,100}$') {
-  Fail 'Invalid local DB password format. Existing MySQL data was preserved.'
-}
-$tick = [char]96
-$dbSetupSql = @(
-  ('CREATE DATABASE IF NOT EXISTS ' + $tick + 'wa_akg' + $tick + ';')
-  ("CREATE USER IF NOT EXISTS 'nexus_wa'@'%' IDENTIFIED BY '" + $appDbPassword + "';")
-  ("ALTER USER 'nexus_wa'@'%' IDENTIFIED BY '" + $appDbPassword + "';")
-  ('GRANT ALL PRIVILEGES ON ' + $tick + 'wa_akg' + $tick + ".* TO 'nexus_wa'@'%';")
-)
-Write-Host 'Configuring local WA-AKG MySQL user (no data removed)...'
-# Original malformed .env could have set MySQL's initial root password to the full line.
-# Probe saved original credentials privately; do not reset database volumes.
-$candidates = New-Object System.Collections.Generic.List[string]
-function AddDbCandidate([string]$value) {
-  if (-not [string]::IsNullOrEmpty($value) -and -not $candidates.Contains($value)) { $candidates.Add($value) }
-}
-$backup = Join-Path $destination '.env.before-repair'
-if (Test-Path $backup) {
-  $original = [System.IO.File]::ReadAllText($backup)
-  $match = [regex]::Match($original, '(?m)^MYSQL_ROOT_PASSWORD=(.*)$')
-  if ($match.Success) { AddDbCandidate $match.Groups[1].Value.TrimEnd([char]13) }
-}
-$rootMatch = [regex]::Match($envText, '(?m)^MYSQL_ROOT_PASSWORD=(.*)$')
-if ($rootMatch.Success) {
-  $candidate = $rootMatch.Groups[1].Value.TrimEnd([char]13)
-  if ($candidate.Length -ge 2 -and $candidate.StartsWith([string][char]39) -and $candidate.EndsWith([string][char]39)) {
-    $candidate = $candidate.Substring(1, $candidate.Length - 2)
+function EnsureLocalVar([string]$key) {
+  $pattern = '(?m)^' + [regex]::Escape($key) + '=([A-Za-z0-9]{20,100})[ \t]*$'
+  $match = [regex]::Match($script:envText, $pattern)
+  if ($match.Success) { return $match.Groups[1].Value }
+  if ($script:envText -match ('(?m)^' + [regex]::Escape($key) + '=')) {
+    Fail ('Invalid existing local setting: ' + $key + '. Data preserved.')
   }
-  AddDbCandidate $candidate
+  $value = NewSecret 32
+  $script:envText = $script:envText.TrimEnd([char[]]"`r`n") + "`r`n" + $key + '=' + $value + "`r`n"
+  return $value
 }
-$inspectRoot = & docker inspect --format '{{json .Config.Env}}' wa-akg-local-db-1 2>$null
-if ($LASTEXITCODE -eq 0 -and $inspectRoot) {
-  try {
-    $entries = ConvertFrom-Json -InputObject ([string]::Join('', [string[]]@($inspectRoot)))
-    foreach ($item in @($entries)) {
-      $line = [string]$item
-      if ($line.StartsWith('MYSQL_ROOT_PASSWORD=') -and $line.Length -gt 20) {
-        AddDbCandidate $line.Substring('MYSQL_ROOT_PASSWORD='.Length)
-      }
-    }
-  } catch { }
-}
-$verifiedRoot = $null
-$probe = 'IFS= read -r dbpass; MYSQL_PWD="$dbpass" exec mysql --protocol=socket -uroot -N -e "SELECT 1"'
-foreach ($candidate in $candidates) {
-  if ($candidate.Contains([char]10)) { continue }
-  $test = ($candidate + "`n") | & docker exec -i wa-akg-local-db-1 sh -c $probe 2>$null
-  if ($LASTEXITCODE -eq 0 -and @($test) -contains '1') { $verifiedRoot = $candidate; break }
-}
-if (-not $verifiedRoot) {
-  Fail 'Saved MySQL root password could not be verified. Existing database preserved; do not delete volumes.'
-}
-$payload = $verifiedRoot + "`n" + ($dbSetupSql -join "`n") + "`n"
-$payload | & docker exec -i wa-akg-local-db-1 sh -c 'IFS= read -r dbpass; MYSQL_PWD="$dbpass" exec mysql --protocol=socket -uroot'
-$verifiedRoot = $null
-$payload = $null
-if ($LASTEXITCODE -ne 0) {
-  Fail 'Cannot administer the existing local MySQL container. Data preserved; do not delete Docker volumes.'
-}
-Write-Host 'Dedicated WA-AKG database user configured.'
-# Compose has its own file so the upstream exposed 0.0.0.0:3000 port cannot leak.
+$null = EnsureLocalVar 'NEXUS_WA_DB_V2_ROOT'
+$null = EnsureLocalVar 'NEXUS_WA_DB_V2_USER_PASSWORD'
+[System.IO.File]::WriteAllText($envPath, $envText, [System.Text.UTF8Encoding]::new($false))
+Write-Host 'Using isolated local MySQL test database; old database volume untouched.'
 $localCompose = @'
 services:
-  db:
+  db_nexus:
     image: mysql:8.0
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-wa_akg}
+      MYSQL_ROOT_PASSWORD: ${NEXUS_WA_DB_V2_ROOT}
+      MYSQL_DATABASE: wa_akg
+      MYSQL_USER: nexus_wa
+      MYSQL_PASSWORD: ${NEXUS_WA_DB_V2_USER_PASSWORD}
     volumes:
-      - mysql_data:/var/lib/mysql
+      - mysql_nexus_isolated_v2:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 15
   app:
     build:
       context: .
@@ -232,7 +179,7 @@ services:
     ports:
       - "127.0.0.1:3790:3000"
     environment:
-      DATABASE_URL: mysql://nexus_wa:${NEXUS_WA_DB_PASSWORD}@db:3306/${MYSQL_DATABASE:-wa_akg}
+      DATABASE_URL: mysql://nexus_wa:${NEXUS_WA_DB_V2_USER_PASSWORD}@db_nexus:3306/wa_akg
       AUTH_SECRET: ${AUTH_SECRET}
       BASE_URL: http://127.0.0.1:3790
       NEXTAUTH_URL: http://127.0.0.1:3790
@@ -246,17 +193,17 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
     depends_on:
-      db:
+      db_nexus:
         condition: service_healthy
     volumes:
       - app_data:/app/data
       - uploads_data:/app/uploads
 volumes:
-  mysql_data:
+  mysql_nexus_isolated_v2:
   app_data:
   uploads_data:
 '@
-[System.IO.File]::WriteAllText((Join-Path $destination 'docker-compose.nexus-local.yml'),$localCompose,[System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText((Join-Path $destination 'docker-compose.nexus-local.yml'), $localCompose, [System.Text.UTF8Encoding]::new($false))
 # Keep an existing local bridge configuration in sync without showing or changing its API key.
 $bridgeEnv = Join-Path $root '.env.wa-local'
 if (Test-Path $bridgeEnv) {
