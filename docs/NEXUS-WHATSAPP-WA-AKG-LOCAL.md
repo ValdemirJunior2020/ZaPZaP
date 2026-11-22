@@ -27,3 +27,12 @@ IMPORTANT: The QR flow needs a real running WA-AKG server; this branch was only 
 - Disarm immediately using Stop replies. Ctrl+C closes the bridge. Never expose the localhost bridge via Cloudflare Tunnel or public port forwarding.
 - No production Supabase changes or Netlify builds/deployments allowed without explicit approval.
 - Do not commit .env.wa-local. Key must remain secret.
+
+## November 21 — Windows Docker build blocker fixed in installer
+The first Docker build failed: upstream WA-AKG Dockerfile sets `NODE_ENV=production` during `npm ci`, so its Prisma 5 CLI (a devDependency) was skipped. Then `npx prisma generate` downloaded an incompatible Prisma 8 CLI. The local Nexus installer now patches the ignored WA-AKG clone's Dockerfile to explicitly include dev dependencies, run pinned Prisma 5 with `--no-install`, and keep Prisma 5 installed for the container's startup `db push`. It leaves upstream WA-AKG GitHub, Nexus main, Netlify, and production unchanged.
+
+Retry in **two steps** on the user's Windows PC:
+1. In `C:\\Users\\nobody\\Downloads\\ZaPZaP`, run `git fetch origin`, `git switch feat/wa-akg-local-bridge-20261121`, and `git pull --ff-only origin feat/wa-akg-local-bridge-20261121`.
+2. Double-click `INSTALL-WA-AKG-LOCAL.bat` again with Docker Desktop running. The script preserves the existing local checkout, local database credentials, and database volume. Do not delete these or run `docker compose down -v`.
+
+The patch is committed, but the Docker build has **not yet been verified on Windows**. If another error appears, capture the FIRST failing Docker build stage, not just the last two lines. Do not claim it is fully fixed until tested.
