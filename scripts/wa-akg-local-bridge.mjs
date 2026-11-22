@@ -165,7 +165,7 @@ export async function startBridge({settings=undefined,fetcher=fetch,port=8791}={
       if(action==="business"&&req.method==="POST"){
         if(!authorizedSettings(req)){send(res,403,{error:"Nexus authorization required"});return}
         let length=0,parts=[];
-        for await(const chunk of req){length+=chunk.length;if(length>24000){send(res,413,{error:"Business settings too large"});return}parts.push(chunk)}
+        for await(const chunk of req){length+=chunk.length;if(length>100000){send(res,413,{error:"Business settings too large"});return}parts.push(chunk)}
         const data=JSON.parse(Buffer.concat(parts).toString("utf8"));
         const business=cleanBusiness(data);
         if(state.business&&state.business.store.id!==business.store.id){send(res,409,{error:"This local WhatsApp session belongs to another business. Stop replies before switching accounts."});return}
