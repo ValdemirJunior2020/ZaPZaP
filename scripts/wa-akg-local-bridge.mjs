@@ -49,6 +49,15 @@ async function config() {
 export async function startBridge({settings=undefined,fetcher=fetch,port=8791}={}) {
   const cfg = settings || await config();
   const state = {session:validSession(cfg.session)?cfg.session:"",connected:false,armed:false,requested:false,busy:false,lastCheck:"Never",errors:[],recent:[],seen:new Set(),baseline:false,business:null};
+  // Local private snapshot lets a signed-in owner's verified business context survive restarts.
+  // Never persist secrets or authentication tokens. The snapshot is excluded from Git.
+  const snapshotFile=path.resolve(here,"../.nexus-wa-business-local.json");
+  if(settings===undefined){
+    try{
+      const disk=JSON.parse(await readFile(snapshotFile,"utf8"));
+      if(disk?.store && disk?.items)state.business=cleanBusiness(disk);
+    }catch{}
+  }
   const log = value => {state.recent.unshift({time:new Date().toLocaleTimeString(),message:value});state.recent=state.recent.slice(0,18)};
   const err = value => {state.errors.unshift(String(value).slice(0,160));state.errors=state.errors.slice(0,5);log("Error: "+value)};
   async function rememberSession(){
@@ -184,6 +193,7 @@ export async function startBridge({settings=undefined,fetcher=fetch,port=8791}={
         if(state.business&&state.business.store.id!==business.store.id){send(res,409,{error:"This local WhatsApp session belongs to another business. Stop replies before switching accounts."});return}
         state.armed=false;
         state.business=business;
+        if(settings===undefined)await writeFile(snapshotFile,JSON.stringify(business),{encoding:"utf8",mode:0o600});
         state.requested=cfg.autoReply!==false;
         state.baseline=false;
         state.seen.clear();
@@ -234,6 +244,10 @@ export async function startBridge({settings=undefined,fetcher=fetch,port=8791}={
       send(res,200,{ok:true,session:state.session,armed:state.armed});
     }catch(e){err(e.message);send(res,400,{error:String(e.message).slice(0,180)})}
   });
+  if(state.business && cfg.autoReply!==false){
+    state.requested=true;
+    log("Stored Nexus business settings restored. Automatic replies requested for approved numbers when WhatsApp reconnects.");
+  }
   const interval=setInterval(()=>{check().catch(e=>err(e.message))},5000);
   await new Promise((resolve,reject)=>server.once("error",reject).listen(port,localHost,resolve));
   log("Local bridge ready at http://"+localHost+":"+port);
