@@ -1,6 +1,7 @@
 import {env,json,userFrom,ownStore,offerings,postOrigin,parse,aiReady,access} from "../lib/tenant.mjs";
 import {allow,clientIp} from "../lib/abuse.mjs";
 import {businessMessages} from "../lib/business-ai.mjs";
+import {SPECIAL_OWNER} from "../lib/personal-assistant.mjs";
 import {queryWithMeta as aiQuery,readiness} from "../lib/ollama.mjs";
 
 // Owner-only sandbox. The business and catalog are ALWAYS loaded using
@@ -24,10 +25,13 @@ export async function handler(event){
   // Public storefront publishing rules remain unchanged.
   if(!aiReady())return json(503,{code:readiness().code,error:"The AI gateway is not configured or is offline. Your trial has not started."});
   // Database-backed, cross-instance budgets. No client-provided tenant ID.
-  if(!await allow(c,"owner_test_global","all",500,86400))return json(429,{error:"Testing capacity reached for today."});
-  if(!await allow(c,"owner_test_daily",user.id,20,86400))return json(429,{error:"You've used your 20 test questions for today."});
-  if(!await allow(c,"owner_test_minute",user.id,4,60))return json(429,{error:"Please wait a minute before testing again."});
-  if(!await allow(c,"owner_test_ip",clientIp(event),20,60))return json(429,{error:"Too many requests from this connection."});
+  const ownerPreview=ent.is_complimentary===true && user.id===SPECIAL_OWNER;
+  if(!ownerPreview){
+    if(!await allow(c,"owner_test_global","all",500,86400))return json(429,{error:"Testing capacity reached for today."});
+    if(!await allow(c,"owner_test_daily",user.id,20,86400))return json(429,{error:"You've used your 20 test questions for today."});
+    if(!await allow(c,"owner_test_minute",user.id,4,60))return json(429,{error:"Please wait a minute before testing again."});
+    if(!await allow(c,"owner_test_ip",clientIp(event),20,60))return json(429,{error:"Too many requests from this connection."});
+  }
   const history=Array.isArray(input.history)?input.history.slice(-6):[];
   const messages=businessMessages(store,items,message,history);
   const result=await aiQuery(messages,{maxTokens:350,timeoutMs:22000,allowFallback:true,tenantKey:store.id});
