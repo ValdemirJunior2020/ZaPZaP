@@ -21,6 +21,19 @@
 const botId=new URLSearchParams(location.search).get("bot")||"";
 const el=id=>document.getElementById(id),feed=el("feed");let ready=false,history=[],busy=false,storeSlug="",sessionId=null,chatClosed=false,remaining=10;
 const sessionKey="nexus_widget_"+botId;try{sessionId=localStorage.getItem(sessionKey)||null}catch{}
+function ownerSessionToken(){
+  // Same-origin Nexus dashboard iframe only; the server verifies the JWT and ownership.
+  // Cross-origin embedded widgets do not receive any dashboard authentication token.
+  try{
+    if(window.top===window || window.top.location.origin!==location.origin)return "";
+    const auth=JSON.parse(sessionStorage.getItem("nexus_owner_v1")||"null");
+    if(!auth?.access_token || (auth.expires_at && Date.now()/1000>auth.expires_at-60))return "";
+    return String(auth.access_token);
+  }catch{return ""}
+}
+const signedOwnerToken=ownerSessionToken();
+if(signedOwnerToken)sessionId=null;
+
 function add(role,text){const b=document.createElement("div");b.className="bubble "+role;b.textContent=String(text).slice(0,2500);feed.appendChild(b);feed.scrollTop=feed.scrollHeight;return b}
 async function init(){
  if(!/^bot_[a-z0-9]{20,50}$/.test(botId)){el("hello").textContent="Invalid assistant link.";el("status").textContent="Unavailable";return}
@@ -45,9 +58,9 @@ el("form").onsubmit=async e=>{
  const label=document.createElement("span");label.className="thinking-label";label.textContent="One moment…";
  pending.append(dots,label);
  try{
-  const r=await fetch("/.netlify/functions/store-chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({botId,message,sessionId})});
+  const r=await fetch("/.netlify/functions/store-chat",{method:"POST",headers:{"Content-Type":"application/json",...(signedOwnerToken?{Authorization:"Bearer "+signedOwnerToken}:{})},body:JSON.stringify({botId,message,sessionId})});
   const data=await r.json().catch(()=>({}));if(!r.ok){if(data.limitReached){closeChat();pending.textContent="Your AI conversation limit has been reached. Contact Support using the button below, or leave an inquiry.";return}throw Error("Unavailable")}if(!data.reply)throw Error("Unavailable");
-  pending.textContent=data.reply;if(data.sessionId){sessionId=data.sessionId;try{localStorage.setItem(sessionKey,sessionId)}catch{}}remaining=Number.isInteger(data.remaining)?data.remaining:remaining;el("status").textContent=remaining+" messages remaining";if(data.limitReached)closeChat();history.push({role:"user",content:message},{role:"assistant",content:data.reply});history=history.slice(-8);
+  pending.textContent=data.reply;if(data.sessionId){sessionId=data.sessionId;try{localStorage.setItem(sessionKey,sessionId)}catch{}}remaining=Number.isInteger(data.remaining)?data.remaining:remaining;el("status").textContent=data.unlimitedOwner===true?"Owner preview • No chat-message quota":remaining+" messages remaining";if(data.limitReached)closeChat();history.push({role:"user",content:message},{role:"assistant",content:data.reply});history=history.slice(-8);
  }catch{pending.textContent="I can't answer right now. Please contact the business directly."}
  finally{busy=false;el("message").disabled=!ready||chatClosed;el("send").disabled=!ready||chatClosed;el("message").focus();feed.scrollTop=feed.scrollHeight}
 };
