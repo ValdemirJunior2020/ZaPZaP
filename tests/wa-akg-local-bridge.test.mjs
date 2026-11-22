@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import {validSession,validJid,normalizeMessage,approvedSender,buildPrompt,startBridge} from "../scripts/wa-akg-local-bridge.mjs";
 
 test("validates sessions, WhatsApp personal JIDs and safe messages",()=>{
@@ -23,6 +24,10 @@ test("local gateway uses mock WA-AKG: starts OFF, limits testing to allowlist, a
   const p=parsed.pathname;
   // Ollama and WA-AKG both have an /api/chat path. Route mocks by origin first.
   if(parsed.port==="11434"&&p==="/api/chat"){
+    const request=JSON.parse(init.body);
+    assert.match(request.messages[0].content,/Nexus Test Bakery/);
+    assert.match(request.messages[0].content,/Sourdough/);
+    assert.match(request.messages[0].content,/Mia/);
     queries++;
     return json({message:{content:"Hello from Nexus!"}});
   }
@@ -51,6 +56,13 @@ test("local gateway uses mock WA-AKG: starts OFF, limits testing to allowlist, a
   assert.equal(bridge.state.armed,false);
   await call("start");
   assert.equal((await (await fetch(base+"/api/qr")).json()).base64.startsWith("data:image/png"),true);
+  const internalKey=crypto.createHash("sha256").update("nexus-wa-local-settings-v1:local-testing-only").digest("hex");
+  const businessData={store:{id:"11111111-1111-4111-8111-111111111111",name:"Nexus Test Bakery",agent_name:"Mia",description:"Sells fresh breads.",hours:"9 AM to 5 PM",ai_personality:"friendly"},items:[{name:"Sourdough",type:"Product",description:"Fresh loaf",price_label:"$8",status:"Available"}],profile:null};
+  const denied=await fetch(base+"/api/business",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(businessData)});
+  assert.equal(denied.status,403);
+  const update=await fetch(base+"/api/business",{method:"POST",headers:{"Content-Type":"application/json","X-Nexus-Internal-Key":internalKey},body:JSON.stringify(businessData)});
+  assert.equal(update.status,200);
+  assert.equal((await update.json()).business,"Nexus Test Bakery");
   await call("arm");assert.equal(bridge.state.armed,true);assert.equal(bridge.state.seen.has("old"),true);
   assert.equal(sends,0);
   allMessages.push({fromMe:false,type:"TEXT",content:"hello!",remoteJid:"15551234567@s.whatsapp.net",keyId:"new-one"});
@@ -59,6 +71,7 @@ test("local gateway uses mock WA-AKG: starts OFF, limits testing to allowlist, a
   while(sends<1&&Date.now()<deadline)await new Promise(r=>setTimeout(r,150));
   assert.equal(sends,1,JSON.stringify({queries,errors:bridge.state.errors,recent:bridge.state.recent}));
   assert.deepEqual(responses[0],{message:{text:"Hello from Nexus!"}});
+  assert.equal(queries,1);
   status="DISCONNECTED";
   const final=await (await fetch(base+"/api/status")).json();
   assert.equal(final.armed,false);
