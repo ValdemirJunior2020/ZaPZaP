@@ -91,7 +91,9 @@ $dockerContent = [System.IO.File]::ReadAllText($dockerfile)
 $replacements = @(
   @('ENV NODE_ENV=production' + "`n" + '# Provide fallback build-time', 'ENV NODE_ENV=development' + "`n" + '# Provide fallback build-time'),
   @('RUN npm ci --legacy-peer-deps && npm cache clean --force', 'RUN npm ci --include=dev --legacy-peer-deps && npm cache clean --force'),
-  @('RUN npx prisma generate && npm run build', 'RUN npx --no-install prisma generate && npm run build')
+  @('RUN npx prisma generate && npm run build', 'RUN npx --no-install prisma generate && npm run build'),
+  @('RUN npm prune --omit=dev && npm install --no-save tsx typescript', 'RUN npm prune --omit=dev && npm install --no-save --legacy-peer-deps prisma@5.22.0 tsx typescript'),
+  @('CMD ["sh", "-c", "npx prisma db push &&', 'CMD ["sh", "-c", "npx --no-install prisma db push &&')
 )
 foreach ($pair in $replacements) {
   $from = $pair[0]; $to = $pair[1]
@@ -112,12 +114,9 @@ if ($dockerContent.Contains($runtimePatched)) {
 } elseif (-not $dockerContent.Contains($runtimeKeep)) {
   Fail 'Could not identify WA-AKG runtime dependency command. Existing files were preserved.'
 }
-$cmdOriginal = 'CMD ["sh", "-c", "npx prisma db push &&'
 $cmdNpx = 'CMD ["sh", "-c", "npx --no-install prisma db push &&'
 $cmdDirect = 'CMD ["sh", "-c", "./node_modules/.bin/prisma db push &&'
-if ($dockerContent.Contains($cmdOriginal)) {
-  $dockerContent = $dockerContent.Replace($cmdOriginal, $cmdDirect)
-} elseif ($dockerContent.Contains($cmdNpx)) {
+if ($dockerContent.Contains($cmdNpx)) {
   $dockerContent = $dockerContent.Replace($cmdNpx, $cmdDirect)
 } elseif (-not $dockerContent.Contains($cmdDirect)) {
   Fail 'Could not identify WA-AKG Prisma startup command. Existing files were preserved.'
@@ -146,159 +145,19 @@ $dbSetupSql = @(
   ('GRANT ALL PRIVILEGES ON ' + $tick + 'wa_akg' + $tick + ".* TO 'nexus_wa'@'%';")
 )
 Write-Host 'Configuring local WA-AKG MySQL user (no data removed)...'
-# The initial broken .env placed multiple settings on the MYSQL_ROOT_PASSWORD line.
-# MySQL's persisted root password may therefore differ from the newer container env.
-# Test candidates over stdin, never in command arguments, console output, or GitHub.
+# Original malformed .env could have set MySQL's initial root password to the full line.
+# Probe saved original credentials privately; do not reset database volumes.
 $candidates = New-Object System.Collections.Generic.List[string]
 function AddDbCandidate([string]$value) {
-  if ([string]::IsNullOrEmpty($value)) { return }
-  if (-not $candidates.Contains($value)) { $candidates.Add($value) }
+  if (-not [string]::IsNullOrEmpty($value) -and -not $candidates.Contains($value)) { $candidates.Add($value) }
 }
 $backup = Join-Path $destination '.env.before-repair'
 if (Test-Path $backup) {
   $original = [System.IO.File]::ReadAllText($backup)
-  $match = [regex]::Match($original, '(?m)^MYSQL_ROOT_PASSWORD=(.*)
-if ($LASTEXITCODE -ne 0) {
-  Fail 'Cannot administer the existing local MySQL container. Data preserved; do not delete Docker volumes.'
-}
-Write-Host 'Dedicated WA-AKG database user configured.'
-# Compose has its own file so the upstream exposed 0.0.0.0:3000 port cannot leak.
-$localCompose = @'
-services:
-  db:
-    image: mysql:8.0
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-wa_akg}
-    volumes:
-      - mysql_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:3790:3000"
-    environment:
-      DATABASE_URL: mysql://nexus_wa:${NEXUS_WA_DB_PASSWORD}@db:3306/${MYSQL_DATABASE:-wa_akg}
-      AUTH_SECRET: ${AUTH_SECRET}
-      BASE_URL: http://127.0.0.1:3790
-      NEXTAUTH_URL: http://127.0.0.1:3790
-      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3790
-      NEXT_PUBLIC_API_URL: http://127.0.0.1:3790/api
-      NODE_ENV: production
-      PORT: "3000"
-      HOSTNAME: 0.0.0.0
-      ENABLE_TELEMETRY: "false"
-      DEFAULT_LANGUAGE: en
-      ADMIN_EMAIL: ${ADMIN_EMAIL}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
-    depends_on:
-      db:
-        condition: service_healthy
-    volumes:
-      - app_data:/app/data
-      - uploads_data:/app/uploads
-volumes:
-  mysql_data:
-  app_data:
-  uploads_data:
-'@
-[System.IO.File]::WriteAllText((Join-Path $destination 'docker-compose.nexus-local.yml'),$localCompose,[System.Text.UTF8Encoding]::new($false))
-# Keep an existing local bridge configuration in sync without showing or changing its API key.
-$bridgeEnv = Join-Path $root '.env.wa-local'
-if (Test-Path $bridgeEnv) {
-  $existing = [System.IO.File]::ReadAllText($bridgeEnv)
-  $updated = [regex]::Replace($existing, '(?m)^NEXUS_WA_AKG_URL=http://(?:127\.0\.0\.1|localhost):3000[ \t]*$', 'NEXUS_WA_AKG_URL=http://127.0.0.1:3790')
-  if ($updated -ne $existing) {
-    [System.IO.File]::WriteAllText($bridgeEnv, $updated, [System.Text.UTF8Encoding]::new($false))
-    Write-Host 'Updated existing .env.wa-local WA-AKG URL to port 3790. All secrets were preserved.'
-  }
-}
-Write-Host 'Building and starting WA-AKG + its private MySQL container locally...'
-docker compose -f docker-compose.nexus-local.yml up -d --build
-if ($LASTEXITCODE -ne 0) { Fail 'Docker build/start failed. Inspect docker compose -f docker-compose.nexus-local.yml logs.' }
-Write-Host 'WA-AKG is starting locally: http://127.0.0.1:3790'
-Write-Host 'Open the dashboard, sign in, then Settings -> API Keys; paste its key into the Nexus .env.wa-local file.'
-)
+  $match = [regex]::Match($original, '(?m)^MYSQL_ROOT_PASSWORD=(.*)$')
   if ($match.Success) { AddDbCandidate $match.Groups[1].Value.TrimEnd([char]13) }
 }
-$rootMatch = [regex]::Match($envText, '(?m)^MYSQL_ROOT_PASSWORD=(.*)
-if ($LASTEXITCODE -ne 0) {
-  Fail 'Cannot administer the existing local MySQL container. Data preserved; do not delete Docker volumes.'
-}
-Write-Host 'Dedicated WA-AKG database user configured.'
-# Compose has its own file so the upstream exposed 0.0.0.0:3000 port cannot leak.
-$localCompose = @'
-services:
-  db:
-    image: mysql:8.0
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-wa_akg}
-    volumes:
-      - mysql_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:3790:3000"
-    environment:
-      DATABASE_URL: mysql://nexus_wa:${NEXUS_WA_DB_PASSWORD}@db:3306/${MYSQL_DATABASE:-wa_akg}
-      AUTH_SECRET: ${AUTH_SECRET}
-      BASE_URL: http://127.0.0.1:3790
-      NEXTAUTH_URL: http://127.0.0.1:3790
-      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3790
-      NEXT_PUBLIC_API_URL: http://127.0.0.1:3790/api
-      NODE_ENV: production
-      PORT: "3000"
-      HOSTNAME: 0.0.0.0
-      ENABLE_TELEMETRY: "false"
-      DEFAULT_LANGUAGE: en
-      ADMIN_EMAIL: ${ADMIN_EMAIL}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
-    depends_on:
-      db:
-        condition: service_healthy
-    volumes:
-      - app_data:/app/data
-      - uploads_data:/app/uploads
-volumes:
-  mysql_data:
-  app_data:
-  uploads_data:
-'@
-[System.IO.File]::WriteAllText((Join-Path $destination 'docker-compose.nexus-local.yml'),$localCompose,[System.Text.UTF8Encoding]::new($false))
-# Keep an existing local bridge configuration in sync without showing or changing its API key.
-$bridgeEnv = Join-Path $root '.env.wa-local'
-if (Test-Path $bridgeEnv) {
-  $existing = [System.IO.File]::ReadAllText($bridgeEnv)
-  $updated = [regex]::Replace($existing, '(?m)^NEXUS_WA_AKG_URL=http://(?:127\.0\.0\.1|localhost):3000[ \t]*$', 'NEXUS_WA_AKG_URL=http://127.0.0.1:3790')
-  if ($updated -ne $existing) {
-    [System.IO.File]::WriteAllText($bridgeEnv, $updated, [System.Text.UTF8Encoding]::new($false))
-    Write-Host 'Updated existing .env.wa-local WA-AKG URL to port 3790. All secrets were preserved.'
-  }
-}
-Write-Host 'Building and starting WA-AKG + its private MySQL container locally...'
-docker compose -f docker-compose.nexus-local.yml up -d --build
-if ($LASTEXITCODE -ne 0) { Fail 'Docker build/start failed. Inspect docker compose -f docker-compose.nexus-local.yml logs.' }
-Write-Host 'WA-AKG is starting locally: http://127.0.0.1:3790'
-Write-Host 'Open the dashboard, sign in, then Settings -> API Keys; paste its key into the Nexus .env.wa-local file.'
-)
+$rootMatch = [regex]::Match($envText, '(?m)^MYSQL_ROOT_PASSWORD=(.*)$')
 if ($rootMatch.Success) {
   $candidate = $rootMatch.Groups[1].Value.TrimEnd([char]13)
   if ($candidate.Length -ge 2 -and $candidate.StartsWith([string][char]39) -and $candidate.EndsWith([string][char]39)) {
@@ -306,7 +165,6 @@ if ($rootMatch.Success) {
   }
   AddDbCandidate $candidate
 }
-# Include the current MySQL container environment as a fallback.
 $inspectRoot = & docker inspect --format '{{json .Config.Env}}' wa-akg-local-db-1 2>$null
 if ($LASTEXITCODE -eq 0 -and $inspectRoot) {
   try {
@@ -327,9 +185,8 @@ foreach ($candidate in $candidates) {
   if ($LASTEXITCODE -eq 0 -and @($test) -contains '1') { $verifiedRoot = $candidate; break }
 }
 if (-not $verifiedRoot) {
-  Fail 'Stored MySQL root password could not be verified. Existing database preserved; do not delete volumes.'
+  Fail 'Saved MySQL root password could not be verified. Existing database preserved; do not delete volumes.'
 }
-# Password enters only as the first stdin line; SQL follows on the same stream.
 $payload = $verifiedRoot + "`n" + ($dbSetupSql -join "`n") + "`n"
 $payload | & docker exec -i wa-akg-local-db-1 sh -c 'IFS= read -r dbpass; MYSQL_PWD="$dbpass" exec mysql --protocol=socket -uroot'
 $verifiedRoot = $null
