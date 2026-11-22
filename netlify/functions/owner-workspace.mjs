@@ -36,7 +36,7 @@ export async function handler(event){
    if(store){try{const found=await db(c,"nx_bots?store_id=eq."+encodeURIComponent(store.id)+"&select=bot_id,enabled,greeting,primary_color");bot=found?.[0]||null}catch{}}
    let businessProfile=null;
    if(store){try{businessProfile=(await db(c,"nx_business_profiles?store_id=eq."+encodeURIComponent(store.id)+"&select=*"))?.[0]||null}catch(e){console.warn("Business profile unavailable:",e.message)}}
-   return json(200,{email:user.email,accountKind:user.user_metadata?.account_kind==="personal"?"personal":"business",profile,store,businessProfile,offerings:items,leads,qrSources,employees,appointments,teamAllowed:teamEntitled(user,ent),bot,personalAssistant:personalRows[0]||null,personalAssistantSchemaReady:personalSchemaReady,personalAssistantSpecial:user.id===SPECIAL_OWNER&&ent.is_complimentary===true,widgetAllowed:widgetEnabled(c,ent),access:access(ent),aiConfigured:aiReady()});
+   return json(200,{email:user.email,accountKind:user.user_metadata?.account_kind==="personal"?"personal":"business",profile,store,businessProfile,offerings:items,leads,qrSources,employees,appointments,teamAllowed:teamEntitled(user,ent),whatsappLinkAllowed:ent?.subscription_status==="ACTIVE"&&ent?.billing_tier==="business"&&user.user_metadata?.account_kind!=="personal",bot,personalAssistant:personalRows[0]||null,personalAssistantSchemaReady:personalSchemaReady,personalAssistantSpecial:user.id===SPECIAL_OWNER&&ent.is_complimentary===true,widgetAllowed:widgetEnabled(c,ent),access:access(ent),aiConfigured:aiReady()});
   }
   const data=parse(event,30000),action=str(data.action,40);
   if(action.startsWith("google_calendar_")){
