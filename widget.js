@@ -32,6 +32,24 @@ const mounted=()=> {
  const iframe=document.createElement("iframe");iframe.title="NexusSales customer assistant";iframe.setAttribute("allow","");iframe.setAttribute("referrerpolicy","strict-origin-when-cross-origin");
  iframe.src=origin+"/widget-chat.html?bot="+encodeURIComponent(botId);
  panel.append(iframe);
+ // Only the genuine signed-in Nexus dashboard may pass its owner JWT to the
+ // trusted widget origin. Third-party customer sites never receive this token.
+ const nexusHost=location.origin===origin || /^(?:localhost|127\\.0\\.0\\.1):8788$/.test(location.host)&&location.protocol==="http:";
+ const dashboardAuth=()=>{
+   if(!nexusHost)return "";
+   try{
+     const entry=JSON.parse(sessionStorage.getItem("nexus_owner_v1")||"null");
+     if(!entry?.access_token||(entry.expires_at&&Date.now()/1000>entry.expires_at-60))return "";
+     return String(entry.access_token);
+   }catch{return ""}
+ };
+ const ownerHandoff=event=>{
+   if(event.source!==iframe.contentWindow || event.origin!==origin)return;
+   if(event.data?.type!=="nexus-widget-owner-auth-request" || event.data?.botId!==botId)return;
+   const token=dashboardAuth();
+   if(token)iframe.contentWindow?.postMessage({type:"nexus-widget-owner-auth-response",botId,token},origin);
+ };
+ window.addEventListener("message",ownerHandoff);
  const button=document.createElement("button");button.className="trigger";button.type="button";button.setAttribute("aria-controls","nexusPanel");button.setAttribute("aria-expanded","false");button.textContent="✦ "+title;
  let open=false;
  const toggle=(force)=>{open=typeof force==="boolean"?force:!open;panel.classList.toggle("open",open);button.setAttribute("aria-expanded",String(open));button.textContent=open?"× Close chat":"✦ "+title};
