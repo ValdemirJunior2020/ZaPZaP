@@ -4,7 +4,7 @@ import{JUNIOR_OWNER_ID,JUNIOR_EXPERIENCE,juniorMessages}from"../lib/junior-assis
 import{allow,clientIp}from"../lib/abuse.mjs";
 import{businessMessages}from"../lib/business-ai.mjs";
 import{queryWithMeta as aiQuery}from"../lib/ollama.mjs";
-import{env,json,str,parse,postOrigin,publishedStore,aiReady,db,entitlement,access}from"../lib/tenant.mjs";
+import{env,json,str,parse,postOrigin,publishedStore,aiReady,db,entitlement,access,userFrom}from"../lib/tenant.mjs";
 import{widgetEnabled}from"../lib/billing.mjs";
 import{recordAiError}from"../lib/ai-diagnostics.mjs";
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -80,16 +80,28 @@ export async function handler(event){
    ({store,items,ent}=published);
   }
   diagOwnerId=store.owner_id;diagStoreId=store.id;
+  // The embedded dashboard widget may identify the actual authenticated owner.
+  // Never trust a client-provided "owner" flag, name, phone, or store ID.
+  let privilegedOwner=false;
+  if(!personalMode && store.owner_id===JUNIOR_OWNER_ID && ent.is_complimentary===true
+     && /^Bearer [-\\w.]+$/.test(event.headers.authorization||event.headers.Authorization||"")){
+    try{
+      const identified=await userFrom(event,c);
+      privilegedOwner=identified.user.id===store.owner_id && identified.ent?.is_complimentary===true;
+    }catch{privilegedOwner=false}
+  }
   if(juniorMode&&(store.owner_id!==JUNIOR_OWNER_ID||ent.is_complimentary!==true))return json(403,{error:"This assistant belongs to a different business"});
   diagStage="daily_quota";
   const dailyLimit=ent.is_complimentary===true?1000:personalMode&&ent.billing_tier==="personal"?100:ent.subscription_status==="ACTIVE"?1000:100;
-  const used=await db(c,"rpc/nx_consume_chat_quota",{method:"POST",body:{p_store_id:store.id,p_cap:dailyLimit}});
-  if(used!==true)return json(429,{code:"DAILY_LIMIT",limitReached:true,error:"The AI usage limit has been reached today. Contact the assistant owner directly or leave a contact request."});
+  if(!privilegedOwner){
+    const used=await db(c,"rpc/nx_consume_chat_quota",{method:"POST",body:{p_store_id:store.id,p_cap:dailyLimit}});
+    if(used!==true)return json(429,{code:"DAILY_LIMIT",limitReached:true,error:"The AI usage limit has been reached today. Contact the assistant owner directly or leave a contact request."});
+  }
   if(req.sessionId&&!uuid.test(req.sessionId))return json(400,{error:"Invalid chat session"});
-  const cap=personalMode?ent.billing_tier==="personal"&&ent.subscription_status==="ACTIVE"?Math.min(10,assistant.max_messages):assistant.max_messages:Math.max(5,Math.min(30,Number(store.chat_max_messages)||10));
+  const cap=privilegedOwner?1000000:personalMode?ent.billing_tier==="personal"&&ent.subscription_status==="ACTIVE"?Math.min(10,assistant.max_messages):assistant.max_messages:Math.max(5,Math.min(30,Number(store.chat_max_messages)||10));
   // Cross-session daily budget; clearing local storage never grants unlimited Ollama use.
-  if(!await allow(c,"customer_daily",store.id+":"+clientIp(event),Math.max(30,cap*2),86400))return json(429,{code:"DAILY_LIMIT",limitReached:true,error:"The daily chat limit has been reached. Please leave your phone number or email for the business."});
-  const minutes=personalMode?assistant.max_minutes:Math.max(5,Math.min(30,Number(store.chat_max_minutes)||10));
+  if(!privilegedOwner&&!await allow(c,"customer_daily",store.id+":"+clientIp(event),Math.max(30,cap*2),86400))return json(429,{code:"DAILY_LIMIT",limitReached:true,error:"The daily chat limit has been reached. Please leave your phone number or email for the business."});
+  const minutes=privilegedOwner?525600:personalMode?assistant.max_minutes:Math.max(5,Math.min(30,Number(store.chat_max_minutes)||10));
   if(!personalMode&&req.sessionId){
    try{
     const scope=await db(c,"nx_chat_sessions?id=eq."+encodeURIComponent(req.sessionId)+"&store_id=eq."+encodeURIComponent(store.id)+"&select=personal_assistant_id");
@@ -139,7 +151,7 @@ export async function handler(event){
   const answer=ai.text;
   diagStage="reply_save";
   await db(c,"nx_chat_messages",{method:"POST",body:{session_id:claim.sessionId,store_id:store.id,role:"assistant",content:answer},prefer:"return=minimal"});
-  return json(200,{reply:answer,source:"ai",provider:ai.source,sessionId:claim.sessionId,remaining:claim.remaining,limitReached:claim.remaining===0,expiresAt:claim.expiresAt});
+  return json(200,{reply:answer,source:"ai",provider:ai.source,sessionId:claim.sessionId,remaining:privilegedOwner?null:claim.remaining,unlimitedOwner:privilegedOwner,limitReached:!privilegedOwner&&claim.remaining===0,expiresAt:claim.expiresAt});
  }catch(e){
   const diag=await recordAiError(diagCfg||env(),{ownerId:diagOwnerId,storeId:diagStoreId,stage:diagStage,error:e,elapsedMs:Date.now()-diagStart});
   return json(e.status||503,{error:"The business assistant is temporarily unavailable. Please leave an inquiry.",reference:diag.id});
