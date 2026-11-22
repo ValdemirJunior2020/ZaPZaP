@@ -3,7 +3,7 @@
 import http from "node:http";
 import crypto from "node:crypto";
 import {businessMessages} from "../netlify/lib/business-ai.mjs";
-import {readFile} from "node:fs/promises";
+import {readFile,writeFile} from "node:fs/promises";
 import {fileURLToPath} from "node:url";
 import path from "node:path";
 
@@ -51,6 +51,14 @@ export async function startBridge({settings=undefined,fetcher=fetch,port=8791}={
   const state = {session:validSession(cfg.session)?cfg.session:"",connected:false,armed:false,busy:false,lastCheck:"Never",errors:[],recent:[],seen:new Set(),baseline:false,business:null};
   const log = value => {state.recent.unshift({time:new Date().toLocaleTimeString(),message:value});state.recent=state.recent.slice(0,18)};
   const err = value => {state.errors.unshift(String(value).slice(0,160));state.errors=state.errors.slice(0,5);log("Error: "+value)};
+  async function rememberSession(){
+    if(settings!==undefined || !validSession(state.session))return;
+    const file=path.resolve(here,"../.env.wa-local");
+    const current=await readFile(file,"utf8");
+    const line="NEXUS_WA_SESSION_ID="+state.session;
+    const next=/^NEXUS_WA_SESSION_ID=.*$/m.test(current)?current.replace(/^NEXUS_WA_SESSION_ID=.*$/m,line):current.trimEnd()+"\n"+line+"\n";
+    if(next!==current)await writeFile(file,next,{encoding:"utf8",mode:0o600});
+  }
   async function callWa(endpoint,options={}){
     if(!cfg.apiKey)throw Error("Set NEXUS_WA_AKG_API_KEY in .env.wa-local");
     const response=await fetcher(cfg.apiRoot+"/api"+endpoint,{...options,headers:{"X-API-Key":cfg.apiKey,Accept:"application/json",...(options.body?{"Content-Type":"application/json"}:{})},signal:AbortSignal.timeout(7500)});
@@ -185,7 +193,7 @@ export async function startBridge({settings=undefined,fetcher=fetch,port=8791}={
           const x=await callWa("/sessions",{method:"POST",body:JSON.stringify({name:"Nexus AI Local Test",sessionId:id})});
           state.session=String(x.data?.sessionId||x.sessionId||id);
           if(!validSession(state.session))throw Error("Unexpected WhatsApp session ID");
-          state.armed=false;state.baseline=false;state.seen.clear();log("Session created: "+state.session);
+          state.armed=false;state.baseline=false;state.seen.clear();await rememberSession();log("Session created: "+state.session);
         }
         if(await sessionStatus()!=="CONNECTED"){
           await callWa("/sessions/"+sessionPath()+"/start",{method:"POST",body:"{}"});
@@ -196,7 +204,7 @@ export async function startBridge({settings=undefined,fetcher=fetch,port=8791}={
         const x=await callWa("/sessions",{method:"POST",body:JSON.stringify({name:"Nexus AI Local Test",sessionId:id})});
         state.session=String(x.data?.sessionId||x.sessionId||id);
         if(!validSession(state.session))throw Error("Unexpected WA-AKG session ID");
-        state.armed=false;state.baseline=false;state.seen.clear();log("Session created: "+state.session);
+        state.armed=false;state.baseline=false;state.seen.clear();await rememberSession();log("Session created: "+state.session);
       }else if(action==="start"){
         await callWa("/sessions/"+sessionPath()+"/start",{method:"POST",body:"{}"});log("WhatsApp session started; request QR next");
       }else if(action==="arm"){
