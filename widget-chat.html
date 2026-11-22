@@ -30,24 +30,10 @@ function ownerSessionToken(){
     return String(auth.access_token);
   }catch{return ""}
 }
-let signedOwnerToken=ownerSessionToken();
+const signedOwnerToken=ownerSessionToken();
 // Owner preview and public widget never share a conversation ID.
-let sessionKey=(signedOwnerToken?"nexus_widget_owner_unlimited_v2_":"nexus_widget_")+botId;
+const sessionKey=(signedOwnerToken?"nexus_widget_owner_unlimited_v2_":"nexus_widget_")+botId;
 try{sessionId=localStorage.getItem(sessionKey)||null}catch{}
-// The floating widget may be served from Netlify while the logged-in owner
-// views their local Nexus dashboard. Exchange the auth only with that parent.
-const trustedOwnerParent=origin=>origin===location.origin||/^http:\/\/(?:127\.0\.0\.1|localhost):8788$/.test(origin);
-window.addEventListener("message",event=>{
- if(event.source!==window.parent||!trustedOwnerParent(event.origin))return;
- if(event.data?.type!=="nexus-widget-owner-auth-response"||event.data?.botId!==botId)return;
- const token=event.data?.token;
- if(typeof token!=="string"||!/^[-\w.]+$/.test(token)||token.length>4096)return;
- signedOwnerToken=token;
- sessionKey="nexus_widget_owner_unlimited_v2_"+botId;
- sessionId=null;try{sessionId=localStorage.getItem(sessionKey)||null}catch{}
- if(!chatClosed)el("status").textContent="Owner preview • Unlimited chat";
-});
-if(window.parent!==window)window.parent.postMessage({type:"nexus-widget-owner-auth-request",botId},"*");
 
 function add(role,text){const b=document.createElement("div");b.className="bubble "+role;b.textContent=String(text).slice(0,2500);feed.appendChild(b);feed.scrollTop=feed.scrollHeight;return b}
 async function init(){
