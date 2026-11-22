@@ -28,8 +28,8 @@ if (-not (Test-Path '.env')) {
     'MYSQL_ROOT_PASSWORD=' + $mysql,
     'MYSQL_DATABASE=wa_akg',
     'AUTH_SECRET=' + $auth,
-    'BASE_URL=http://127.0.0.1:3000',
-    'NEXTAUTH_URL=http://127.0.0.1:3000',
+    'BASE_URL=http://127.0.0.1:3790',
+    'NEXTAUTH_URL=http://127.0.0.1:3790',
     'PORT=3000',
     'DEFAULT_LANGUAGE=en',
     'TZ=America/New_York',
@@ -88,14 +88,14 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:3790:3000"
     environment:
       DATABASE_URL: mysql://root:${MYSQL_ROOT_PASSWORD}@db:3306/${MYSQL_DATABASE:-wa_akg}
       AUTH_SECRET: ${AUTH_SECRET}
-      BASE_URL: http://127.0.0.1:3000
-      NEXTAUTH_URL: http://127.0.0.1:3000
-      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
-      NEXT_PUBLIC_API_URL: http://127.0.0.1:3000/api
+      BASE_URL: http://127.0.0.1:3790
+      NEXTAUTH_URL: http://127.0.0.1:3790
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3790
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:3790/api
       NODE_ENV: production
       PORT: "3000"
       HOSTNAME: 0.0.0.0
@@ -115,8 +115,23 @@ volumes:
   uploads_data:
 '@
 [System.IO.File]::WriteAllText((Join-Path $destination 'docker-compose.nexus-local.yml'),$localCompose,[System.Text.UTF8Encoding]::new($false))
+# Keep an existing local bridge configuration in sync without revealing or altering its API key.
+$bridgeEnv = Join-Path $root '.env.wa-local'
+if (Test-Path $bridgeEnv) {
+  $existing = [System.IO.File]::ReadAllText($bridgeEnv)
+  $updated = [regex]::Replace($existing, '(?m)^NEXUS_WA_AKG_URL=http://(?:127\.0\.0\.1|localhost):3000\s*
+docker compose -f docker-compose.nexus-local.yml up -d --build
+if ($LASTEXITCODE -ne 0) { Fail 'Docker build/start failed. Inspect docker compose -f docker-compose.nexus-local.yml logs.' }
+Write-Host 'WA-AKG is starting locally: http://127.0.0.1:3790'
+Write-Host 'Open the dashboard, sign in, then Settings -> API Keys; paste its key into the Nexus .env.wa-local file.'
+, 'NEXUS_WA_AKG_URL=http://127.0.0.1:3790')
+  if ($updated -ne $existing) {
+    [System.IO.File]::WriteAllText($bridgeEnv, $updated, [System.Text.UTF8Encoding]::new($false))
+    Write-Host 'Updated existing .env.wa-local WA-AKG URL to port 3790. All secrets were preserved.'
+  }
+}
 Write-Host 'Building and starting WA-AKG + its private MySQL container locally...'
 docker compose -f docker-compose.nexus-local.yml up -d --build
 if ($LASTEXITCODE -ne 0) { Fail 'Docker build/start failed. Inspect docker compose -f docker-compose.nexus-local.yml logs.' }
-Write-Host 'WA-AKG is starting locally: http://127.0.0.1:3000'
+Write-Host 'WA-AKG is starting locally: http://127.0.0.1:3790'
 Write-Host 'Open the dashboard, sign in, then Settings -> API Keys; paste its key into the Nexus .env.wa-local file.'
