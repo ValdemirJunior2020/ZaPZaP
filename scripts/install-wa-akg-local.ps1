@@ -23,7 +23,7 @@ $envPath = Join-Path $destination '.env'
 $oldEnv = if (Test-Path $envPath) { [System.IO.File]::ReadAllText($envPath) } else { '' }
 # Older installer wrote all keys onto one line, so Docker interpreted them as
 # one giant MYSQL_ROOT_PASSWORD. Repair in place WITHOUT deleting the DB volume.
-$malformed = ($oldEnv -match '(?m)^MYSQL_ROOT_PASSWORD=.*\s+MYSQL_DATABASE=') -or
+$malformed = ($oldEnv -match '(?m)^MYSQL_ROOT_PASSWORD=[^\r\n]*[ \t]+MYSQL_DATABASE=') -or
              ($oldEnv -and $oldEnv -notmatch '(?m)^AUTH_SECRET=') -or
              ($oldEnv -and $oldEnv -notmatch '(?m)^ADMIN_EMAIL=')
 if (-not $oldEnv -or $malformed) {
