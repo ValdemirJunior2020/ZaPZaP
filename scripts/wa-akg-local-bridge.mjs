@@ -268,7 +268,152 @@ export async function startBridge({settings=undefined,fetcher=fetch,port=8791}={
     }catch(e){state.armed=false;err("Auto-reply paused; will retry automatically: "+e.message)}
     finally{state.busy=false}
   }
-  const page=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Nexus AI · WhatsApp local lab</title><style>body{font:16px system-ui;background:#0c1714;color:#edf7f1;margin:0;padding:30px}main{max-width:740px;margin:auto}section{background:#173027;padding:24px;border:1px solid #36614b;border-radius:18px;margin:14px 0}button{background:#28c76f;color:#092013;border:0;border-radius:10px;padding:12px 18px;font-weight:700;margin:4px;cursor:pointer}button:disabled{opacity:.4;cursor:not-allowed}img{max-width:260px;border-radius:12px;background:white;padding:10px}code{color:#a1f9cd}small{color:#abcbb8}pre{white-space:pre-wrap;color:#d1efe0}h1{margin:0}.warning{color:#ffcb9f}</style><main><h1>WhatsApp · Local Test</h1><p>WA-AKG QR + Nexus AI Ollama. Runs on this PC only. Not a live customer integration.</p><section><div id="status">Checking…</div><button onclick="connectWhatsApp()">Link Your WhatsApp</button><button id="refreshQr" onclick="qr()" disabled>Refresh QR</button><p id="qr"></p><small>Scan with WhatsApp → Settings → Linked Devices → Link a Device.</small></section><section><h2>AI test replies</h2><p class="warning">Auto replies are requested after the Nexus business settings load. Test mode replies only to approved numbers. All-customer mode is explicit and disabled by default (NEXUS_WA_REPLY_MODE=all). Groups, own messages and history are ignored. WhatsApp and your local computer must remain online.</p><button id="on" onclick="action('arm')">Enable replies</button><button onclick="action('disarm')">Stop replies</button><pre id="logs"></pre></section><script>async function get(p,opts={}){const r=await fetch('/api/'+p,opts);const x=await r.json();if(!r.ok)throw Error(x.error||'Request failed');return x}async function action(type){try{await get(type,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});await update()}catch(e){alert(e.message)}}async function connectWhatsApp(){try{document.getElementById('qr').textContent='Preparing your secure link…';await get('connect',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});await update();await qr()}catch(e){document.getElementById('qr').textContent=e.message}}async function qr(){try{const x=await get('qr');document.getElementById('qr').innerHTML=x.base64?'<img alt="WhatsApp link QR" src="'+x.base64+'">':'QR is still preparing. Click Refresh QR in a few seconds.'}catch(e){document.getElementById('qr').textContent=e.message}}async function update(){try{const x=await get('status');document.getElementById('status').textContent='Session: '+(x.session||'not created')+' | WhatsApp: '+x.connection+' | AI: '+(x.armed?'ON':x.autoReplyRequested?'AUTO-RESUME PENDING':'OFF')+' | Nexus business: '+(x.business||'not loaded')+' | Mode: '+(x.mode==='all'?'ALL CUSTOMERS':'TEST ONLY')+' | Test numbers: '+x.allowed;document.getElementById('on').disabled=!x.connected||(!x.allowed&&x.mode!=='all')||!x.business;document.getElementById('refreshQr').disabled=!x.session;document.getElementById('logs').textContent=x.recent.map(x=>x.time+' '+x.message).join('\\n')}catch(e){document.getElementById('status').textContent=e.message}}update();setInterval(update,4500)</script></main></html>`;
+  const page=`<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WhatsApp Assistant | Nexus AI</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#e7f6ee;background:#0c1714}
+*{box-sizing:border-box}
+body{margin:0;padding:22px 18px}
+main{max-width:830px;margin:auto}
+h1{font-size:clamp(27px,4vw,35px);letter-spacing:-.03em;margin:3px 0 8px}
+h2{font-size:19px;margin:0 0 17px}
+p{line-height:1.55}
+.subtitle{color:#b4d1bf;margin:0 0 22px}
+section{background:#153128;border:1px solid #355f49;padding:25px;border-radius:19px;margin:15px 0}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.label{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#9fbdae;font-weight:800;margin-bottom:8px}
+.status{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:800;border-radius:30px;padding:9px 13px;background:#315047;color:#dbf8e7}
+.status:before{content:"";width:8px;height:8px;background:#e2b767;border-radius:50%}
+.status.ok{background:#173e2f;color:#a8ffd0}
+.status.ok:before{background:#27d68c}
+.status.off{background:#463d29;color:#ffdaa0}
+.status.off:before{background:#f0ab43}
+.info-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:20px}
+.info{border:1px solid #365749;background:#10281f;padding:14px;border-radius:12px;min-width:0}
+.info strong{display:block;font-size:15px;overflow-wrap:anywhere}
+.info small{display:block;font-size:12px;color:#accbbc;margin-bottom:5px}
+.actions{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin-top:19px}
+button{background:#25c575;color:#082716;border:0;border-radius:10px;padding:12px 18px;font-weight:800;cursor:pointer}
+button.secondary{background:#25473a;color:#e0f7e9;border:1px solid #53705e}
+button.danger{background:#4a312d;color:#ffe0da;border:1px solid #815149}
+button:disabled{opacity:.42;cursor:not-allowed}
+#qr img{max-width:260px;width:100%;border-radius:12px;background:white;padding:10px}
+#qr:empty{display:none}
+.muted{color:#b8d3c5;font-size:13px}
+.note{font-size:13px;line-height:1.55;color:#e4cd99;margin-top:15px}
+details{border-top:1px solid #345547;margin-top:22px;padding-top:15px}
+summary{cursor:pointer;font-size:13px;color:#c4e4d4;font-weight:700}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.65;color:#b6d9c6;margin-bottom:0}
+.test-note{font-size:12px;color:#93bca7;margin-top:18px}
+@media(max-width:540px){section{padding:17px}.info-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<div class="label">Nexus AI · Business Assistant</div>
+<h1>WhatsApp Assistant</h1>
+<p class="subtitle">Manage your WhatsApp connection and automatic customer replies in one place.</p>
+<section>
+<div class="row"><h2>Connection</h2><span id="connectionBadge" class="status">Checking connection…</span></div>
+<p class="muted" id="connectionHelp">Checking your linked WhatsApp account.</p>
+<div class="info-grid">
+<div class="info"><small>Business</small><strong id="businessName">Loading…</strong></div>
+<div class="info"><small>AI assistant</small><strong id="assistantStatus">Checking…</strong></div>
+<div class="info"><small>Who receives replies</small><strong id="audience">Checking…</strong></div>
+<div class="info"><small>WhatsApp number</small><strong id="linkStatus">Checking saved connection…</strong></div>
+</div>
+<div class="actions">
+<button id="connectBtn" onclick="connectWhatsApp()">Connect WhatsApp</button>
+<button class="secondary" id="refreshQr" onclick="qr()" disabled hidden>Refresh QR code</button>
+</div>
+<div id="qr" aria-live="polite"></div>
+<p class="muted" id="pairHelp" hidden>On your phone, open WhatsApp → Linked Devices → Link a Device, then scan the code above.</p>
+</section>
+<section>
+<div class="row"><h2>Automatic replies</h2><span id="replyBadge" class="status">Checking…</span></div>
+<p class="muted" id="replyHelp">Nexus AI answers new customer messages using your saved business information.</p>
+<div class="actions">
+<button id="on" onclick="action('arm')">Turn on automatic replies</button>
+<button id="off" class="danger" onclick="action('disarm')">Pause automatic replies</button>
+</div>
+<p class="note">Your computer, internet connection and WhatsApp must stay online for automatic replies to work.</p>
+<div class="row"><h2 style="margin:12px 0 0">Recent activity</h2><span class="muted" id="activityStatus"></span></div>
+<pre id="activity" aria-live="polite">Checking for recent activity…</pre>
+<details><summary>Technical details (for support)</summary><pre id="logs"></pre></details>
+</section>
+<p class="test-note">Local preview: This assistant currently runs on your computer and is not a hosted 24/7 customer service integration.</p>
+</main>
+<script>
+const el=id=>document.getElementById(id);
+async function get(p,opts={}){const r=await fetch('/api/'+p,opts);const x=await r.json();if(!r.ok)throw Error(x.error||'Please try again');return x}
+async function action(type){
+ try{await get(type,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});await update()}
+ catch(e){alert(e.message)}
+}
+async function connectWhatsApp(){
+ try{
+  el('qr').textContent='Preparing WhatsApp connection…';
+  await get('connect',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+  await update();const x=await get('status');
+  if(!x.connected)await qr();else el('qr').textContent='';
+ }catch(e){el('qr').textContent=e.message}
+}
+async function qr(){
+ try{
+  const x=await get('qr');
+  el('qr').innerHTML=x.base64?'<img alt="WhatsApp linking QR code" src="'+x.base64+'">':'Your QR code is being prepared. Select Refresh QR code again in a moment.';
+ }catch(e){el('qr').textContent=e.message}
+}
+function friendlyActivity(message){
+ if(/Replied to (?:approved test )?number ending (\d+)/i.test(message))return 'Reply sent to customer (number ending '+RegExp.$1+').';
+ if(/automatically resumed|AI replies enabled/i.test(message))return 'Automatic replies are active.';
+ if(/AI replies disabled/i.test(message))return 'Automatic replies paused.';
+ if(/Nexus business settings loaded/i.test(message))return 'Business information updated.';
+ if(/Historical messages ignored/i.test(message))return 'Ready for new incoming messages.';
+ if(/WhatsApp reply scope updated/i.test(message))return 'Reply audience updated.';
+ if(/stored Nexus business settings restored/i.test(message))return 'Saved business information restored.';
+ if(/local bridge ready/i.test(message))return 'WhatsApp assistant is ready.';
+ if(/Ollama response rejected|Ollama unsafe output blocked/i.test(message))return 'An AI response was checked for quality.';
+ if(/Error:/i.test(message))return 'A connection or response issue needs attention. See Technical details.';
+ return '';
+}
+async function update(){
+ try{
+  const x=await get('status');
+  const connected=x.connected===true,armed=x.armed===true,requested=x.autoReplyRequested===true;
+  const mode=x.mode==='all'?'All new customer messages':'Selected test contacts';
+  const cb=el('connectionBadge');cb.className='status '+(connected?'ok':'off');cb.textContent=connected?'Connected':'Not connected';
+  el('connectionHelp').textContent=connected?'Your WhatsApp account is linked and ready.':'Your WhatsApp connection needs attention. Connect WhatsApp to continue.';
+  el('businessName').textContent=x.business||'Add business details in Nexus';
+  el('assistantStatus').textContent=armed?'Answering messages':requested?'Preparing automatic replies':'Automatic replies paused';
+  el('audience').textContent=mode;
+  el('linkStatus').textContent=connected?'Linked successfully':x.session?'Previously linked — reconnect needed':'Not linked yet';
+  const rb=el('replyBadge');rb.className='status '+(armed?'ok':'off');rb.textContent=armed?'Active':requested?'Starting…':'Paused';
+  el('replyHelp').textContent=armed?'Nexus AI is responding to new messages from '+(x.mode==='all'?'customers who contact your business.':'your selected test contacts.'):(requested?'Automatic replies will start when WhatsApp is connected and your business details are available.':'Automatic replies are paused. You can turn them on when ready.');
+  el('on').disabled=armed||!connected||(!x.allowed&&x.mode!=='all')||!x.business;
+  el('off').disabled=!requested&&!armed;
+  el('connectBtn').hidden=connected;
+  el('refreshQr').hidden=connected||!x.session;el('refreshQr').disabled=connected||!x.session;
+  el('pairHelp').hidden=connected;
+  if(connected)el('qr').textContent='';
+  const lines=(x.recent||[]).map(item=>({time:item.time,message:friendlyActivity(item.message)})).filter(item=>item.message);
+  el('activity').textContent=lines.length?lines.slice(0,8).map(item=>item.time+'  '+item.message).join('\n'):'No recent activity. New messages will appear here.';
+  el('activityStatus').textContent=lines.length?'Latest updates':'';
+  el('logs').textContent=(x.recent||[]).map(item=>item.time+'  '+item.message).join('\n')||'No technical events yet.';
+ }catch(e){
+  const cb=el('connectionBadge');cb.className='status off';cb.textContent='Unable to check connection';
+  el('connectionHelp').textContent='The assistant is temporarily unreachable. Check that Nexus services are running.';
+  el('activity').textContent='Could not load recent activity.';
+ }
+}
+update();setInterval(update,4500);
+</script>
+</body>
+</html>`;
   const send=(res,status,value,type="application/json")=>{res.writeHead(status,{"Content-Type":type,"Cache-Control":"no-store","X-Content-Type-Options":"nosniff","Content-Security-Policy":"default-src 'self' data: 'unsafe-inline'; img-src 'self' data:; object-src 'none'; frame-ancestors http://127.0.0.1:8788 http://localhost:8788"});res.end(type==="application/json"?JSON.stringify(value):value)};
   const server=http.createServer(async(req,res)=>{
     const host=req.headers.host||"";
