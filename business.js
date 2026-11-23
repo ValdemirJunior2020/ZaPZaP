@@ -86,9 +86,9 @@ async function loadWorkspace({throwOnError=false}={}){
   text("accountLabel",workspace.email||"Account");
   text("sideName",workspace.store?.name||workspace.profile?.business_name||"Your business");
   document.querySelectorAll("[data-owner-only]").forEach(el=>el.hidden=workspace?.personalAssistantSpecial!==true);
-  // Developer-only UI. Paid Business entitlement comes from owner-workspace, not browser pricing.
-  const whatsappLocal=["localhost","127.0.0.1"].includes(location.hostname);
-  const whatsappAllowed=whatsappLocal&&(workspace?.whatsappLinkAllowed===true||workspace?.personalAssistantSpecial===true);
+  // Owner/Business subscribers can always find the WhatsApp connection page.
+  // Actual pairing and business data sync stay restricted to the local Nexus gateway.
+  const whatsappAllowed=workspace?.whatsappLinkAllowed===true||workspace?.personalAssistantSpecial===true;
   document.querySelectorAll("[data-whatsapp-business]").forEach(el=>{el.hidden=!whatsappAllowed});
   if(viewName==="whatsappLink"&&!whatsappAllowed)viewName="overview";
   render();
@@ -173,7 +173,7 @@ function render(){
  text("workspaceEyebrow",t[0]);text("workspaceHeading",t[1]);text("workspaceSubtitle",t[2]);text("trialBadge",statusText());
  document.querySelectorAll("[data-view]").forEach(b=>{b.classList.toggle("active",b.dataset.view===viewName)});
  const views={overview:renderOverview,store:renderStore,offerings:renderOfferings,testbot:renderTestBot,links:renderLinks,leads:renderLeads,whatsappLink:renderWhatsAppLink,widget:()=>"",team:renderTeam,personal:renderPersonalAssistant,logs:renderErrorLogs,brazil:renderMarketPlans,billing:renderBilling};
- if(viewName==="whatsappLink"&&(!["localhost","127.0.0.1"].includes(location.hostname)||!(workspace?.whatsappLinkAllowed===true||workspace?.personalAssistantSpecial===true)))viewName="overview";
+ if(viewName==="whatsappLink"&&!(workspace?.whatsappLinkAllowed===true||workspace?.personalAssistantSpecial===true))viewName="overview";
  $("viewContent").innerHTML=(views[viewName]||views.overview)();
  bindView();
  if(viewName==="widget")window.NexusWidgetGuide?.render(workspace,ownerApi,loadWorkspace);
@@ -181,9 +181,13 @@ function render(){
  window.NexusLanguage?.apply();
 }
 function renderWhatsAppLink(){
- // The bridge must remain loopback-only; this is not a public customer connection yet.
- if(!["localhost","127.0.0.1"].includes(location.hostname)||!(workspace?.whatsappLinkAllowed===true||workspace?.personalAssistantSpecial===true))
-   return '<div class="card">WhatsApp linking is available to active Business subscribers during local testing.</div>';
+ if(!(workspace?.whatsappLinkAllowed===true||workspace?.personalAssistantSpecial===true))
+   return '<div class="card">WhatsApp linking requires an authorized business account.</div>';
+ // The connected WA-AKG service is bound to 127.0.0.1 on the owner's computer.
+ // Hosted Netlify cannot reach it. Keep a visible, useful entry without pretending
+ // that the public website can pair, control or read the local WhatsApp session.
+ if(!["localhost","127.0.0.1"].includes(location.hostname))
+   return '<div class="card" style="max-width:900px"><span class="tag">WHATSAPP ASSISTANT · LOCAL CONNECTION</span><h2>Link Your WhatsApp</h2><p>Your WhatsApp assistant is managed securely on your own computer. Open your local Nexus dashboard to view the connection, update business information and manage automatic replies.</p><p class="hint">Keep <strong>START-LOCAL-INTEGRATIONS.bat</strong> running on that computer. The hosted website does not directly connect to your WhatsApp session.</p><div class="actions"><a class="primary" href="http://127.0.0.1:8788/" target="_blank" rel="noopener noreferrer">Open local Nexus dashboard</a></div><p class="hint">If the local page does not open, start Nexus on your PC first, then sign in with the same Nexus account and choose Link Your WhatsApp in its sidebar.</p></div>';
  return '<div class="card" style="max-width:900px"><span class="tag">BUSINESS PLAN · LOCAL TEST</span><h2>Connect your WhatsApp in Nexus</h2><p>Use your spare WhatsApp number for this test. Your AI responses stay off until you choose to enable them.</p><p id="nexusWaHelp" role="status">Click below to begin linking. You will scan a QR code using WhatsApp → Linked Devices → Link a Device.</p><button type="button" id="nexusWaLinkButton" class="price-cta" style="border:0;cursor:pointer">Link Your WhatsApp</button><div id="nexusWaEmbedded" hidden style="margin-top:18px"><iframe title="Nexus WhatsApp local linking" src="about:blank" loading="lazy" referrerpolicy="no-referrer" style="width:100%;min-height:660px;border:1px solid #c8ded1;border-radius:16px;background:#0c1714"></iframe><p class="fine">Local prototype. WA-AKG must be running on port 3790 and Nexus WhatsApp bridge on port 8791. No deployment or customer account is connected yet.</p></div></div>';
 }
 function renderOverview(){
