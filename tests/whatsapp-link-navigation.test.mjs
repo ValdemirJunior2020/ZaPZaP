@@ -150,3 +150,16 @@ test("WhatsApp owner panel uses customer-ready copy while preserving local discl
  assert.match(bridge,/currently runs on your computer and is not a hosted 24\/7 customer service integration/);
  assert.doesNotMatch(bridge,/<h1>WhatsApp · Local Test<\/h1>/);
 });
+
+test("rendered WhatsApp panel JavaScript compiles and polls status",async()=>{
+ const source=await read("scripts/wa-akg-local-bridge.mjs");
+ const start=source.indexOf("  const page=");
+ const end=source.indexOf(";\n  const send=",start);
+ assert.ok(start>=0&&end>start);
+ const assignment=source.slice(start,end);
+ const rendered=new Function(assignment+";return page;")();
+ const script=rendered.split("<script>")[1]?.split("</script>")[0];
+ assert.ok(script);
+ assert.doesNotThrow(()=>new Function(script),"The rendered browser code must be valid JavaScript");
+ assert.ok(script.includes("setInterval(update,4500)"));
+});
