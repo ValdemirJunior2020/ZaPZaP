@@ -369,7 +369,7 @@ async function qr(){
  }catch(e){el('qr').textContent=e.message}
 }
 function friendlyActivity(message){
- if(/Replied to (?:approved test )?number ending (\d+)/i.test(message))return 'Reply sent to customer (number ending '+RegExp.$1+').';
+ if(/Replied to (?:approved test )?number ending (\\d+)/i.test(message))return 'Reply sent to customer (number ending '+RegExp.$1+').';
  if(/automatically resumed|AI replies enabled/i.test(message))return 'Automatic replies are active.';
  if(/AI replies disabled/i.test(message))return 'Automatic replies paused.';
  if(/Nexus business settings loaded/i.test(message))return 'Business information updated.';
@@ -401,9 +401,9 @@ async function update(){
   el('pairHelp').hidden=connected;
   if(connected)el('qr').textContent='';
   const lines=(x.recent||[]).map(item=>({time:item.time,message:friendlyActivity(item.message)})).filter(item=>item.message);
-  el('activity').textContent=lines.length?lines.slice(0,8).map(item=>item.time+'  '+item.message).join('\n'):'No recent activity. New messages will appear here.';
+  el('activity').textContent=lines.length?lines.slice(0,8).map(item=>item.time+'  '+item.message).join('\\n'):'No recent activity. New messages will appear here.';
   el('activityStatus').textContent=lines.length?'Latest updates':'';
-  el('logs').textContent=(x.recent||[]).map(item=>item.time+'  '+item.message).join('\n')||'No technical events yet.';
+  el('logs').textContent=(x.recent||[]).map(item=>item.time+'  '+item.message).join('\\n')||'No technical events yet.';
  }catch(e){
   const cb=el('connectionBadge');cb.className='status off';cb.textContent='Unable to check connection';
   el('connectionHelp').textContent='The assistant is temporarily unreachable. Check that Nexus services are running.';
