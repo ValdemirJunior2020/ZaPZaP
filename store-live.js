@@ -54,7 +54,7 @@ function renderDescription(){
 
 const sessionKey='nexus_chat_'+slug+'_'+sourceCode;
 try{sessionId=localStorage.getItem(sessionKey)||null}catch{}
-const showFailure=text=>{$("storeUnavailable").textContent=text;$("storeUnavailable").classList.remove("hidden");$("storeContent").classList.add("hidden")};
+const showFailure=text=>{$("storeUnavailable").textContent=text;$("storeUnavailable").classList.remove("hidden");$("storeLoadingSkeleton")?.classList.add("hidden");$("storeContent").classList.add("hidden")};
 const safeUrl=value=>{try{const v=new URL(value);return v.protocol==="https:"?v.href:""}catch{return""}};
 async function load(){
  if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)){showFailure("This store link is invalid.");return}
@@ -77,7 +77,7 @@ async function load(){
   remaining=store.chatMaxMessages||10;
   if(data.qrSource){$('headline').textContent=data.qrSource.label+' • '+(store.headline||store.name);const p=items.find(x=>x.id===data.qrSource.offeringId);if(p)$('customerMessage').value='I would like information about '+p.name+'.';}
   $('requestType').querySelector('[value=appointment]').disabled=store.appointmentsEnabled===false;
-  $("storeUnavailable").classList.add("hidden");$("storeContent").classList.remove("hidden");
+  $("storeUnavailable").classList.add("hidden");$("storeLoadingSkeleton")?.classList.add("hidden");$("storeContent").classList.remove("hidden");
   document.title=store.name+" · SmartStore";
   $("businessName").textContent=store.name;
   if(!data.qrSource)$("headline").textContent=store.headline||(pageLocale==="pt"?"Bem-vindo à "+store.name:pageLocale==="es"?"Bienvenido a "+store.name:"Welcome to "+store.name);
