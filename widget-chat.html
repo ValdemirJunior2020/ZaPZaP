@@ -39,7 +39,7 @@ function add(role,text){const b=document.createElement("div");b.className="bubbl
 async function init(){
  if(!/^bot_[a-z0-9]{20,50}$/.test(botId)){el("hello").textContent="Invalid assistant link.";el("status").textContent="Unavailable";return}
  try{
-  const r=await fetch("/.netlify/functions/widget-config?botId="+encodeURIComponent(botId),{cache:"no-store"});
+  const r=await fetch("/.netlify/functions/widget-config?botId="+encodeURIComponent(botId),{cache:"no-store",signal:AbortSignal.timeout(12000)});
   const data=await r.json();if(!r.ok||data.available!==true)throw Error("Not active");
   storeSlug=data.slug||"";remaining=data.chatMaxMessages||10;el("leadType").querySelector("[value=appointment]").disabled=data.appointmentsEnabled===false;el("business").textContent=data.businessName||"Business assistant";
   el("status").textContent=data.chatReady===true?"Live AI • Products and services":"AI temporarily offline • Leave an inquiry";

@@ -54,12 +54,12 @@ function renderDescription(){
 
 const sessionKey='nexus_chat_'+slug+'_'+sourceCode;
 try{sessionId=localStorage.getItem(sessionKey)||null}catch{}
-const showFailure=text=>{$("storeUnavailable").textContent=text;$("storeUnavailable").classList.remove("hidden");$("storeContent").classList.add("hidden")};
+const showFailure=text=>{$("storeUnavailable").textContent=text;$("storeUnavailable").classList.remove("hidden");$("storeLoadingSkeleton")?.classList.add("hidden");$("storeContent").classList.add("hidden")};
 const safeUrl=value=>{try{const v=new URL(value);return v.protocol==="https:"?v.href:""}catch{return""}};
 async function load(){
  if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)){showFailure("This store link is invalid.");return}
  try{
-  const res=await fetch("/.netlify/functions/public-store?slug="+encodeURIComponent(slug)+(sourceCode?"&src="+encodeURIComponent(sourceCode):""),{cache:"no-store"});
+  const res=await fetch("/.netlify/functions/public-store?slug="+encodeURIComponent(slug)+(sourceCode?"&src="+encodeURIComponent(sourceCode):""),{cache:"no-store",signal:AbortSignal.timeout(12000)});
   const data=await res.json();
   if(!res.ok||!data.store)throw Error("This store is not available yet. Please contact the business directly.");
   store=data.store;items=data.offerings||[];ready=data.chatReady===true;
@@ -77,7 +77,7 @@ async function load(){
   remaining=store.chatMaxMessages||10;
   if(data.qrSource){$('headline').textContent=data.qrSource.label+' • '+(store.headline||store.name);const p=items.find(x=>x.id===data.qrSource.offeringId);if(p)$('customerMessage').value='I would like information about '+p.name+'.';}
   $('requestType').querySelector('[value=appointment]').disabled=store.appointmentsEnabled===false;
-  $("storeUnavailable").classList.add("hidden");$("storeContent").classList.remove("hidden");
+  $("storeUnavailable").classList.add("hidden");$("storeLoadingSkeleton")?.classList.add("hidden");$("storeContent").classList.remove("hidden");
   document.title=store.name+" · SmartStore";
   $("businessName").textContent=store.name;
   if(!data.qrSource)$("headline").textContent=store.headline||(pageLocale==="pt"?"Bem-vindo à "+store.name:pageLocale==="es"?"Bienvenido a "+store.name:"Welcome to "+store.name);
@@ -91,7 +91,7 @@ async function load(){
   $("question").disabled=!ready;$("chatSend").disabled=!ready;
   document.querySelectorAll("[data-ask]").forEach(btn=>btn.disabled=!ready);
   $("products").innerHTML=items.length?items.map(p=>'<article class="item">'+
-   (safeUrl(p.image_url)?'<img alt="" src="'+esc(p.image_url)+'">':'<div class="placeholder">✦</div>')+
+   (safeUrl(p.image_url)?'<img alt="" src="'+esc(p.image_url)+'" loading="lazy" decoding="async" width="320" height="153">':'<div class="placeholder">✦</div>')+
    '<div class="item-body"><h3>'+esc(p.name)+'</h3><span class="status">'+esc(p.type)+' · '+esc(p.status)+'</span><div class="price">'+esc(p.price_label||i18n("priceOnRequest"))+'</div>'+
    '<p>'+esc(p.description||"")+'</p><button class="btn" type="button" data-interested="'+esc(p.id)+'">'+esc(i18n("askThis"))+'</button></div></article>').join(""):
    '<div class="empty">'+esc(i18n("notListed"))+'</div>';
