@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
-import {validSession,validJid,normalizeMessage,approvedSender,buildPrompt,safeCustomerReply,localSafeFallback,startBridge} from "../scripts/wa-akg-local-bridge.mjs";
+import {validSession,validJid,normalizeMessage,approvedSender,buildPrompt,safeCustomerReply,localSafeFallback,withNexusWhatsAppIdentity,startBridge} from "../scripts/wa-akg-local-bridge.mjs";
 
 test("validates sessions, WhatsApp personal JIDs and safe messages",()=>{
  assert.equal(validSession("nexus-local-x"),true);
@@ -80,7 +80,8 @@ test("local gateway uses mock WA-AKG: starts OFF, limits testing to allowlist, a
   const deadline=Date.now()+8500;
   while(sends<1&&Date.now()<deadline)await new Promise(r=>setTimeout(r,150));
   assert.equal(sends,1,JSON.stringify({queries,errors:bridge.state.errors,recent:bridge.state.recent}));
-  assert.deepEqual(responses[0],{message:{text:"Hello from Nexus!"}});
+  assert.deepEqual(responses[0],{message:{text:withNexusWhatsAppIdentity("Hello from Nexus!","hello!")}});
+  assert.equal((responses[0].message.text.match(/https:\/\/zapzap-bot\.netlify\.app\//g)||[]).length,1);
   assert.equal(queries,2,"empty Qwen3 responses should be retried");
   assert.deepEqual(presence,["composing","paused"]);
   status="DISCONNECTED";
@@ -126,4 +127,25 @@ test("safe fallback answers a real Portuguese Nexus offerings question using onl
  assert.match(localSafeFallback("Hello",store,offerings),/^Hi!/);
  assert.match(localSafeFallback("Hola",store,offerings),/^¡Hola!/);
  assert.doesNotMatch(localSafeFallback("What services do you offer?",store,offerings),/R\$ 49/);
+});
+
+test("every WhatsApp auto-reply includes one Nexus AI identity and canonical website in the customer's language",()=>{
+ const website="https://zapzap-bot.netlify.app/";
+ const examples=[
+  {input:"Oi, quais serviços vocês oferecem?",output:"Aqui estão nossos serviços.",label:"Quem somos:"},
+  {input:"Olá, quanto custa?",output:"Os preços estão no catálogo.",label:"Quem somos:"},
+  {input:"Hola, qué servicios ofrecen?",output:"Tenemos distintas soluciones.",label:"Quiénes somos:"},
+  {input:"Hello, what do you offer?",output:"We provide business solutions.",label:"Who we are:"},
+ ];
+ for(const item of examples){
+  const final=withNexusWhatsAppIdentity(item.output,item.input);
+  assert.ok(final.startsWith(item.output+"\n\n"),"Preserve the actual customer answer");
+  assert.ok(final.includes(item.label),"Include who we are in the customer's language");
+  assert.equal(final.split(website).length-1,1,"Append website exactly once");
+ }
+ const twice=withNexusWhatsAppIdentity("Learn more: https://zapzap-bot.netlify.app/","Hello");
+ assert.equal(twice.split(website).length-1,1,"Never send duplicate links");
+ const empty=withNexusWhatsAppIdentity("","Oi");
+ assert.match(empty,/Quem somos:.*Nexus AI/);
+ assert.equal(empty.split(website).length-1,1);
 });
