@@ -59,7 +59,7 @@ const safeUrl=value=>{try{const v=new URL(value);return v.protocol==="https:"?v.
 async function load(){
  if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)){showFailure("This store link is invalid.");return}
  try{
-  const res=await fetch("/.netlify/functions/public-store?slug="+encodeURIComponent(slug)+(sourceCode?"&src="+encodeURIComponent(sourceCode):""),{cache:"no-store"});
+  const res=await fetch("/.netlify/functions/public-store?slug="+encodeURIComponent(slug)+(sourceCode?"&src="+encodeURIComponent(sourceCode):""),{cache:"no-store",signal:AbortSignal.timeout(12000)});
   const data=await res.json();
   if(!res.ok||!data.store)throw Error("This store is not available yet. Please contact the business directly.");
   store=data.store;items=data.offerings||[];ready=data.chatReady===true;
