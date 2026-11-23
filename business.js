@@ -447,6 +447,7 @@ async function fetchAiLogs(){
 }
 function renderLeads(){
  const leads=workspace.leads||[],sources=workspace.qrSources||[];
+ const sourceById=new Map(sources.map(source=>[source.id,source]));
  const newCount=leads.filter(l=>l.status==="New").length;
  const appointments=leads.filter(l=>l.request_type==="appointment").length;
  const qrLeads=leads.filter(l=>l.source_id).length;
@@ -457,7 +458,7 @@ function renderLeads(){
  '<div class="card lead-center"><div class="lead-bar"><div><h2>Lead Center</h2><p>Every customer request, follow-up and linked AI transcript in one place.</p></div>'+
  '<select id="leadFilter" aria-label="Filter leads"><option value="all">All leads</option><option value="New">New</option><option value="Contacted">Contacted</option><option value="Appointment Requested">Appointment requested</option><option value="Booked">Booked</option><option value="Won">Won</option><option value="Lost">Lost</option></select></div>'+
  (leads.length?'<div class="lead-list">'+leads.map(l=>{
- const source=sources.find(s=>s.id===l.source_id);
+ const source=sourceById.get(l.source_id);
  const date=new Date(l.created_at).toLocaleString();
  return '<button class="lead-row" type="button" data-lead="'+htmlEsc(l.id)+'" data-status="'+htmlEsc(l.status)+'">'+
  '<span class="lead-avatar">'+htmlEsc((l.customer_name||'?').slice(0,1).toUpperCase())+'</span><span class="lead-main"><strong>'+htmlEsc(l.customer_name)+'</strong><small>'+htmlEsc(l.interest.slice(0,100))+'</small><small>'+htmlEsc(l.personal_assistant_id?('Personal AI • '+(workspace.personalAssistant?.display_name||'Assistant')):(source?.label||'SmartStore / website'))+' • '+htmlEsc((workspace.employees||[]).find(e=>e.id===l.employee_id)?.name||'')+' • '+htmlEsc(date)+'</small></span>'+
