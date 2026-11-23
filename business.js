@@ -225,7 +225,7 @@ function renderStore(){
 }
 function renderOfferings(){
  const list=workspace.offerings||[];
- const cards=list.map(p=>'<article class="offering">'+(p.image_url?'<img alt="" src="'+htmlEsc(p.image_url)+'">':'<div class="placeholder">✦</div>')+
+ const cards=list.map(p=>'<article class="offering">'+(p.image_url?'<img alt="" src="'+htmlEsc(p.image_url)+'" loading="lazy" decoding="async" width="320" height="145">':'<div class="placeholder">✦</div>')+
  '<div class="inside"><h3>'+productName(p)+'</h3><small>'+htmlEsc(p.type)+' • '+htmlEsc(p.status)+'</small><strong>'+htmlEsc(p.price_label||"Ask for a quote")+'</strong><p>'+htmlEsc(p.description||"")+'</p><div class="actions"><button class="button" data-edit="'+htmlEsc(p.id)+'">Edit</button><button class="button danger" data-delete="'+htmlEsc(p.id)+'">Delete</button></div></div></article>').join("");
  return '<div class="actions"><button class="primary" id="addOffering" '+(!isEditable()?'disabled':'')+'>+ Add product or service</button></div>'+
  (list.length?'<div class="offer-grid">'+cards+'</div>':'<div class="empty">No offerings yet. Add your first product, service, package, or consultation.</div>')+
@@ -371,12 +371,18 @@ function updateMarketPreview(){
 function renderTeam(){
  if(workspace.teamAllowed!==true)return '<div class="card"><h2>Equipe de vendas</h2><p>O plano Empresarial começa em US$ 499/mês, incluindo 3 funcionários. Este recurso ainda não faz parte do seu plano atual. A cobrança de novas assinaturas não está ativada.</p></div>';
  const people=workspace.employees||[],sources=workspace.qrSources||[];
+ // Index associations once instead of scanning all QR sources and leads for each employee.
+ const sourcesById=new Map(sources.map(source=>[source.id,source]));
+ const leadCountByEmployee=new Map();
+ for(const lead of workspace.leads||[]){
+  if(lead.employee_id)leadCountByEmployee.set(lead.employee_id,(leadCountByEmployee.get(lead.employee_id)||0)+1);
+ }
  const cards=people.map(p=>{
-  const qr=sources.find(s=>s.id===p.qr_source_id);
+  const qr=sourcesById.get(p.qr_source_id);
   const url=qr?qrSourceUrl(qr.code):"";
   const img=url?"https://api.qrserver.com/v1/create-qr-code/?size=180x180&data="+encodeURIComponent(url):"";
   const number=String(p.whatsapp||"").replace(/\D/g,"");
-  const count=(workspace.leads||[]).filter(l=>l.employee_id===p.id).length;
+  const count=leadCountByEmployee.get(p.id)||0;
   return '<div class="card"><h3>'+htmlEsc(p.name)+'</h3><p>'+htmlEsc(p.role)+' • '+htmlEsc(p.language)+' • '+(p.enabled?'Ativo':'Pausado')+'</p>'+
    (img?'<img class="qr" alt="QR Code do funcionário" src="'+htmlEsc(img)+'" loading="lazy">':'')+
    '<p>'+count+' leads atribuídos</p><div class="actions">'+
