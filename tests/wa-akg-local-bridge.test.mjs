@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
-import {validSession,validJid,normalizeMessage,approvedSender,buildPrompt,safeCustomerReply,localSafeFallback,withNexusWhatsAppIdentity,startBridge} from "../scripts/wa-akg-local-bridge.mjs";
+import {validSession,validJid,normalizeMessage,approvedSender,buildPrompt,safeCustomerReply,localSafeFallback,withNexusWhatsAppIdentity,looksLikeNexusAutoReply,makeReplySafety,startBridge} from "../scripts/wa-akg-local-bridge.mjs";
 
 test("validates sessions, WhatsApp personal JIDs and safe messages",()=>{
  assert.equal(validSession("nexus-local-x"),true);
@@ -148,4 +148,50 @@ test("every WhatsApp auto-reply includes one Nexus AI identity and canonical web
  const empty=withNexusWhatsAppIdentity("","Oi");
  assert.match(empty,/Quem somos:.*Nexus AI/);
  assert.equal(empty.split(website).length-1,1);
+});
+
+
+test("WhatsApp anti-loop ignores echoed bot messages even with incorrect incoming flag",()=>{
+ const examples=[
+ "Olá! Sou o assistente virtual da Nexus AI. Como posso ajudar você hoje?\n\nWho we are: Nexus AI provides AI-powered customer service and sales solutions.\n\nLearn more about Nexus AI: https://zapzap-bot.netlify.app/",
+ "Quem somos: A Nexus AI oferece soluções de atendimento e vendas com inteligência artificial.",
+ "Conoce Nexus AI: https://zapzap-bot.netlify.app/",
+ "Hi! I'm the virtual assistant for Nexus AI. How can I help you today?"
+ ];
+ for(const text of examples)assert.equal(looksLikeNexusAutoReply(text),true);
+ assert.equal(looksLikeNexusAutoReply("Oi, quanto custa o serviço?"),false);
+ assert.equal(looksLikeNexusAutoReply("Mano kkkk"),false);
+ const safety=makeReplySafety();
+ assert.equal(safety.allow("15550000001@s.whatsapp.net",examples[0],1000).ok,false);
+});
+
+test("WhatsApp rate limiting prevents bursts and automatically shuts down at global cap",()=>{
+ const safety=makeReplySafety({perContactMs:180000,windowMs:600000,maxInWindow:3});
+ const first="15550000001@s.whatsapp.net";
+ assert.equal(safety.allow(first,"Oi",100000).ok,true);
+ safety.record(first,100000);
+ const cooldown=safety.allow(first,"Oi de novo",100001);
+ assert.equal(cooldown.ok,false);assert.match(cooldown.reason,/cooldown/);
+ assert.equal(safety.allow(first,"Oi",280001).ok,true);
+ for(let i=2;i<=3;i++){
+  const jid="1555000000"+i+"@s.whatsapp.net";
+  assert.equal(safety.allow(jid,"Quero um orçamento",100000+i).ok,true);
+  safety.record(jid,100000+i);
+ }
+ const stop=safety.allow("15550000004@s.whatsapp.net","Oi",100010);
+ assert.equal(stop.ok,false);assert.equal(stop.stop,true);
+ const recovered=safety.allow("15550000004@s.whatsapp.net","Oi",700100);
+ assert.equal(recovered.ok,true);
+});
+
+test("WhatsApp fail-closed restart, business refresh and send-time pause protection",async()=>{
+ const bridge=await import("../scripts/wa-akg-local-bridge.mjs");
+ const source=await (await import("node:fs/promises")).readFile(new URL("../scripts/wa-akg-local-bridge.mjs",import.meta.url),"utf8");
+ assert.match(source,/autoReply:values\.NEXUS_WA_AUTO_REPLY==="on"/);
+ assert.match(source,/state\.requested=false; \/\/ Updating business settings must never re-arm/);
+ assert.match(source,/Saved business settings restored\. Automatic replies paused until explicitly enabled/);
+ assert.match(source,/if\(!state\.requested\|\|!state\.armed\)return;/);
+ assert.match(source,/replySafety\.record\(n\.jid\)/);
+ assert.match(source,/state\.requested=false;state\.armed=false;log\("SAFETY STOP:/);
+ assert.ok(bridge.makeReplySafety);
 });
