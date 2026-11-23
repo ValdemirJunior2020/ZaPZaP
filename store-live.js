@@ -91,7 +91,7 @@ async function load(){
   $("question").disabled=!ready;$("chatSend").disabled=!ready;
   document.querySelectorAll("[data-ask]").forEach(btn=>btn.disabled=!ready);
   $("products").innerHTML=items.length?items.map(p=>'<article class="item">'+
-   (safeUrl(p.image_url)?'<img alt="" src="'+esc(p.image_url)+'">':'<div class="placeholder">✦</div>')+
+   (safeUrl(p.image_url)?'<img alt="" src="'+esc(p.image_url)+'" loading="lazy" decoding="async" width="320" height="153">':'<div class="placeholder">✦</div>')+
    '<div class="item-body"><h3>'+esc(p.name)+'</h3><span class="status">'+esc(p.type)+' · '+esc(p.status)+'</span><div class="price">'+esc(p.price_label||i18n("priceOnRequest"))+'</div>'+
    '<p>'+esc(p.description||"")+'</p><button class="btn" type="button" data-interested="'+esc(p.id)+'">'+esc(i18n("askThis"))+'</button></div></article>').join(""):
    '<div class="empty">'+esc(i18n("notListed"))+'</div>';
