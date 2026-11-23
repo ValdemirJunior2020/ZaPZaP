@@ -21,17 +21,24 @@ export async function handler(event){
   if(!ent)return json(503,{error:"Trial registration not initialized"});
   let store=await ownStore(c,user.id);
   if(event.httpMethod==="GET"){
-   const profile=await ownerProfile(c,user.id);
-   const items=store?await offerings(c,store.id):[];
-   let leads=store?await db(c,"nx_leads?store_id=eq."+encodeURIComponent(store.id)+"&select=id,customer_name,customer_email,customer_phone,interest,status,request_type,preferred_time,source_id,session_id,employee_id,created_at,updated_at&order=created_at.desc&limit=100"):[];
-   const qrSources=store?await db(c,"nx_qr_sources?store_id=eq."+encodeURIComponent(store.id)+"&select=id,code,label,enabled,offering_id,scan_count,created_at&order=created_at.desc&limit=100"):[];
+   // These independent read-only queries are safe to run concurrently.
+   // Auth and store ownership are verified above before any query starts.
+   const storeKey=store?encodeURIComponent(store.id):null;
+   const [profile,items,initialLeads,qrSources,employees,appointments]=await Promise.all([
+    ownerProfile(c,user.id),
+    store?offerings(c,store.id):Promise.resolve([]),
+    store?db(c,"nx_leads?store_id=eq."+storeKey+"&select=id,customer_name,customer_email,customer_phone,interest,status,request_type,preferred_time,source_id,session_id,employee_id,created_at,updated_at&order=created_at.desc&limit=100"):Promise.resolve([]),
+    store?db(c,"nx_qr_sources?store_id=eq."+storeKey+"&select=id,code,label,enabled,offering_id,scan_count,created_at&order=created_at.desc&limit=100"):Promise.resolve([]),
+    store&&teamEntitled(user,ent)?db(c,"nx_employees?store_id=eq."+storeKey+"&archived=eq.false&select=id,name,role,whatsapp,language,enabled,qr_source_id,created_at&order=created_at.asc"):Promise.resolve([]),
+    store?db(c,"nx_appointments?store_id=eq."+storeKey+"&select=id,store_id,lead_id,employee_id,staff_id,service_id,customer_name,customer_email,customer_phone,notes,start_at,end_at,status,created_at,updated_at&order=start_at.desc&limit=500"):Promise.resolve([])
+   ]);
+   let leads=initialLeads;
    let personalRows=[],personalSchemaReady=true;
    if(store){try{personalRows=await db(c,"nx_personal_assistants?owner_id=eq."+encodeURIComponent(user.id)+"&store_id=eq."+encodeURIComponent(store.id)+"&select=id,handle,display_name,personality,greeting,about,enabled,max_messages,max_minutes,public_contact_phone,publish_contact_phone")}catch(error){personalSchemaReady=false}}
    if(store&&personalSchemaReady){try{
     leads=await db(c,"nx_leads?store_id=eq."+encodeURIComponent(store.id)+"&select=id,customer_name,customer_email,customer_phone,interest,status,request_type,preferred_time,source_id,session_id,employee_id,personal_assistant_id,created_at,updated_at&order=created_at.desc&limit=100");
    }catch(error){console.error("Personal lead fields unavailable:",error.message)}}
-   const employees=store&&teamEntitled(user,ent)?await db(c,"nx_employees?store_id=eq."+encodeURIComponent(store.id)+"&archived=eq.false&select=id,name,role,whatsapp,language,enabled,qr_source_id,created_at&order=created_at.asc"):[];
-   const appointments=store?await db(c,"nx_appointments?store_id=eq."+encodeURIComponent(store.id)+"&select=id,store_id,lead_id,employee_id,staff_id,service_id,customer_name,customer_email,customer_phone,notes,start_at,end_at,status,created_at,updated_at&order=start_at.desc&limit=500"):[];
+
    let bot=null;
    if(store){try{const found=await db(c,"nx_bots?store_id=eq."+encodeURIComponent(store.id)+"&select=bot_id,enabled,greeting,primary_color");bot=found?.[0]||null}catch{}}
    let businessProfile=null;
