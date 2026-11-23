@@ -63,7 +63,7 @@ test("complimentary owner has verified unlimited dashboard widget access without
 });
 test("local WhatsApp connector keeps desired auto-reply state and checks every chat",async()=>{
  const bridge=await read("scripts/wa-akg-local-bridge.mjs");
- assert.match(bridge,/autoReply:values\.NEXUS_WA_AUTO_REPLY!=="off"/);
+ assert.match(bridge,/autoReply:values\.NEXUS_WA_AUTO_REPLY==="on"/);
  assert.match(bridge,/requested:false/);
  assert.match(bridge,/state\.requested && !state\.armed/);
  assert.match(bridge,/return Array\.isArray\(response\.data\)\?response\.data:\[\]/);
@@ -73,7 +73,7 @@ test("local WhatsApp connector keeps desired auto-reply state and checks every c
 test("WhatsApp reloads cached business snapshot automatically and never commits it",async()=>{
  const bridge=await read("scripts/wa-akg-local-bridge.mjs");
  const ignore=await read(".gitignore");
- assert.match(bridge,/Stored Nexus business settings restored/);
+ assert.match(bridge,/Saved business settings restored\. Automatic replies paused until explicitly enabled/);
  assert.match(bridge,/await readFile\(snapshotFile,"utf8"\)/);
  assert.match(bridge,/writeFile\(snapshotFile,JSON\.stringify\(business\)/);
  assert.match(ignore,/\.nexus-wa-business-local\.json/);
