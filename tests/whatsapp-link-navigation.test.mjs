@@ -154,7 +154,7 @@ test("WhatsApp owner panel uses customer-ready copy while preserving local discl
 test("rendered WhatsApp panel JavaScript compiles and polls status",async()=>{
  const source=await read("scripts/wa-akg-local-bridge.mjs");
  const start=source.indexOf("  const page=");
- const end=source.indexOf(";\n  const send=",start);
+ const end=start<0?-1:start+source.slice(start).search(/;\r?\n\s*const send=/);
  assert.ok(start>=0&&end>start);
  const assignment=source.slice(start,end);
  const rendered=new Function(assignment+";return page;")();
