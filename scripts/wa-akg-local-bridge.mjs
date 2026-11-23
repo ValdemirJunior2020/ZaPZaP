@@ -26,6 +26,32 @@ export function normalizeMessage(m){
   if (!validJid(jid) || !key || key.length>250 || !m.content.trim()) return null;
   return {jid,key,text:m.content.trim().slice(0,1400)};
 }
+// A gateway can incorrectly label our own synced messages as incoming.
+// Never trigger another AI response to an AI-authored message or footer.
+export function looksLikeNexusAutoReply(content){
+ const x=String(content??"").toLowerCase();
+ return /https?:\/\/zapzap-bot\.netlify\.app\b/i.test(x)||
+   /(?:quem somos:\s*a nexus ai|who we are:\s*nexus ai|quiénes somos:\s*nexus ai|conheça a nexus ai:|learn more about nexus ai:|conoce nexus ai:)/i.test(x)||
+   /(?:sou o assistente virtual da nexus ai|i'm the virtual assistant for nexus ai|soy el asistente virtual de nexus ai)/i.test(x);
+}
+export function makeReplySafety({perContactMs=180000,windowMs=600000,maxInWindow=8}={}){
+ const contacts=new Map(),sent=[];
+ return {
+   allow(jid,text,now=Date.now()){
+     if(looksLikeNexusAutoReply(text))return {ok:false,reason:"AI echo"};
+     if(now-(contacts.get(jid)??-Infinity)<perContactMs)return {ok:false,reason:"per-contact cooldown"};
+     while(sent.length && now-sent[0]>=windowMs)sent.shift();
+     if(sent.length>=maxInWindow)return {ok:false,reason:"global send safety limit",stop:true};
+     return {ok:true};
+   },
+   record(jid,now=Date.now()){
+     contacts.set(jid,now);sent.push(now);
+     if(contacts.size>3000){
+       for(const [id,stamp] of contacts)if(now-stamp>perContactMs)contacts.delete(id);
+     }
+   }
+ };
+}
 export function approvedSender(jid,allowed,mode="test") {
   return validJid(jid) && (mode==="all" || allowed.has(jid.split("@")[0]));
 }
@@ -102,11 +128,13 @@ async function config() {
     const u = new URL(origin);
     if (u.protocol!=="http:" || !["127.0.0.1","localhost"].includes(u.hostname) || u.username || u.password || u.pathname!=="/") throw Error("Gateway and Ollama URLs must be loopback HTTP origins");
   }
-  return {apiRoot,ollamaRoot,apiKey:values.NEXUS_WA_AKG_API_KEY||"",model:values.NEXUS_WA_OLLAMA_MODEL||"qwen3:4b",business:(values.NEXUS_WA_BUSINESS_NAME||"Our Business").slice(0,80),session:values.NEXUS_WA_SESSION_ID||"",mode:values.NEXUS_WA_REPLY_MODE==="all"?"all":"test",autoReply:values.NEXUS_WA_AUTO_REPLY!=="off",allow:new Set((values.NEXUS_WA_TEST_NUMBERS||"").split(",").map(x=>x.trim().replace(/^\+/,"")).filter(x=>/^\d{5,20}$/.test(x)))};
+  return {apiRoot,ollamaRoot,apiKey:values.NEXUS_WA_AKG_API_KEY||"",model:values.NEXUS_WA_OLLAMA_MODEL||"qwen3:4b",business:(values.NEXUS_WA_BUSINESS_NAME||"Our Business").slice(0,80),session:values.NEXUS_WA_SESSION_ID||"",mode:values.NEXUS_WA_REPLY_MODE==="all"?"all":"test",autoReply:values.NEXUS_WA_AUTO_REPLY==="on",allow:new Set((values.NEXUS_WA_TEST_NUMBERS||"").split(",").map(x=>x.trim().replace(/^\+/,"")).filter(x=>/^\d{5,20}$/.test(x)))};
 }
 export async function startBridge({settings=undefined,fetcher=fetch,port=8791}={}) {
   const cfg = settings || await config();
   const state = {session:validSession(cfg.session)?cfg.session:"",connected:false,armed:false,requested:false,busy:false,lastCheck:"Never",errors:[],recent:[],seen:new Set(),baseline:false,business:null,mode:cfg.mode==="all"?"all":"test",scanOffset:0,modeReady:false};
+  const replySafety=makeReplySafety();
+
   // Local private snapshot lets a signed-in owner's verified business context survive restarts.
   // Never persist secrets or authentication tokens. The snapshot is excluded from Git.
   const snapshotFile=path.resolve(here,"../.nexus-wa-business-local.json");
@@ -274,15 +302,25 @@ export async function startBridge({settings=undefined,fetcher=fetch,port=8791}={
           if(!n||state.seen.has(n.key))continue;
           state.seen.add(n.key);
           if(state.seen.size>250000){state.requested=false;state.armed=false;throw Error("Message deduplication capacity reached; auto replies paused to prevent duplicate sends") }
+          const gate=replySafety.allow(n.jid,n.text);
+          if(!gate.ok){
+            if(gate.stop){state.requested=false;state.armed=false;log("SAFETY STOP: Too many WhatsApp replies in a short period. Manual re-enable required.");break}
+            continue;
+          }
           try{
             await withTyping(n.jid,async()=>{
+              if(!state.requested||!state.armed)return;
               const answer=withNexusWhatsAppIdentity(await reply(n.text),n.text);
+              if(!state.requested||!state.armed)return;
+              // Reserve the slot BEFORE the send; a send can time out after being delivered.
+              replySafety.record(n.jid);
               const sent=await callWa("/messages/"+sessionPath()+"/"+encodeURIComponent(n.jid)+"/send",{method:"POST",body:JSON.stringify({message:{text:answer}})});
               if(sent.status===false)throw Error("WA-AKG did not confirm send");
             });
-            log("Replied to approved test number ending "+n.jid.split("@")[0].slice(-3)+" (message "+n.key.slice(0,12)+")");
+            if(state.requested&&state.armed)log("Replied to approved test number ending "+n.jid.split("@")[0].slice(-3)+" (message "+n.key.slice(0,12)+")");
           }catch(e){err(e.message)}
         }
+        if(!state.requested||!state.armed)break;
       }
       state.lastCheck=new Date().toLocaleTimeString();
     }catch(e){state.armed=false;err("Auto-reply paused; will retry automatically: "+e.message)}
@@ -455,7 +493,7 @@ update();setInterval(update,4500);
         state.armed=false;
         state.business=business;
         if(settings===undefined)await writeFile(snapshotFile,JSON.stringify(business),{encoding:"utf8",mode:0o600});
-        state.requested=cfg.autoReply!==false;
+        state.requested=false; // Updating business settings must never re-arm a paused bot.
         state.baseline=false;
         state.seen.clear();
         log("Nexus business settings loaded for "+business.store.name+" ("+business.items.length+" offerings). Auto replies "+(state.requested?"requested":"disabled")+". Waiting for confirmed WhatsApp connection.");
@@ -499,16 +537,13 @@ update();setInterval(update,4500);
         if(!state.business)throw Error("Open Link Your WhatsApp in Nexus to load this business settings first");
         if(!state.session)throw Error("Create a WhatsApp session first");
         if(await sessionStatus()!=="CONNECTED")throw Error("WhatsApp must be connected");
-        state.requested=true;state.armed=false;state.baseline=false;state.seen.clear();await baseline();state.armed=true;log("AI replies enabled in "+state.mode+" mode");
+        state.requested=true;state.armed=false;state.baseline=false;state.seen.clear();await baseline();state.armed=true;log("AI replies enabled in "+state.mode+" mode (with anti-loop rate limits)");
       }else if(action==="disarm"){state.requested=false;state.armed=false;log("AI replies disabled until next explicit enable or business settings reload")}
       else{send(res,404,{error:"Unknown action"});return}
       send(res,200,{ok:true,session:state.session,armed:state.armed});
     }catch(e){err(e.message);send(res,400,{error:String(e.message).slice(0,180)})}
   });
-  if(state.business && cfg.autoReply!==false){
-    state.requested=true;
-    log("Stored Nexus business settings restored. Automatic replies requested for approved numbers when WhatsApp reconnects.");
-  }
+  if(state.business)log("Saved business settings restored. Automatic replies paused until explicitly enabled.");
   const interval=setInterval(()=>{check().catch(e=>err(e.message))},5000);
   await new Promise((resolve,reject)=>server.once("error",reject).listen(port,localHost,resolve));
   log("Local bridge ready at http://"+localHost+":"+port);
