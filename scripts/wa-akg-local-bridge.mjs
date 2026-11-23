@@ -46,6 +46,26 @@ export function safeCustomerReply(raw){
   if(/^\s*(?:\d+[.)]\s+|[-*]\s+).*\n/m.test(text))return null;
   return text;
 }
+const NEXUS_PUBLIC_WEBSITE="https://zapzap-bot.netlify.app/";
+
+// Deterministic identity footer is applied AFTER AI safety checks and fallback.
+// Do not ask the language model to include links: it may omit or duplicate them.
+export function withNexusWhatsAppIdentity(answer,incomingText){
+  const input=String(incomingText??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+  const portuguese=/\b(?:oi|ola|bom dia|boa tarde|boa noite|voce|voces|quero|queria|gostaria|quanto|custa|preco|precos|servico|servicos|produto|produtos|saber|ajuda|obrigad[oa]|sim|nao|oferece|oferecem|empresa)\b/.test(input);
+  const spanish=!portuguese&&/\b(?:hola|buenos dias|buenas tardes|buenas noches|quiero|quisiera|cuanto|precio|precios|servicio|servicios|producto|productos|ayuda|gracias|empresa|ofrecen)\b/.test(input);
+  const introduction=portuguese
+    ?"Quem somos: A Nexus AI oferece soluções de atendimento e vendas com inteligência artificial."
+    :spanish
+      ?"Quiénes somos: Nexus AI ofrece soluciones de atención al cliente y ventas con inteligencia artificial."
+      :"Who we are: Nexus AI provides AI-powered customer service and sales solutions.";
+  const urlLabel=portuguese?"Conheça a Nexus AI: ":spanish?"Conoce Nexus AI: ":"Learn more about Nexus AI: ";
+  // A model can already include our link; remove only the exact trusted host,
+  // then append exactly one canonical link in the final message.
+  const clean=String(answer??"").replace(/https?:\/\/zapzap-bot\.netlify\.app\/?/gi,"").replace(/[ \t]+\n/g,"\n").trim();
+  return [clean,introduction,urlLabel+NEXUS_PUBLIC_WEBSITE].filter(Boolean).join("\n\n");
+}
+
 export function localSafeFallback(input,business,items=[]){
   const name=String(typeof business==="object"?business?.name:business||"Nexus AI").trim().slice(0,65)||"Nexus AI";
   const original=String(input||"").trim();
@@ -256,7 +276,7 @@ export async function startBridge({settings=undefined,fetcher=fetch,port=8791}={
           if(state.seen.size>250000){state.requested=false;state.armed=false;throw Error("Message deduplication capacity reached; auto replies paused to prevent duplicate sends") }
           try{
             await withTyping(n.jid,async()=>{
-              const answer=await reply(n.text);
+              const answer=withNexusWhatsAppIdentity(await reply(n.text),n.text);
               const sent=await callWa("/messages/"+sessionPath()+"/"+encodeURIComponent(n.jid)+"/send",{method:"POST",body:JSON.stringify({message:{text:answer}})});
               if(sent.status===false)throw Error("WA-AKG did not confirm send");
             });
